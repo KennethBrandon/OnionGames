@@ -811,6 +811,7 @@
 
             // Touch
             canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
             canvas.addEventListener('touchend', handleTouchEnd);
             canvas.addEventListener('touchcancel', handleTouchEnd);
 
@@ -863,6 +864,20 @@
             if (touchHint.style.opacity !== '0') {
                 touchHint.style.transition = 'opacity 0.5s';
                 touchHint.style.opacity = '0';
+            }
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            if (e.touches.length > 0) {
+                const touchX = e.touches[0].clientX;
+                if (touchX < GAME_WIDTH / 2) {
+                    touchInput.left = true;
+                    touchInput.right = false;
+                } else {
+                    touchInput.left = false;
+                    touchInput.right = true;
+                }
             }
         }
 
