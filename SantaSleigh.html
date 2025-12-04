@@ -160,6 +160,109 @@
             pointer-events: none;
         }
 
+        /* Mobile Controls */
+        .mobile-controls {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        @media (max-width: 768px),
+        (max-height: 500px) {
+            .mobile-controls {
+                display: block;
+            }
+        }
+
+        /* D-Pad Container */
+        .dpad {
+            position: absolute;
+            left: 20px;
+            bottom: 20px;
+            width: 140px;
+            height: 140px;
+            pointer-events: auto;
+        }
+
+        .dpad-button {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 8px;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 20px;
+            user-select: none;
+            transition: background 0.1s;
+        }
+
+        .dpad-button:active {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .dpad-up {
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .dpad-down {
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .dpad-left {
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .dpad-right {
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* Shoot Button */
+        .shoot-button {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 50%;
+            height: 100%;
+            background: rgba(255, 100, 100, 0.2);
+            border-left: 2px solid rgba(255, 255, 255, 0.3);
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 2rem;
+            font-weight: bold;
+            user-select: none;
+            transition: background 0.1s, opacity 1s;
+            opacity: 1;
+        }
+
+        .shoot-button:active {
+            background: rgba(255, 100, 100, 0.4);
+        }
+
+        .shoot-button.hidden {
+            opacity: 0;
+        }
+
         #debug-panel {
             position: absolute;
             top: 10px;
@@ -271,6 +374,20 @@
     </div>
 
     <div class="touch-hint" id="touch-hint">Tap Left/Right (Up/Down) • Tap Center (Shoot)</div>
+
+    <!-- Mobile Controls -->
+    <div class="mobile-controls" id="mobile-controls">
+        <!-- D-Pad -->
+        <div class="dpad">
+            <div class="dpad-button dpad-up" id="btn-up">▲</div>
+            <div class="dpad-button dpad-down" id="btn-down">▼</div>
+            <div class="dpad-button dpad-left" id="btn-left">◄</div>
+            <div class="dpad-button dpad-right" id="btn-right">►</div>
+        </div>
+
+        <!-- Shoot Button -->
+        <div class="shoot-button" id="btn-shoot">🎯 SHOOT</div>
+    </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -1621,9 +1738,13 @@
                 if (e.code === 'ArrowRight') keys.ArrowRight = false;
             });
 
-            // Touch (Simple zones)
+            // Touch (Simple zones) - kept for backward compatibility
             canvas.addEventListener('touchstart', handleTouch);
             canvas.addEventListener('touchend', endTouch);
+            canvas.addEventListener('touchmove', handleTouch);
+
+            // Mobile Controls
+            setupMobileControls();
 
             // Stars
             for (let i = 0; i < 150; i++) {
@@ -1677,6 +1798,67 @@
                     isDragging = false;
                 });
             }
+        }
+
+        function setupMobileControls() {
+            const btnUp = document.getElementById('btn-up');
+            const btnDown = document.getElementById('btn-down');
+            const btnLeft = document.getElementById('btn-left');
+            const btnRight = document.getElementById('btn-right');
+            const btnShoot = document.getElementById('btn-shoot');
+
+            // Prevent default touch behavior
+            const preventDefaultTouch = (e) => e.preventDefault();
+
+            // D-Pad Up
+            btnUp.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                keys.ArrowUp = true;
+            });
+            btnUp.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keys.ArrowUp = false;
+            });
+
+            // D-Pad Down
+            btnDown.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                keys.ArrowDown = true;
+            });
+            btnDown.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keys.ArrowDown = false;
+            });
+
+            // D-Pad Left
+            btnLeft.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                keys.ArrowLeft = true;
+            });
+            btnLeft.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keys.ArrowLeft = false;
+            });
+
+            // D-Pad Right
+            btnRight.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                keys.ArrowRight = true;
+            });
+            btnRight.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keys.ArrowRight = false;
+            });
+
+            // Shoot Button
+            btnShoot.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                keys.Space = true;
+            });
+            btnShoot.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keys.Space = false;
+            });
         }
 
         function handleTouch(e) {
@@ -1733,6 +1915,15 @@
             startScreen.classList.remove('active');
             gameOverScreen.classList.remove('active');
             winScreen.classList.remove('active');
+
+            // Hide shoot button after 5 seconds
+            const shootBtn = document.getElementById('btn-shoot');
+            if (shootBtn) {
+                shootBtn.classList.remove('hidden');
+                setTimeout(() => {
+                    shootBtn.classList.add('hidden');
+                }, 5000);
+            }
 
             player = new Player();
             boss = null;
