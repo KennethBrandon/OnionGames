@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onion Games</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&display=swap');
+
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #8b5cf6;
+            --accent-hover: #7c3aed;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            padding: 4rem 2rem;
+            text-align: center;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        h1 {
+            font-size: 4rem;
+            font-weight: 900;
+            margin: 0;
+            background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -2px;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-top: 1rem;
+            font-weight: 300;
+        }
+
+        main {
+            max-width: 1200px;
+            width: 100%;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            box-sizing: border-box;
+        }
+
+        .game-card {
+            background-color: var(--card-bg);
+            border-radius: 24px;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            animation: fadeInUp 0.8s ease-out backwards;
+        }
+
+        .game-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            border-color: rgba(139, 92, 246, 0.3);
+        }
+
+        .card-image {
+            width: 100%;
+            height: 200px;
+            background-color: #334155;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .game-card:hover .card-image {
+            transform: scale(1.05);
+        }
+
+        .card-content {
+            padding: 2rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h2 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        p {
+            color: var(--text-secondary);
+            margin: 0 0 1.5rem 0;
+            line-height: 1.6;
+            flex: 1;
+        }
+
+        .play-btn {
+            display: inline-block;
+            background-color: var(--accent);
+            color: white;
+            text-decoration: none;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 700;
+            text-align: center;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+
+        .play-btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .play-btn:active {
+            transform: scale(0.98);
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Staggered animation delays */
+        .game-card:nth-child(1) {
+            animation-delay: 0.1s;
+        }
+
+        .game-card:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .game-card:nth-child(3) {
+            animation-delay: 0.3s;
+        }
+
+        .game-card:nth-child(4) {
+            animation-delay: 0.4s;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>Onion Games</h1>
+        <div class="subtitle">Select a game to begin your adventure</div>
+    </header>
+
+    <main>
+        <!-- BobCards -->
+        <article class="game-card">
+            <div style="overflow: hidden;">
+                <img src="assets/images/bobcards.webp" alt="Soldier Showdown" class="card-image"
+                    onerror="this.style.display='none'">
+            </div>
+            <div class="card-content">
+                <h2>Soldier Showdown</h2>
+                <p>A tactical wave warfare card game. Build your army, plan your waves, and defeat the enemy commander.
+                </p>
+                <a href="BobCards.html" class="play-btn">Play Now</a>
+            </div>
+        </article>
+
+        <!-- ShadowChase -->
+        <article class="game-card">
+            <div style="overflow: hidden;">
+                <img src="assets/images/shadowchase.webp" alt="Shadow Chase" class="card-image"
+                    onerror="this.style.display='none'">
+            </div>
+            <div class="card-content">
+                <h2>Shadow Chase</h2>
+                <p>You are the light in a consuming darkness. Evade the shadow monster and survive as long as you can.
+                </p>
+                <a href="ShadowChase.html" class="play-btn">Play Now</a>
+            </div>
+        </article>
+
+        <!-- OnionBreaker -->
+        <article class="game-card">
+            <div style="overflow: hidden;">
+                <img src="assets/images/onionbreaker.webp" alt="Lava Breaker" class="card-image"
+                    onerror="this.style.display='none'">
+            </div>
+            <div class="card-content">
+                <h2>Lava Breaker</h2>
+                <p>Mustafar Edition. Help the Onion survive the heat in this intense breakout-style arcade game.</p>
+                <a href="OnionBreaker.html" class="play-btn">Play Now</a>
+            </div>
+        </article>
+
+        <!-- ChristmasHopper -->
+        <article class="game-card">
+            <div style="overflow: hidden;">
+                <img src="assets/images/christmashopper.webp" alt="Tree Topper" class="card-image"
+                    onerror="this.style.display='none'">
+            </div>
+            <div class="card-content">
+                <h2>Tree Topper</h2>
+                <p>Carry the star to the top of the Christmas tree! Jump on platforms, avoid the Grinch, and save the
+                    holiday.</p>
+                <a href="ChristmasHopper.html" class="play-btn">Play Now</a>
+            </div>
+        </article>
+
+        <!-- SantaSleigh -->
+        <article class="game-card">
+            <div style="overflow: hidden;">
+                <!-- Placeholder image for now, or we can try to generate one later -->
+                <div class="card-image"
+                    style="background: linear-gradient(to bottom, #0f172a, #1e293b); display: flex; align-items: center; justify-content: center;">
+                    <span style="font-size: 3rem;">🛷</span>
+                </div>
+            </div>
+            <div class="card-content">
+                <h2>Operation: Sleigh Ride</h2>
+                <p>Fly Santa's Sleigh, avoid the Grinches, and deliver Christmas to the finish line!</p>
+                <a href="SantaSleigh.html" class="play-btn">Play Now</a>
+            </div>
+        </article>
+    </main>
+
+</body>
+
+</html>

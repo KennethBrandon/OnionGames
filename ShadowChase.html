@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Shadow Chase</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Creepster&family=Roboto:wght@400;700&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #111;
+            font-family: 'Roboto', sans-serif;
+            cursor: none;
+            /* Hide default cursor during gameplay */
+            touch-action: none;
+            /* Prevent scrolling on mobile */
+            user-select: none;
+        }
+
+        /* --- Game World & Background --- */
+        #game-area {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle at center, #222 0%, #000 100%);
+            overflow: hidden;
+        }
+
+        /* --- The Player (The Soul) --- */
+        #player {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 15px 5px rgba(255, 255, 255, 0.6), 0 0 30px 10px rgba(100, 200, 255, 0.4);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 10;
+            transition: width 0.1s, height 0.1s;
+        }
+
+        #player.dead {
+            width: 0;
+            height: 0;
+            opacity: 0;
+            transition: all 0.3s ease-out;
+        }
+
+        /* --- The Monster --- */
+        #monster {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            /* Simple SVG logic inline for the monster appearance */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M10,50 Q20,20 50,20 Q80,20 90,50 Q95,80 80,90 Q65,100 50,90 Q35,100 20,90 Q5,80 10,50 Z' fill='%23880000' /%3E%3Ccircle cx='35' cy='45' r='5' fill='white' /%3E%3Ccircle cx='65' cy='45' r='5' fill='white' /%3E%3Cpath d='M30,70 Q50,80 70,70' stroke='black' stroke-width='3' fill='none' /%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-size: contain;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+            filter: drop-shadow(0 0 10px rgba(136, 0, 0, 0.8));
+            animation: breathe 1.5s infinite alternate ease-in-out;
+        }
+
+        @keyframes breathe {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1.1);
+            }
+        }
+
+        /* --- UI Overlay --- */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+        }
+
+        .hud-score {
+            position: absolute;
+            top: 20px;
+            font-size: 2rem;
+            color: rgba(255, 255, 255, 0.5);
+            font-weight: bold;
+        }
+
+        .screen {
+            background: rgba(0, 0, 0, 0.85);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            border: 2px solid #333;
+            pointer-events: auto;
+            /* Enable clicks on screens */
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+            max-width: 90%;
+        }
+
+        h1 {
+            font-family: 'Creepster', cursive;
+            font-size: 4rem;
+            color: #d32f2f;
+            margin: 0 0 20px 0;
+            text-shadow: 3px 3px 0px #000;
+        }
+
+        p {
+            color: #ddd;
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        button {
+            background: #d32f2f;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            font-family: 'Creepster', cursive;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: transform 0.1s, background 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        button:hover {
+            background: #b71c1c;
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #final-score {
+            font-size: 2.5rem;
+            color: #fff;
+            margin: 20px 0;
+        }
+
+        /* Floor Grid for perspective feel */
+        .grid {
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            transform: perspective(500px) rotateX(20deg);
+            z-index: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="game-area">
+        <div class="grid"></div>
+        <div id="monster" class="hidden"></div>
+        <div id="player" class="hidden"></div>
+    </div>
+
+    <div id="ui-layer">
+        <div id="hud-score" class="hud-score hidden">0.0s</div>
+
+        <!-- Start Screen -->
+        <div id="start-screen" class="screen">
+            <h1>Shadow Chase</h1>
+            <p>You are the light. It is the darkness.<br>Don't let it touch you.</p>
+            <p style="font-size: 0.9rem; color: #888;">Move your mouse (or drag finger) to evade.</p>
+            <button onclick="startGame()">SURVIVE</button>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="screen hidden">
+            <h1>Consumed</h1>
+            <p>The darkness caught you.</p>
+            <div id="final-score">0.0s</div>
+            <button onclick="startGame()">TRY AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        const state = {
+            isPlaying: false,
+            score: 0,
+            startTime: 0,
+            animationFrameId: null,
+            mouseX: window.innerWidth / 2,
+            mouseY: window.innerHeight / 2,
+            monsterX: 0,
+            monsterY: 0,
+            monsterSpeed: 2.5, // Base speed
+            baseSpeed: 2.5
+        };
+
+        // Elements
+        const playerEl = document.getElementById('player');
+        const monsterEl = document.getElementById('monster');
+        const scoreEl = document.getElementById('hud-score');
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreEl = document.getElementById('final-score');
+
+        // Settings
+        const MONSTER_RADIUS = 30; // Half of width (60px)
+        const PLAYER_RADIUS = 15;  // Half of width (30px)
+        const COLLISION_DISTANCE = MONSTER_RADIUS + PLAYER_RADIUS - 10; // -10 for a bit of leniency
+
+        // --- Input Handling ---
+
+        function updateTargetPosition(x, y) {
+            // Clamp to screen bounds
+            state.mouseX = Math.max(PLAYER_RADIUS, Math.min(window.innerWidth - PLAYER_RADIUS, x));
+            state.mouseY = Math.max(PLAYER_RADIUS, Math.min(window.innerHeight - PLAYER_RADIUS, y));
+        }
+
+        document.addEventListener('mousemove', (e) => {
+            if (state.isPlaying) {
+                updateTargetPosition(e.clientX, e.clientY);
+            }
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (state.isPlaying) {
+                // Prevent scrolling
+                e.preventDefault();
+                updateTargetPosition(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchstart', (e) => {
+            if (state.isPlaying) {
+                updateTargetPosition(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: false });
+
+
+        // --- Game Logic ---
+
+        function startGame() {
+            // Reset State
+            state.isPlaying = true;
+            state.score = 0;
+            state.startTime = Date.now();
+            state.monsterSpeed = state.baseSpeed;
+
+            // Initial Positions
+            // Player starts at mouse or center
+            playerEl.style.left = state.mouseX + 'px';
+            playerEl.style.top = state.mouseY + 'px';
+
+            // Monster starts at a random corner
+            spawnMonster();
+
+            // UI Updates
+            startScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            scoreEl.classList.remove('hidden');
+            monsterEl.classList.remove('hidden');
+            playerEl.classList.remove('hidden');
+            playerEl.classList.remove('dead');
+            document.body.style.cursor = 'none'; // Hide cursor
+
+            // Start Loop
+            if (state.animationFrameId) cancelAnimationFrame(state.animationFrameId);
+            gameLoop();
+        }
+
+        function spawnMonster() {
+            // Pick a random corner: 0=TL, 1=TR, 2=BL, 3=BR
+            const corner = Math.floor(Math.random() * 4);
+            const padding = -100; // Spawn slightly offscreen
+
+            switch (corner) {
+                case 0: // Top Left
+                    state.monsterX = padding;
+                    state.monsterY = padding;
+                    break;
+                case 1: // Top Right
+                    state.monsterX = window.innerWidth - padding;
+                    state.monsterY = padding;
+                    break;
+                case 2: // Bottom Left
+                    state.monsterX = padding;
+                    state.monsterY = window.innerHeight - padding;
+                    break;
+                case 3: // Bottom Right
+                    state.monsterX = window.innerWidth - padding;
+                    state.monsterY = window.innerHeight - padding;
+                    break;
+            }
+        }
+
+        function gameOver() {
+            state.isPlaying = false;
+            cancelAnimationFrame(state.animationFrameId);
+
+            // UI Updates
+            document.body.style.cursor = 'default';
+            scoreEl.classList.add('hidden');
+            gameOverScreen.classList.remove('hidden');
+            finalScoreEl.innerText = (state.score / 1000).toFixed(2) + "s";
+
+            // Visual feedback
+            playerEl.classList.add('dead');
+        }
+
+        function gameLoop() {
+            if (!state.isPlaying) return;
+
+            const currentNow = Date.now();
+
+            // 1. Update Score
+            state.score = currentNow - state.startTime;
+            scoreEl.innerText = (state.score / 1000).toFixed(1) + "s";
+
+            // 2. Increase Difficulty (Speed up monster over time)
+            // Speed increases by 0.1 every 5 seconds
+            const speedMultiplier = 1 + (state.score / 5000) * 0.2;
+            const currentSpeed = state.monsterSpeed * speedMultiplier;
+
+            // 3. Move Player (Visual only, logic uses state.mouseX)
+            // We use direct style updates for performance in this simple loop
+            playerEl.style.left = state.mouseX + 'px';
+            playerEl.style.top = state.mouseY + 'px';
+
+            // 4. Move Monster Logic
+            const dx = state.mouseX - state.monsterX;
+            const dy = state.mouseY - state.monsterY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // Normalize and move
+            if (distance > 0) {
+                state.monsterX += (dx / distance) * currentSpeed;
+                state.monsterY += (dy / distance) * currentSpeed;
+            }
+
+            // Monster visual update
+            monsterEl.style.left = state.monsterX + 'px';
+            monsterEl.style.top = state.monsterY + 'px';
+
+            // Rotate monster to face player (optional, adds polish)
+            // Adding 90deg because the default orientation might need adjustment? 
+            // Actually let's just flip it left/right based on x direction
+            if (dx < 0) {
+                monsterEl.style.transform = `translate(-50%, -50%) scaleX(1)`;
+            } else {
+                monsterEl.style.transform = `translate(-50%, -50%) scaleX(-1)`;
+            }
+
+            // 5. Collision Detection
+            if (distance < COLLISION_DISTANCE) {
+                gameOver();
+                return;
+            }
+
+            state.animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            // Keep bounds valid logic is implicitly handled in mousemove clamp
+        });
+
+    </script>
+</body>
+
+</html>
