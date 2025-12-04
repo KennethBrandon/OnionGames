@@ -498,6 +498,20 @@
             // Score
             const [scores, setScores] = useState({ player: 0, computer: 0 });
 
+            // Track game over event - must be at top level (React Rules of Hooks)
+            useEffect(() => {
+                if (gameState === 'gameover' && typeof gtag !== 'undefined') {
+                    const isWin = scores.player > scores.computer;
+                    gtag('event', isWin ? 'victory' : 'game_over', {
+                        'game_name': 'Soldier Showdown',
+                        'final_score': scores.player,
+                        'cpu_score': scores.computer,
+                        'army_size': handSize,
+                        'result': isWin ? 'victory' : 'defeat'
+                    });
+                }
+            }, [gameState, scores.player, scores.computer, handSize]);
+
             const startGame = (size) => {
                 // Track game start
                 if (typeof gtag !== 'undefined') {
@@ -555,9 +569,12 @@
                 }
 
                 const nextWave = currentWaveIndex + 1;
+                // Check if we've completed all waves
                 if (nextWave >= playerWaves.length) {
+                    // Game is over - all waves completed
                     setGameState('gameover');
                 } else {
+                    // More waves to go - proceed to planning
                     setCurrentWaveIndex(nextWave);
                     setGameState('planning');
                 }
@@ -569,19 +586,6 @@
 
             if (gameState === 'gameover') {
                 const isWin = scores.player > scores.computer;
-
-                // Track game over event
-                React.useEffect(() => {
-                    if (typeof gtag !== 'undefined') {
-                        gtag('event', isWin ? 'victory' : 'game_over', {
-                            'game_name': 'Soldier Showdown',
-                            'final_score': scores.player,
-                            'cpu_score': scores.computer,
-                            'army_size': handSize,
-                            'result': isWin ? 'victory' : 'defeat'
-                        });
-                    }
-                }, []); // Run once when game over screen appears
 
                 return (
                     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
