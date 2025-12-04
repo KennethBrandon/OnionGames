@@ -4,6 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JV4DNLEE4R"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-JV4DNLEE4R');
+    </script>
+
     <title>Operation: Sleigh Ride</title>
     <style>
         body {
@@ -298,6 +308,10 @@
         let frameCount = 0;
         let lastTime = 0;
         let timeScale = 1;
+        // Analytics tracking
+        let levelCompletedFlags = new Set();
+        let totalAmmoCollected = 0;
+        let gameOverCause = ''; // Track what caused game over
 
         // Input State
         const keys = {
@@ -1380,6 +1394,15 @@
                         }, i * 100);
                     }
                     score += 5000;
+
+                    // Track boss defeated
+                    if (typeof gtag !== 'undefined') {
+                        gtag('event', 'boss_defeated', {
+                            'game_name': 'Operation: Sleigh Ride',
+                            'boss_level': level
+                        });
+                    }
+
                     boss = null;
                     winGame();
                 }
@@ -1694,6 +1717,14 @@
         }
 
         function startGame() {
+            // Track game start
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'game_start', {
+                    'game_name': 'Operation: Sleigh Ride',
+                    'starting_level': 1
+                });
+            }
+
             gameState = 'PLAYING';
             score = 0;
             distance = 0;
@@ -1712,6 +1743,9 @@
             houses = [];
             candyCanes = [];
             candyCaneSpawnedForLevel = false;
+            levelCompletedFlags.clear(); // Reset level tracking
+            totalAmmoCollected = 0; // Reset ammo tracking
+            gameOverCause = ''; // Reset cause
             terrain = new Terrain();
             aurora = new Aurora();
 
@@ -1722,12 +1756,36 @@
 
         function gameOver() {
             gameState = 'GAMEOVER';
+
+            // Track game over
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'game_over', {
+                    'game_name': 'Operation: Sleigh Ride',
+                    'final_score': score,
+                    'final_level': level,
+                    'distance_traveled': Math.floor(distance),
+                    'cause': gameOverCause || 'enemy',
+                    'ammo_collected': totalAmmoCollected
+                });
+            }
+
             finalScoreSpan.innerText = score;
             gameOverScreen.classList.add('active');
         }
 
         function winGame() {
             gameState = 'WIN';
+
+            // Track victory
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'victory', {
+                    'game_name': 'Operation: Sleigh Ride',
+                    'final_score': score,
+                    'final_level': level,
+                    'ammo_collected': totalAmmoCollected
+                });
+            }
+
             winScoreSpan.innerText = score;
             winScreen.classList.add('active');
         }
@@ -1762,7 +1820,15 @@
                 level = newLevel;
                 candyCaneSpawnedForLevel = false; // Reset for new level
                 updateHUD();
-                // Maybe play a sound or flash text
+
+                // Track level completion
+                if (!levelCompletedFlags.has(newLevel) && typeof gtag !== 'undefined') {
+                    levelCompletedFlags.add(newLevel);
+                    gtag('event', 'level_complete', {
+                        'game_name': 'Operation: Sleigh Ride',
+                        'level_number': newLevel
+                    });
+                }
             }
 
             if (distance >= FINISH_DISTANCE) {
@@ -1884,6 +1950,7 @@
                     player.y < house.y + house.height &&
                     player.y + player.height > house.y
                 ) {
+                    gameOverCause = 'wall';
                     player.takeDamage(3); // Instant kill
                 }
 
@@ -1898,6 +1965,7 @@
                     ) {
                         house.ammoPack.collected = true;
                         player.ammo = Math.min(player.ammo + AMMO_PACK_AMOUNT, MAX_AMMO);
+                        totalAmmoCollected += AMMO_PACK_AMOUNT; // Track for analytics
                         updateHUD();
                         createExplosion(ap.x + 10, ap.y + 10, '#fcd34d'); // Gold explosion
                     }
@@ -1918,6 +1986,7 @@
             if (player.y + player.height > GAME_HEIGHT - groundHeight) {
                 // Bounce up slightly to avoid getting stuck
                 player.y = GAME_HEIGHT - groundHeight - player.height - 5;
+                gameOverCause = 'ground';
                 player.takeDamage(0.5);
             }
 
@@ -1944,6 +2013,7 @@
                     player.y < enemy.y + enemy.height &&
                     player.y + player.height > enemy.y
                 ) {
+                    gameOverCause = 'enemy';
                     player.takeDamage(1);
                 }
 
@@ -1981,6 +2051,7 @@
                         p.x > player.x && p.x < player.x + player.width &&
                         p.y > player.y && p.y < player.y + player.height
                     ) {
+                        gameOverCause = 'boss';
                         player.takeDamage(1);
                         hit = true;
                         projectiles.splice(i, 1);
@@ -2029,6 +2100,7 @@
                     player.y < boss.y + boss.height &&
                     player.y + player.height > boss.y
                 ) {
+                    gameOverCause = 'boss';
                     player.takeDamage(1);
                 }
             }

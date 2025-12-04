@@ -4,6 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JV4DNLEE4R"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-JV4DNLEE4R');
+    </script>
+
     <title>Soldier Showdown</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
@@ -489,6 +499,14 @@
             const [scores, setScores] = useState({ player: 0, computer: 0 });
 
             const startGame = (size) => {
+                // Track game start
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'game_start', {
+                        'game_name': 'Soldier Showdown',
+                        'army_size': size
+                    });
+                }
+
                 setHandSize(size);
                 const pDeck = createDeck(size);
                 const cDeck = createDeck(size);
@@ -517,6 +535,15 @@
             };
 
             const handleBattleComplete = (winner, potSize) => {
+                // Track wave completion
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'wave_complete', {
+                        'game_name': 'Soldier Showdown',
+                        'wave_number': currentWaveIndex + 1,
+                        'wave_result': winner
+                    });
+                }
+
                 if (winner === 'player') {
                     setScores(prev => ({ ...prev, player: prev.player + potSize }));
                 } else if (winner === 'computer') {
@@ -542,6 +569,20 @@
 
             if (gameState === 'gameover') {
                 const isWin = scores.player > scores.computer;
+
+                // Track game over event
+                React.useEffect(() => {
+                    if (typeof gtag !== 'undefined') {
+                        gtag('event', isWin ? 'victory' : 'game_over', {
+                            'game_name': 'Soldier Showdown',
+                            'final_score': scores.player,
+                            'cpu_score': scores.computer,
+                            'army_size': handSize,
+                            'result': isWin ? 'victory' : 'defeat'
+                        });
+                    }
+                }, []); // Run once when game over screen appears
+
                 return (
                     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
                         <div className="max-w-md w-full bg-slate-800 p-8 rounded-2xl border border-slate-700 text-center shadow-2xl">

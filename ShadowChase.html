@@ -4,6 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JV4DNLEE4R"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-JV4DNLEE4R');
+    </script>
+
     <title>Shadow Chase</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Creepster&family=Roboto:wght@400;700&display=swap');
@@ -215,7 +225,8 @@
             monsterX: 0,
             monsterY: 0,
             monsterSpeed: 2.5, // Base speed
-            baseSpeed: 2.5
+            baseSpeed: 2.5,
+            milestonesReached: new Set() // Track which survival milestones we've logged
         };
 
         // Elements
@@ -263,11 +274,19 @@
         // --- Game Logic ---
 
         function startGame() {
+            // Track game start
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'game_start', {
+                    'game_name': 'Shadow Chase'
+                });
+            }
+
             // Reset State
             state.isPlaying = true;
             state.score = 0;
             state.startTime = Date.now();
             state.monsterSpeed = state.baseSpeed;
+            state.milestonesReached.clear(); // Reset milestones
 
             // Initial Positions
             // Player starts at mouse or center
@@ -320,11 +339,21 @@
             state.isPlaying = false;
             cancelAnimationFrame(state.animationFrameId);
 
+            // Track game over
+            const survivalTime = (state.score / 1000).toFixed(2);
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'game_over', {
+                    'game_name': 'Shadow Chase',
+                    'survival_time': survivalTime,
+                    'final_score': state.score
+                });
+            }
+
             // UI Updates
             document.body.style.cursor = 'default';
             scoreEl.classList.add('hidden');
             gameOverScreen.classList.remove('hidden');
-            finalScoreEl.innerText = (state.score / 1000).toFixed(2) + "s";
+            finalScoreEl.innerText = survivalTime + "s";
 
             // Visual feedback
             playerEl.classList.add('dead');
@@ -338,6 +367,20 @@
             // 1. Update Score
             state.score = currentNow - state.startTime;
             scoreEl.innerText = (state.score / 1000).toFixed(1) + "s";
+
+            // Track survival milestones (10s, 30s, 60s, 90s, 120s)
+            const milestones = [10000, 30000, 60000, 90000, 120000];
+            for (const milestone of milestones) {
+                if (state.score >= milestone && !state.milestonesReached.has(milestone)) {
+                    state.milestonesReached.add(milestone);
+                    if (typeof gtag !== 'undefined') {
+                        gtag('event', 'survival_milestone', {
+                            'game_name': 'Shadow Chase',
+                            'milestone': milestone / 1000 + 's'
+                        });
+                    }
+                }
+            }
 
             // 2. Increase Difficulty (Speed up monster over time)
             // Speed increases by 0.1 every 5 seconds

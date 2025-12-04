@@ -4,6 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JV4DNLEE4R"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-JV4DNLEE4R');
+    </script>
+
     <title>Onion Games</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&display=swap');
@@ -196,7 +206,9 @@
                 <h2>Soldier Showdown</h2>
                 <p>A tactical wave warfare card game. Build your army, plan your waves, and defeat the enemy commander.
                 </p>
-                <a href="BobCards.html" class="play-btn">Play Now</a>
+                <a href="BobCards.html" class="play-btn"
+                    onclick="gtag('event', 'game_start', {'game_name': 'Soldier Showdown', 'game_file': 'BobCards.html'});">Play
+                    Now</a>
             </div>
         </article>
 
@@ -208,7 +220,9 @@
                 <h2>Shadow Chase</h2>
                 <p>You are the light in a consuming darkness. Evade the shadow monster and survive as long as you can.
                 </p>
-                <a href="ShadowChase.html" class="play-btn">Play Now</a>
+                <a href="ShadowChase.html" class="play-btn"
+                    onclick="gtag('event', 'game_start', {'game_name': 'Shadow Chase', 'game_file': 'ShadowChase.html'});">Play
+                    Now</a>
             </div>
         </article>
 
@@ -219,7 +233,9 @@
             <div class="card-content">
                 <h2>Onion Breaker</h2>
                 <p>Mustafar Edition. Help the Onion survive the heat in this intense breakout-style arcade game.</p>
-                <a href="OnionBreaker.html" class="play-btn">Play Now</a>
+                <a href="OnionBreaker.html" class="play-btn"
+                    onclick="gtag('event', 'game_start', {'game_name': 'Onion Breaker', 'game_file': 'OnionBreaker.html'});">Play
+                    Now</a>
             </div>
         </article>
 
@@ -231,7 +247,9 @@
                 <h2>Tree Topper</h2>
                 <p>Carry the star to the top of the Christmas tree! Jump on platforms, avoid the Grinch, and save the
                     holiday.</p>
-                <a href="ChristmasHopper.html" class="play-btn">Play Now</a>
+                <a href="ChristmasHopper.html" class="play-btn"
+                    onclick="gtag('event', 'game_start', {'game_name': 'Tree Topper', 'game_file': 'ChristmasHopper.html'});">Play
+                    Now</a>
             </div>
         </article>
 
@@ -242,7 +260,9 @@
             <div class="card-content">
                 <h2>Operation: Sleigh Ride</h2>
                 <p>Fly Santa's Sleigh, avoid the Grinches, and deliver Christmas to the finish line!</p>
-                <a href="SantaSleigh.html" class="play-btn">Play Now</a>
+                <a href="SantaSleigh.html" class="play-btn"
+                    onclick="gtag('event', 'game_start', {'game_name': 'Operation: Sleigh Ride', 'game_file': 'SantaSleigh.html'});">Play
+                    Now</a>
             </div>
         </article>
     </main>

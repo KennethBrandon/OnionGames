@@ -4,6 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JV4DNLEE4R"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-JV4DNLEE4R');
+    </script>
+
     <title>Christmas Jump</title>
     <style>
         body {
@@ -274,6 +284,7 @@
             left: false,
             right: false
         };
+        let totalEnemiesDefeated = 0; // Track enemies defeated for analytics
 
         // Entities
         let player;
@@ -377,6 +388,7 @@
                             createDust(enemy.x + enemy.width / 2, enemy.y + enemy.height);
                             enemies.splice(i, 1);
                             maxScore += 500; // Bonus points
+                            totalEnemiesDefeated++; // Track for analytics
                         }
                     }
                 }
@@ -892,20 +904,50 @@
         }
 
         function startGame() {
+            // Track game start
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'game_start', {
+                    'game_name': 'Tree Topper'
+                });
+            }
+
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             resetGame();
+            totalEnemiesDefeated = 0; // Reset counter
             gameState = 'PLAYING';
         }
 
         function gameOver() {
             gameState = 'GAMEOVER';
+
+            // Track game over
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'game_over', {
+                    'game_name': 'Tree Topper',
+                    'final_score': Math.floor(maxScore),
+                    'max_height_reached': Math.floor(maxScore),
+                    'enemies_defeated': totalEnemiesDefeated
+                });
+            }
+
             finalScoreSpan.innerText = Math.floor(maxScore);
             gameOverScreen.classList.add('active');
         }
 
         function winGame() {
             gameState = 'WIN';
-            winScoreSpan.innerText = Math.floor(maxScore) + 1000; // Bonus
+            const finalScore = Math.floor(maxScore) + 1000; // Bonus
+
+            // Track victory
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'victory', {
+                    'game_name': 'Tree Topper',
+                    'final_score': finalScore,
+                    'enemies_defeated': totalEnemiesDefeated
+                });
+            }
+
+            winScoreSpan.innerText = finalScore;
             winScreen.classList.add('active');
         }
 

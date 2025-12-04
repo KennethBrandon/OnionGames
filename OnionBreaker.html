@@ -4,6 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JV4DNLEE4R"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-JV4DNLEE4R');
+    </script>
+
     <title>Onion Breaker - Mustafar Edition</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
@@ -183,6 +193,7 @@
         let particles = []; // For lava ash/sparks
         let powerups = []; // Falling onion powerups
         let flashTime = 0; // For screen flash effect
+        let scoreMilestones = new Set(); // Track which score milestones we've logged
 
         // Entity Objects
         let balls = [];
@@ -360,7 +371,15 @@
          * Game Loop
          */
         function startGame() {
+            // Track game start
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'game_start', {
+                    'game_name': 'Lava Breaker'
+                });
+            }
+
             resetGame();
+            scoreMilestones.clear(); // Reset milestone tracking
             gameState = 'PLAYING';
             startScreen.classList.add('hidden');
             gameOverScreen.classList.add('hidden');
@@ -396,6 +415,17 @@
 
         function endGame(win) {
             gameState = win ? 'WON' : 'GAMEOVER';
+
+            // Track victory or game over
+            if (typeof gtag !== 'undefined') {
+                gtag('event', win ? 'victory' : 'game_over', {
+                    'game_name': 'Lava Breaker',
+                    'final_score': score,
+                    'remaining_lives': lives,
+                    'result': win ? 'victory' : 'defeat'
+                });
+            }
+
             if (win) {
                 winScreen.classList.remove('hidden');
             } else {
@@ -480,6 +510,20 @@
                                 else if (b.type === 'blue') score += 30;
                                 else if (b.type === 'green') score += 20;
                                 else score += 10;
+
+                                // Track score milestones
+                                const milestones = [500, 1000, 2000, 5000];
+                                for (const milestone of milestones) {
+                                    if (score >= milestone && !scoreMilestones.has(milestone)) {
+                                        scoreMilestones.add(milestone);
+                                        if (typeof gtag !== 'undefined') {
+                                            gtag('event', 'score_milestone', {
+                                                'game_name': 'Lava Breaker',
+                                                'milestone': milestone
+                                            });
+                                        }
+                                    }
+                                }
 
                                 // Drop Powerup
                                 if (b.hasPowerup) {
