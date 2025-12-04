@@ -157,7 +157,8 @@
             ballSpeed: 6,
             brickRows: 5,
             brickCols: 8,
-            lives: 3
+            lives: 3,
+            wallOffset: 5  // Wall boundary - matches brick offsetLeft
         };
 
         const canvas = document.getElementById('gameCanvas');
@@ -303,7 +304,7 @@
             bricks = [];
             const padding = 2; // Very tight spacing
             const offsetTop = 80;
-            const offsetLeft = 20;
+            const offsetLeft = config.wallOffset; // Use wall offset for tight boundary
 
             // Calculate columns based on width
             const responsiveCols = Math.floor((canvas.width - 2 * offsetLeft) / 60);
@@ -426,9 +427,14 @@
                 ball.x += ball.dx;
                 ball.y += ball.dy;
 
-                // Wall Collision
-                if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) {
+                // Wall Collision - constrained to brick area
+                if (ball.x + ball.radius > canvas.width - config.wallOffset) {
                     ball.dx = -ball.dx;
+                    ball.x = canvas.width - config.wallOffset - ball.radius;
+                }
+                if (ball.x - ball.radius < config.wallOffset) {
+                    ball.dx = -ball.dx;
+                    ball.x = config.wallOffset + ball.radius;
                 }
                 if (ball.y - ball.radius < 0) {
                     ball.dy = -ball.dy;
@@ -587,6 +593,21 @@
                 ctx.fill();
                 ctx.restore();
             });
+
+            // Draw wall boundaries
+            ctx.save();
+            const wallGradientLeft = ctx.createLinearGradient(0, 0, config.wallOffset, 0);
+            wallGradientLeft.addColorStop(0, '#1a0000');
+            wallGradientLeft.addColorStop(1, 'rgba(26, 0, 0, 0.5)');
+            ctx.fillStyle = wallGradientLeft;
+            ctx.fillRect(0, 0, config.wallOffset, canvas.height);
+
+            const wallGradientRight = ctx.createLinearGradient(canvas.width - config.wallOffset, 0, canvas.width, 0);
+            wallGradientRight.addColorStop(0, 'rgba(26, 0, 0, 0.5)');
+            wallGradientRight.addColorStop(1, '#1a0000');
+            ctx.fillStyle = wallGradientRight;
+            ctx.fillRect(canvas.width - config.wallOffset, 0, config.wallOffset, canvas.height);
+            ctx.restore();
         }
 
         function drawOnion(x, y, r) {
