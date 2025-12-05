@@ -273,6 +273,9 @@
         <label>Horizontal Density: <span class="value-display" id="horizontal-density-value">0.8x</span></label>
         <input type="range" id="horizontal-density" min="0.5" max="3.0" step="0.1" value="0.8">
 
+        <label>Game Speed: <span class="value-display" id="game-speed-value">1.8x</span></label>
+        <input type="range" id="game-speed" min="0.5" max="5.0" step="0.1" value="1.8">
+
         <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.3); font-size: 12px;">
             <div>V-Gap: <span class="value-display" id="v-gap-display">0</span>px</div>
             <div>Platforms/Layer: <span class="value-display" id="h-plat-display">0</span></div>
@@ -309,12 +312,15 @@
         const horizontalDensitySlider = document.getElementById('horizontal-density');
         const verticalDensityValue = document.getElementById('vertical-density-value');
         const horizontalDensityValue = document.getElementById('horizontal-density-value');
+        const gameSpeedSlider = document.getElementById('game-speed');
+        const gameSpeedValue = document.getElementById('game-speed-value');
         const vGapDisplay = document.getElementById('v-gap-display');
         const hPlatDisplay = document.getElementById('h-plat-display');
 
         // Debug Density Multipliers
         let verticalDensityMultiplier = 0.7;
         let horizontalDensityMultiplier = 0.8;
+        let gameSpeedMultiplier = 1.8;
 
         // Show debug menu if debug mode is enabled
         if (debugMode) {
@@ -331,6 +337,11 @@
                 horizontalDensityMultiplier = parseFloat(e.target.value);
                 horizontalDensityValue.textContent = horizontalDensityMultiplier.toFixed(1) + 'x';
                 updateDebugDisplay();
+            });
+
+            gameSpeedSlider.addEventListener('input', (e) => {
+                gameSpeedMultiplier = parseFloat(e.target.value);
+                gameSpeedValue.textContent = gameSpeedMultiplier.toFixed(1) + 'x';
             });
         }
 
@@ -373,6 +384,10 @@
             active: false,
             speed: 0  // -1.0 to 1.0, negative = left, positive = right
         };
+
+        // Delta Time (for consistent game speed)
+        let lastTime = 0;
+        let timeScale = 1;
         let totalEnemiesDefeated = 0; // Track enemies defeated for analytics
 
         // Entities
@@ -420,9 +435,9 @@
                 }
 
                 // Physics
-                this.x += this.vx;
-                this.y += this.vy;
-                this.vy += GRAVITY;
+                this.x += this.vx * timeScale;
+                this.y += this.vy * timeScale;
+                this.vy += GRAVITY * timeScale;
 
                 // Screen Wrapping
                 if (this.x + this.width < 0) {
@@ -736,7 +751,7 @@
             }
 
             update() {
-                this.x += this.vx;
+                this.x += this.vx * timeScale;
 
                 // Bounce off edges or patrol limit
                 if (this.x <= 0 || this.x + this.width >= GAME_WIDTH) {
@@ -744,7 +759,7 @@
                 }
 
                 // Simple animation frame counter
-                this.frame++;
+                this.frame += timeScale;
             }
 
             draw() {
@@ -896,8 +911,8 @@
             }
 
             update() {
-                this.x += this.vx;
-                this.y += this.vy;
+                this.x += this.vx * timeScale;
+                this.y += this.vy * timeScale;
 
                 if (this.type === 'snow') {
                     if (this.y > GAME_HEIGHT) {
@@ -905,8 +920,8 @@
                         this.x = Math.random() * GAME_WIDTH;
                     }
                 } else {
-                    this.life--;
-                    this.size *= 0.9;
+                    this.life -= timeScale;
+                    this.size *= Math.pow(0.9, timeScale);
                 }
             }
 
@@ -942,12 +957,12 @@
             }
 
             update() {
-                this.x += this.vx;
-                this.y += this.vy;
-                this.vy += 0.3; // Gravity
-                this.vx *= 0.98; // Air resistance
-                this.rotation += this.rotationSpeed;
-                this.life--;
+                this.x += this.vx * timeScale;
+                this.y += this.vy * timeScale;
+                this.vy += 0.3 * timeScale; // Gravity
+                this.vx *= Math.pow(0.98, timeScale); // Air resistance
+                this.rotation += this.rotationSpeed * timeScale;
+                this.life -= timeScale;
             }
 
             draw() {
@@ -1000,7 +1015,8 @@
             }
 
             // Start Loop
-            loop();
+            lastTime = 0;
+            loop(0);
         }
 
         function debugJump() {
@@ -1368,7 +1384,16 @@
             }
         }
 
-        function loop() {
+        function loop(timestamp) {
+            // Calculate Delta Time
+            if (lastTime === 0) lastTime = timestamp;
+            const dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            // Cap dt to prevent huge jumps if tab is inactive (e.g. max 0.1s)
+            const safeDt = Math.min(dt, 0.1);
+            timeScale = safeDt * 60 * gameSpeedMultiplier; // Normalize to 60 FPS and apply speed multiplier
+
             update();
             draw();
             animationFrameId = requestAnimationFrame(loop);
