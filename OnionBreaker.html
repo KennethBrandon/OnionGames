@@ -478,7 +478,9 @@
                     if (Math.random() < 0.1) hasPowerup = true; // 10% chance for extra onions
 
                     let hits = 1;
-                    if (type === 'rainbow') hits = 3;
+                    if (type === 'rainbow') {
+                        hits = 3;
+                    }
 
                     bricks.push({
                         x: (c * (brickWidth + padding)) + offsetLeft,
@@ -493,6 +495,8 @@
                     });
                 }
             }
+            console.log(`Created ${bricks.length} bricks. Rainbows: ${bricks.filter(b => b.type === 'rainbow').length}`);
+            bricks.filter(b => b.type === 'rainbow').forEach((b, i) => console.log(`Rainbow ${i}: hits=${b.hits}`));
         }
 
         function createParticle(celebration = false) {
@@ -647,7 +651,8 @@
                     ball.x = config.wallOffset + ball.radius;
                 }
                 if (ball.y - ball.radius < 0) {
-                    ball.dy = -ball.dy;
+                    ball.dy = Math.abs(ball.dy); // Force down
+                    ball.y = ball.radius; // Clamp to prevent sticking/tunneling
                 } else if (ball.y + ball.radius > canvas.height) {
                     // Ball lost
                     balls.splice(i, 1);
@@ -679,9 +684,31 @@
                 for (let b of bricks) {
                     if (b.status === 1) {
                         if (ball.x > b.x && ball.x < b.x + b.w && ball.y > b.y && ball.y < b.y + b.h) {
-                            ball.dy = -ball.dy;
+                            // Determine collision side
+                            const overlapLeft = ball.x - b.x;
+                            const overlapRight = (b.x + b.w) - ball.x;
+                            const overlapTop = ball.y - b.y;
+                            const overlapBottom = (b.y + b.h) - ball.y;
+
+                            const minOverlapX = Math.min(overlapLeft, overlapRight);
+                            const minOverlapY = Math.min(overlapTop, overlapBottom);
+
+                            if (minOverlapX < minOverlapY) {
+                                // Horizontal collision
+                                ball.dx = -ball.dx;
+                                // Push out
+                                if (overlapLeft < overlapRight) ball.x = b.x - 0.1;
+                                else ball.x = b.x + b.w + 0.1;
+                            } else {
+                                // Vertical collision
+                                ball.dy = -ball.dy;
+                                // Push out
+                                if (overlapTop < overlapBottom) ball.y = b.y - 0.1;
+                                else ball.y = b.y + b.h + 0.1;
+                            }
 
                             b.hits--;
+                            if (b.type === 'rainbow') console.log(`Rainbow hit! Remaining hits: ${b.hits}`);
 
                             if (b.hits <= 0) {
                                 b.status = 0;
@@ -916,6 +943,7 @@
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.stroke();
                 ctx.restore();
             });
         }
@@ -998,6 +1026,15 @@
                     if (b.hasPowerup && Math.random() > 0.95) {
                         ctx.fillStyle = '#fff';
                         ctx.fillRect(b.x + Math.random() * b.w, b.y + Math.random() * b.h, 2, 2);
+                    }
+
+                    // Debug: Show hits
+                    if (debugMode) {
+                        ctx.fillStyle = '#fff';
+                        ctx.font = '10px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(b.hits, b.x + b.w / 2, b.y + b.h / 2);
                     }
 
                     ctx.restore();
