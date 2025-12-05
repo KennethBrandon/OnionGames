@@ -149,30 +149,49 @@
             pointer-events: none;
         }
 
-        #debug-btn {
+
+
+        #debug-menu {
             position: absolute;
-            bottom: 20px;
-            left: 20px;
-            width: 50px;
-            height: 50px;
-            background: rgba(255, 255, 255, 0.1);
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
             border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
+            border-radius: 10px;
+            padding: 15px;
             color: white;
-            font-size: 1.5rem;
-            cursor: pointer;
+            font-family: monospace;
+            font-size: 14px;
             z-index: 100;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition: all 0.2s;
             pointer-events: auto;
-            /* Ensure clickable */
+            display: none;
+            min-width: 280px;
         }
 
-        #debug-btn:active {
-            transform: scale(0.9);
-            background: rgba(255, 255, 255, 0.3);
+        #debug-menu.active {
+            display: block;
+        }
+
+        #debug-menu h3 {
+            margin: 0 0 10px 0;
+            color: #4ade80;
+            font-size: 16px;
+        }
+
+        #debug-menu label {
+            display: block;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+
+        #debug-menu input[type="range"] {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        #debug-menu .value-display {
+            color: #f1c40f;
+            font-weight: bold;
         }
 
         @keyframes popIn {
@@ -211,8 +230,7 @@
         <div id="height-bar-fill"></div>
     </div>
 
-    <!-- Debug Button -->
-    <button id="debug-btn" onclick="debugJump()">🚀</button>
+
 
     <div id="ui-layer">
         <!-- Start Screen -->
@@ -246,6 +264,27 @@
 
     <div class="touch-hint" id="touch-hint">Tap Left / Right to Move</div>
 
+    <!-- Debug Menu -->
+    <div id="debug-menu">
+        <h3>🔧 Debug Menu</h3>
+        <label>Vertical Density: <span class="value-display" id="vertical-density-value">0.7x</span></label>
+        <input type="range" id="vertical-density" min="0.5" max="2.0" step="0.1" value="0.7">
+
+        <label>Horizontal Density: <span class="value-display" id="horizontal-density-value">0.8x</span></label>
+        <input type="range" id="horizontal-density" min="0.5" max="3.0" step="0.1" value="0.8">
+
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.3); font-size: 12px;">
+            <div>V-Gap: <span class="value-display" id="v-gap-display">0</span>px</div>
+            <div>Platforms/Layer: <span class="value-display" id="h-plat-display">0</span></div>
+        </div>
+
+        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.3);">
+            <button id="debug-btn-menu" onclick="debugJump()"
+                style="width: 100%; background: rgba(74, 222, 128, 0.2); border: 2px solid #4ade80; color: white; padding: 10px; border-radius: 5px; cursor: pointer; font-size: 16px;">🚀
+                Skip to Top</button>
+        </div>
+    </div>
+
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -260,6 +299,54 @@
         const finalScoreSpan = document.getElementById('final-score');
         const winScoreSpan = document.getElementById('win-score');
 
+        // Debug Mode Detection
+        const urlParams = new URLSearchParams(window.location.search);
+        const debugMode = urlParams.get('d') === 't';
+
+        // Debug Menu Elements
+        const debugMenu = document.getElementById('debug-menu');
+        const verticalDensitySlider = document.getElementById('vertical-density');
+        const horizontalDensitySlider = document.getElementById('horizontal-density');
+        const verticalDensityValue = document.getElementById('vertical-density-value');
+        const horizontalDensityValue = document.getElementById('horizontal-density-value');
+        const vGapDisplay = document.getElementById('v-gap-display');
+        const hPlatDisplay = document.getElementById('h-plat-display');
+
+        // Debug Density Multipliers
+        let verticalDensityMultiplier = 0.7;
+        let horizontalDensityMultiplier = 0.8;
+
+        // Show debug menu if debug mode is enabled
+        if (debugMode) {
+            debugMenu.classList.add('active');
+
+            // Wire up slider event listeners
+            verticalDensitySlider.addEventListener('input', (e) => {
+                verticalDensityMultiplier = parseFloat(e.target.value);
+                verticalDensityValue.textContent = verticalDensityMultiplier.toFixed(1) + 'x';
+                updateDebugDisplay();
+            });
+
+            horizontalDensitySlider.addEventListener('input', (e) => {
+                horizontalDensityMultiplier = parseFloat(e.target.value);
+                horizontalDensityValue.textContent = horizontalDensityMultiplier.toFixed(1) + 'x';
+                updateDebugDisplay();
+            });
+        }
+
+        function updateDebugDisplay() {
+            if (debugMode) {
+                // Calculate current values
+                const baseVerticalGap = GAME_HEIGHT * 0.09;
+                const currentVerticalGap = baseVerticalGap / verticalDensityMultiplier;
+                const basePlatformsPerLayer = Math.max(1, Math.ceil(GAME_WIDTH / 430));
+                const currentPlatformsPerLayer = Math.max(1, Math.ceil(basePlatformsPerLayer * horizontalDensityMultiplier));
+
+                vGapDisplay.textContent = Math.round(currentVerticalGap);
+                hPlatDisplay.textContent = currentPlatformsPerLayer;
+            }
+        }
+
         // Game Constants
         let GAME_WIDTH = 0;
         let GAME_HEIGHT = 0;
@@ -269,11 +356,13 @@
         const MAX_WIN_HEIGHT = 15000; // Height required to win (Increased)
 
         // Game State
-        let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER, WIN
+        let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER, WIN, CELEBRATING
         let score = 0;
         let maxScore = 0;
         let cameraY = 0;
         let animationFrameId;
+        let celebrationTimer = 0;
+        let celebrationDuration = 180; // 3 seconds at 60fps
 
         // Input State
         const keys = {
@@ -281,8 +370,8 @@
             ArrowRight: false
         };
         const touchInput = {
-            left: false,
-            right: false
+            active: false,
+            speed: 0  // -1.0 to 1.0, negative = left, positive = right
         };
         let totalEnemiesDefeated = 0; // Track enemies defeated for analytics
 
@@ -309,12 +398,23 @@
 
             update() {
                 // Movement Logic
-                if (keys.ArrowLeft || touchInput.left) {
-                    this.vx = -MOVE_SPEED;
-                    this.direction = -1;
-                } else if (keys.ArrowRight || touchInput.right) {
-                    this.vx = MOVE_SPEED;
-                    this.direction = 1;
+                if (keys.ArrowLeft || keys.ArrowRight) {
+                    // Keyboard input (binary)
+                    if (keys.ArrowLeft) {
+                        this.vx = -MOVE_SPEED;
+                        this.direction = -1;
+                    } else if (keys.ArrowRight) {
+                        this.vx = MOVE_SPEED;
+                        this.direction = 1;
+                    }
+                } else if (touchInput.active) {
+                    // Touch input (variable speed)
+                    this.vx = touchInput.speed * MOVE_SPEED;
+                    if (touchInput.speed < -0.1) {
+                        this.direction = -1;
+                    } else if (touchInput.speed > 0.1) {
+                        this.direction = 1;
+                    }
                 } else {
                     this.vx = 0;
                 }
@@ -824,6 +924,60 @@
             }
         }
 
+        // Celebration Particle for win animation
+        class CelebrationParticle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 8 + 4;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed - 5; // Bias upward
+                this.size = Math.random() * 4 + 2;
+                this.life = 120;
+                this.maxLife = this.life;
+                this.color = ['#f1c40f', '#f39c12', '#fff', '#ffd700'][Math.floor(Math.random() * 4)];
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotationSpeed = (Math.random() - 0.5) * 0.2;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.3; // Gravity
+                this.vx *= 0.98; // Air resistance
+                this.rotation += this.rotationSpeed;
+                this.life--;
+            }
+
+            draw() {
+                const alpha = this.life / this.maxLife;
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                // Glow effect
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+
+                // Draw as a small star
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = alpha;
+                ctx.beginPath();
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
+                    const x = Math.cos(angle) * this.size;
+                    const y = Math.sin(angle) * this.size;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
         // Init
         function init() {
             resize();
@@ -871,18 +1025,14 @@
             if (player) {
                 if (player.x > GAME_WIDTH) player.x = GAME_WIDTH - 50;
             }
+
+            // Update debug display
+            updateDebugDisplay();
         }
 
         function handleTouchStart(e) {
             e.preventDefault();
-            const touchX = e.touches[0].clientX;
-            if (touchX < GAME_WIDTH / 2) {
-                touchInput.left = true;
-                touchInput.right = false;
-            } else {
-                touchInput.left = false;
-                touchInput.right = true;
-            }
+            updateTouchSpeed(e.touches[0].clientX);
 
             // Hide hint on first interaction
             if (touchHint.style.opacity !== '0') {
@@ -894,23 +1044,44 @@
         function handleTouchMove(e) {
             e.preventDefault();
             if (e.touches.length > 0) {
-                const touchX = e.touches[0].clientX;
-                if (touchX < GAME_WIDTH / 2) {
-                    touchInput.left = true;
-                    touchInput.right = false;
-                } else {
-                    touchInput.left = false;
-                    touchInput.right = true;
-                }
+                updateTouchSpeed(e.touches[0].clientX);
             }
         }
 
         function handleTouchEnd(e) {
             // Check remaining touches
             if (e.touches.length === 0) {
-                touchInput.left = false;
-                touchInput.right = false;
+                touchInput.active = false;
+                touchInput.speed = 0;
             }
+        }
+
+        function updateTouchSpeed(touchX) {
+            touchInput.active = true;
+
+            // Calculate normalized position (-1 to 1, 0 at center)
+            const centerX = GAME_WIDTH / 2;
+            const normalizedX = (touchX - centerX) / (GAME_WIDTH / 2);
+
+            // Map to speed with dead zone in middle and max speed in outer thirds
+            // Outer third (0.67 to 1.0) = max speed
+            // Middle third (-0.67 to 0.67) = scaled speed
+            const absX = Math.abs(normalizedX);
+            let speedMultiplier;
+
+            if (absX < 0.33) {
+                // Inner third: gentle scaling from 0 to 0.5
+                speedMultiplier = absX * 1.5; // 0 to 0.5
+            } else if (absX < 0.67) {
+                // Middle third: scale from 0.5 to 1.0
+                speedMultiplier = 0.5 + (absX - 0.33) * 1.47; // 0.5 to 1.0
+            } else {
+                // Outer third: max speed
+                speedMultiplier = 1.0;
+            }
+
+            // Apply direction
+            touchInput.speed = speedMultiplier * Math.sign(normalizedX);
         }
 
         function resetGame() {
@@ -928,7 +1099,7 @@
             // Initial Platforms
             let y = GAME_HEIGHT - 50;
             // Calculate how many platforms per layer based on width (roughly 1 per 430px)
-            const platformsPerLayer = Math.max(1, Math.ceil(GAME_WIDTH / 430));
+            const platformsPerLayer = Math.max(1, Math.ceil((GAME_WIDTH / 430) * horizontalDensityMultiplier));
 
             while (y > -GAME_HEIGHT) { // Generate a screen and a half worth
                 // First platform always under player
@@ -944,7 +1115,7 @@
                     }
                 }
 
-                y -= (GAME_HEIGHT * 0.09) + (Math.random() * GAME_HEIGHT * 0.04); // Gap between platforms (9-13% of screen height)
+                y -= ((GAME_HEIGHT * 0.09) + (Math.random() * GAME_HEIGHT * 0.04)) / verticalDensityMultiplier; // Gap between platforms (9-13% of screen height)
             }
         }
 
@@ -980,6 +1151,21 @@
         }
 
         function winGame() {
+            gameState = 'CELEBRATING';
+            celebrationTimer = 0;
+
+            // Create burst of golden particles from the star position
+            if (treeTop) {
+                for (let i = 0; i < 50; i++) {
+                    particles.push(new CelebrationParticle(
+                        treeTop.x + treeTop.width / 2,
+                        treeTop.y - 15
+                    ));
+                }
+            }
+        }
+
+        function finishCelebration() {
             gameState = 'WIN';
             const finalScore = Math.floor(maxScore) + 1000; // Bonus
 
@@ -997,6 +1183,33 @@
         }
 
         function update() {
+            // Handle celebration animation
+            if (gameState === 'CELEBRATING') {
+                celebrationTimer++;
+
+                // Update all particles including celebration particles
+                particles.forEach((p, index) => {
+                    p.update();
+                    if (p.life !== undefined && p.life <= 0) {
+                        particles.splice(index, 1);
+                    }
+                });
+
+                // Add occasional sparkles during celebration
+                if (celebrationTimer % 5 === 0 && treeTop) {
+                    particles.push(new CelebrationParticle(
+                        treeTop.x + treeTop.width / 2 + (Math.random() - 0.5) * 20,
+                        treeTop.y - 15 + (Math.random() - 0.5) * 10
+                    ));
+                }
+
+                // Finish celebration after duration
+                if (celebrationTimer >= celebrationDuration) {
+                    finishCelebration();
+                }
+                return;
+            }
+
             if (gameState !== 'PLAYING') {
                 // Keep animating snow in background
                 particles.forEach(p => {
@@ -1042,12 +1255,12 @@
             platforms.forEach(p => minY = Math.min(minY, p.y));
 
             // Calculate how many platforms per layer based on width (roughly 1 per 430px)
-            const platformsPerLayer = Math.max(1, Math.ceil(GAME_WIDTH / 430));
+            const platformsPerLayer = Math.max(1, Math.ceil((GAME_WIDTH / 430) * horizontalDensityMultiplier));
 
             // Generate up to -50
             if (maxScore < MAX_WIN_HEIGHT) {
                 while (minY > -50) {
-                    let y = minY - ((GAME_HEIGHT * 0.09) + (Math.random() * GAME_HEIGHT * 0.05));
+                    let y = minY - (((GAME_HEIGHT * 0.09) + (Math.random() * GAME_HEIGHT * 0.05)) / verticalDensityMultiplier);
 
                     // Generate multiple platforms per layer for wider screens
                     for (let i = 0; i < platformsPerLayer; i++) {
@@ -1122,14 +1335,35 @@
             // Draw Tree Top
             if (treeTop) {
                 treeTop.draw();
-                // If we win, draw the star on top
+
+                // During celebration, draw pulsing glowing star
+                if (gameState === 'CELEBRATING') {
+                    const pulse = Math.sin(celebrationTimer * 0.1) * 0.3 + 1;
+                    const starX = treeTop.x + treeTop.width / 2;
+                    const starY = treeTop.y - 15;
+
+                    ctx.save();
+                    // Outer glow
+                    ctx.shadowBlur = 30 * pulse;
+                    ctx.shadowColor = '#f1c40f';
+                    ctx.globalAlpha = 0.6;
+                    drawStarShape(ctx, starX, starY, 5, 35 * pulse, 17 * pulse, '#f1c40f');
+
+                    // Main star
+                    ctx.shadowBlur = 15;
+                    ctx.globalAlpha = 1;
+                    drawStarShape(ctx, starX, starY, 5, 25 * pulse, 12 * pulse, '#f1c40f');
+                    ctx.restore();
+                }
+
+                // If we win, draw the star on top (static)
                 if (gameState === 'WIN') {
                     drawStarShape(ctx, treeTop.x + treeTop.width / 2, treeTop.y - 15, 5, 25, 12, '#f1c40f');
                 }
             }
 
-            // Draw Player (only if playing or in transient state)
-            if (gameState === 'PLAYING') {
+            // Draw Player (only if playing or celebrating)
+            if (gameState === 'PLAYING' || gameState === 'CELEBRATING') {
                 player.draw();
             }
         }
