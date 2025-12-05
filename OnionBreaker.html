@@ -1046,12 +1046,14 @@
             ctx.save();
             ctx.font = '16px "Press Start 2P"';
             ctx.fillStyle = '#fff';
-            ctx.textAlign = 'left';
-            ctx.fillText(`Score: ${score}`, 20, 30);
             ctx.textAlign = 'center';
             ctx.fillText(`Level: ${level}`, canvas.width / 2, 30);
+
+            ctx.textAlign = 'left';
+            ctx.fillText(`Score: ${score}`, 20, 60);
+
             ctx.textAlign = 'right';
-            ctx.fillText(`Lives: ${lives}`, canvas.width - 20, 30);
+            ctx.fillText(`Lives: ${lives}`, canvas.width - 20, 60);
             ctx.restore();
         }
 
