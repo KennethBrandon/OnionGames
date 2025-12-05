@@ -202,6 +202,11 @@
                 <p>The Onion reigns supreme!</p>
                 <button id="playAgainBtn">Play Again</button>
             </div>
+            <div id="levelCompleteScreen" class="hidden">
+                <h1>LEVEL COMPLETE!</h1>
+                <p>Great job! Get ready for the next challenge.</p>
+                <button id="nextLevelBtn">Next Level</button>
+            </div>
         </div>
         <div id="debugMenu" class="hidden">
             <h3>DEBUG MENU</h3>
@@ -209,6 +214,10 @@
                 Speed: <span class="value" id="speedValue">1.9x</span>
             </label>
             <input type="range" id="speedSlider" min="0.1" max="5" step="0.1" value="1.9">
+            <label>
+                Level: <span class="value" id="levelValue">1</span>
+            </label>
+            <input type="range" id="levelSlider" min="1" max="20" step="1" value="1">
         </div>
     </div>
 
@@ -223,7 +232,8 @@
             brickCols: 8,
             lives: 3,
             wallOffset: 5,  // Wall boundary - matches brick offsetLeft
-            speedMultiplier: 1.9  // For debug menu
+            speedMultiplier: 1.9,  // For debug menu
+            levelSpeedIncrease: 0.05
         };
 
         // Check for debug mode
@@ -241,21 +251,30 @@
         const startBtn = document.getElementById('startBtn');
         const restartBtn = document.getElementById('restartBtn');
         const playAgainBtn = document.getElementById('playAgainBtn');
+        const nextLevelBtn = document.getElementById('nextLevelBtn');
+        const levelCompleteScreen = document.getElementById('levelCompleteScreen');
         const finalScoreEl = document.getElementById('finalScore');
         const debugMenu = document.getElementById('debugMenu');
         const speedSlider = document.getElementById('speedSlider');
         const speedValue = document.getElementById('speedValue');
+        const levelSlider = document.getElementById('levelSlider');
+        const levelValue = document.getElementById('levelValue');
 
         // Game State
         let animationId;
         let lastTime = 0;
         let score = 0;
         let lives = config.lives;
-        let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER, WON
+        let level = 1;
+        let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER, WON, LEVEL_COMPLETE
         let particles = []; // For lava ash/sparks
         let powerups = []; // Falling onion powerups
         let flashTime = 0; // For screen flash effect
         let scoreMilestones = new Set(); // Track which score milestones we've logged
+
+        // Extra Lives Scaling
+        let nextLifeThreshold = 20000;
+        let lifeGap = 10000;
 
         // Entity Objects
         let balls = [];
@@ -301,6 +320,7 @@
             startBtn.addEventListener('click', startGame);
             restartBtn.addEventListener('click', startGame);
             playAgainBtn.addEventListener('click', startGame);
+            nextLevelBtn.addEventListener('click', startNextLevel);
 
             // Debug Menu
             if (debugMode) {
@@ -308,6 +328,15 @@
                 speedSlider.addEventListener('input', (e) => {
                     config.speedMultiplier = parseFloat(e.target.value);
                     speedValue.textContent = config.speedMultiplier.toFixed(1) + 'x';
+                });
+                levelSlider.addEventListener('input', (e) => {
+                    level = parseInt(e.target.value);
+                    levelValue.textContent = level;
+                    // Reset for new level
+                    resetBall();
+                    createBricks();
+                    particles = [];
+                    powerups = [];
                 });
             }
 
@@ -328,6 +357,7 @@
         function resetGame() {
             score = 0;
             lives = config.lives;
+            level = 1;
 
             // Reset Paddle
             paddle.width = Math.min(120, canvas.width * 0.2); // Responsive paddle width
@@ -346,6 +376,44 @@
             for (let i = 0; i < 50; i++) {
                 particles.push(createParticle());
             }
+        }
+
+        function nextLevel() {
+            gameState = 'LEVEL_COMPLETE';
+            levelCompleteScreen.classList.remove('hidden');
+
+            // Celebration particles
+            particles = [];
+            for (let i = 0; i < 100; i++) {
+                particles.push(createParticle(true)); // Pass true for celebration colors
+            }
+        }
+
+        function startNextLevel() {
+            level++;
+            levelCompleteScreen.classList.add('hidden');
+            gameState = 'PLAYING';
+
+            // Reset Balls
+            resetBall();
+
+            // Generate Bricks
+            createBricks();
+
+            // Reset Particles & Powerups
+            particles = [];
+            powerups = [];
+
+            // Optional: Add visual flair for new level here
+
+            // Update debug slider if visible
+            if (debugMode && levelSlider) {
+                levelSlider.value = level;
+                levelValue.textContent = level;
+            }
+
+            lastTime = performance.now();
+            gameLoop(lastTime);
         }
 
         function createBall(x, y, speed, angle) {
@@ -427,13 +495,17 @@
             }
         }
 
-        function createParticle() {
+        function createParticle(celebration = false) {
+            const baseHue = (level - 1) * 35;
             return {
                 x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
+                y: celebration ? Math.random() * canvas.height : Math.random() * canvas.height,
                 size: Math.random() * 3 + 1,
-                speedY: -(Math.random() * 1 + 0.5), // Float up
-                color: Math.random() > 0.8 ? '#ff4500' : (Math.random() > 0.5 ? '#550000' : '#222'),
+                speedY: celebration ? (Math.random() - 0.5) * 10 : -(Math.random() * 1 + 0.5), // Float up or explosion
+                speedX: celebration ? (Math.random() - 0.5) * 10 : 0,
+                color: celebration ? `hsl(${Math.random() * 360}, 100%, 50%)` :
+                    (Math.random() > 0.8 ? `hsl(${baseHue + 20}, 100%, 50%)` :
+                        (Math.random() > 0.5 ? `hsl(${baseHue}, 100%, 20%)` : '#222')),
                 alpha: Math.random()
             };
         }
@@ -451,10 +523,13 @@
 
             resetGame();
             scoreMilestones.clear(); // Reset milestone tracking
+            nextLifeThreshold = 20000;
+            lifeGap = 10000;
             gameState = 'PLAYING';
             startScreen.classList.add('hidden');
             gameOverScreen.classList.add('hidden');
             winScreen.classList.add('hidden');
+            levelCompleteScreen.classList.add('hidden');
             lastTime = performance.now();
             cancelAnimationFrame(animationId);
             gameLoop(lastTime);
@@ -467,6 +542,36 @@
         }
 
         function gameLoop(timestamp) {
+            if (gameState === 'LEVEL_COMPLETE') {
+                // Keep animating background/particles
+                drawBackground();
+                // Animate celebration particles
+                particles.forEach(p => {
+                    p.x += p.speedX;
+                    p.y += p.speedY;
+                    p.alpha -= 0.01;
+                    if (p.alpha <= 0) {
+                        // Reset particle
+                        Object.assign(p, createParticle(true));
+                        p.x = canvas.width / 2;
+                        p.y = canvas.height / 2;
+                    }
+                });
+                // Draw particles on top of background
+                particles.forEach(p => {
+                    ctx.save();
+                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = p.alpha;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+
+                animationId = requestAnimationFrame(gameLoop);
+                return;
+            }
+
             if (gameState !== 'PLAYING') return;
 
             const deltaTime = (timestamp - lastTime) / 16.67; // Normalize to 60fps
@@ -478,7 +583,8 @@
             if (lives <= 0) {
                 endGame(false);
             } else if (bricks.every(b => b.status === 0)) {
-                endGame(true);
+                nextLevel();
+                animationId = requestAnimationFrame(gameLoop);
             } else {
                 animationId = requestAnimationFrame(gameLoop);
             }
@@ -509,7 +615,8 @@
          * Update Logic
          */
         function update(deltaTime) {
-            const speedFactor = deltaTime * config.speedMultiplier;
+            const currentSpeedMultiplier = config.speedMultiplier + ((level - 1) * config.levelSpeedIncrease);
+            const speedFactor = deltaTime * currentSpeedMultiplier;
 
             // Move Paddle
             if (mouseX !== null) {
@@ -579,10 +686,10 @@
                             if (b.hits <= 0) {
                                 b.status = 0;
                                 // Scoring
-                                if (b.type === 'rainbow') score += 50;
-                                else if (b.type === 'blue') score += 30;
-                                else if (b.type === 'green') score += 20;
-                                else score += 10;
+                                if (b.type === 'rainbow') score += 50 * level;
+                                else if (b.type === 'blue') score += 30 * level;
+                                else if (b.type === 'green') score += 20 * level;
+                                else score += 10 * level;
 
                                 // Track score milestones
                                 const milestones = [500, 1000, 2000, 5000];
@@ -598,6 +705,25 @@
                                     }
                                 }
 
+                                // Extra Lives Logic
+                                const extraLifeMilestones = [1000, 5000, 10000];
+                                // Check fixed milestones
+                                for (const milestone of extraLifeMilestones) {
+                                    if (score >= milestone && !scoreMilestones.has('life_' + milestone)) {
+                                        lives++;
+                                        scoreMilestones.add('life_' + milestone);
+                                        // Optional: Sound or visual effect
+                                    }
+                                }
+
+                                // Check scaling milestones (after 10k)
+                                if (score >= nextLifeThreshold) {
+                                    lives++;
+                                    // Increase the gap for the next life
+                                    nextLifeThreshold += lifeGap;
+                                    lifeGap += 5000; // Gap increases by 5k each time (10k, 15k, 20k...)
+                                }
+
                                 // Drop Powerup
                                 if (b.hasPowerup) {
                                     powerups.push({
@@ -609,7 +735,7 @@
                                 }
                             } else {
                                 // Hit sound visual or effect could go here
-                                score += 5; // Small points for damaging
+                                score += 5 * level; // Small points for damaging
                             }
 
                             break; // Only hit one brick per frame per ball
@@ -636,7 +762,7 @@
                     p.x < paddle.x + paddle.width) {
 
                     spawnMultiball();
-                    score += 100;
+                    score += 100 * level;
                     powerups.splice(i, 1);
                     continue;
                 }
@@ -673,11 +799,13 @@
         }
 
         function drawBackground() {
+            const baseHue = (level - 1) * 35;
+
             // Base Lava Gradient
             const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#2b0000'); // Dark red top
-            gradient.addColorStop(0.8, '#4a0000'); // Reddish
-            gradient.addColorStop(1, '#ff4500'); // Lava bottom glow
+            gradient.addColorStop(0, `hsl(${baseHue}, 100%, 10%)`); // Dark top
+            gradient.addColorStop(0.8, `hsl(${baseHue}, 100%, 15%)`); // Mid
+            gradient.addColorStop(1, `hsl(${baseHue + 20}, 100%, 50%)`); // Bottom glow
 
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -685,7 +813,7 @@
             // Draw "Mustafar" Magma streams
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
-            ctx.strokeStyle = '#ff8c00';
+            ctx.strokeStyle = `hsl(${baseHue + 30}, 100%, 50%)`;
             ctx.lineWidth = 2;
             ctx.beginPath();
             for (let i = 0; i < 5; i++) {
@@ -714,14 +842,14 @@
             // Draw wall boundaries
             ctx.save();
             const wallGradientLeft = ctx.createLinearGradient(0, 0, config.wallOffset, 0);
-            wallGradientLeft.addColorStop(0, '#1a0000');
-            wallGradientLeft.addColorStop(1, 'rgba(26, 0, 0, 0.5)');
+            wallGradientLeft.addColorStop(0, `hsl(${baseHue}, 100%, 5%)`);
+            wallGradientLeft.addColorStop(1, `hsla(${baseHue}, 100%, 5%, 0.5)`);
             ctx.fillStyle = wallGradientLeft;
             ctx.fillRect(0, 0, config.wallOffset, canvas.height);
 
             const wallGradientRight = ctx.createLinearGradient(canvas.width - config.wallOffset, 0, canvas.width, 0);
-            wallGradientRight.addColorStop(0, 'rgba(26, 0, 0, 0.5)');
-            wallGradientRight.addColorStop(1, '#1a0000');
+            wallGradientRight.addColorStop(0, `hsla(${baseHue}, 100%, 5%, 0.5)`);
+            wallGradientRight.addColorStop(1, `hsl(${baseHue}, 100%, 5%)`);
             ctx.fillStyle = wallGradientRight;
             ctx.fillRect(canvas.width - config.wallOffset, 0, config.wallOffset, canvas.height);
             ctx.restore();
@@ -883,6 +1011,8 @@
             ctx.fillStyle = '#fff';
             ctx.textAlign = 'left';
             ctx.fillText(`Score: ${score}`, 20, 30);
+            ctx.textAlign = 'center';
+            ctx.fillText(`Level: ${level}`, canvas.width / 2, 30);
             ctx.textAlign = 'right';
             ctx.fillText(`Lives: ${lives}`, canvas.width - 20, 30);
             ctx.restore();
