@@ -304,6 +304,7 @@
                 this.vy = 0;
                 this.color = '#fff';
                 this.direction = 1; // 1 right, -1 left
+                this.slingshotMode = false; // Immune and can kill from any direction
             }
 
             update() {
@@ -341,6 +342,7 @@
                         ) {
                             // Hit platform
                             this.vy = JUMP_FORCE;
+                            this.slingshotMode = false; // Deactivate slingshot mode on normal platform
                             createDust(this.x + this.width / 2, this.y + this.height);
                         }
                     }
@@ -357,6 +359,7 @@
                         ) {
                             // Hit slingshot from above
                             this.vy = JUMP_FORCE * 2.5; // Super boost!
+                            this.slingshotMode = true; // Activate slingshot power mode!
                             slingshot.launched = true;
                             createDust(this.x + this.width / 2, this.y + this.height);
                         }
@@ -374,7 +377,7 @@
                         }
                     }
 
-                    // Check Enemy Collision (Stomp)
+                    // Check Enemy Collision (Stomp or Slingshot Mode)
                     for (let i = enemies.length - 1; i >= 0; i--) {
                         let enemy = enemies[i];
                         if (
@@ -393,24 +396,45 @@
                     }
                 }
 
-                // Check Enemy Collision (Death)
-                // We check basic overlap here, but rely on the logic above to handle the "falling onto" case safely.
-                // If we are here, it means we overlapped but weren't "falling onto the top half" enough to trigger the stomp,
-                // or we are moving upwards.
-                for (let enemy of enemies) {
-                    if (
-                        this.x < enemy.x + enemy.width &&
-                        this.x + this.width > enemy.x &&
-                        this.y < enemy.y + enemy.height &&
-                        this.y + this.height > enemy.y
-                    ) {
-                        // Check if we already handled the stomp
-                        // If player is falling and above enemy, we likely handled it.
-                        // But if we are rising, or hitting side/bottom -> DEATH
-                        const isStomp = (this.vy > 0 && this.y + this.height < enemy.y + enemy.height / 2 + 10);
+                // Slingshot Mode - Kill enemies from any direction while rising
+                if (this.slingshotMode && this.vy < 0) {
+                    for (let i = enemies.length - 1; i >= 0; i--) {
+                        let enemy = enemies[i];
+                        if (
+                            this.x < enemy.x + enemy.width &&
+                            this.x + this.width > enemy.x &&
+                            this.y < enemy.y + enemy.height &&
+                            this.y + this.height > enemy.y
+                        ) {
+                            // Destroy enemy from any direction!
+                            createDust(enemy.x + enemy.width / 2, enemy.y + enemy.height);
+                            enemies.splice(i, 1);
+                            maxScore += 500; // Bonus points
+                            totalEnemiesDefeated++; // Track for analytics
+                        }
+                    }
+                }
 
-                        if (!isStomp) {
-                            gameOver();
+                // Check Enemy Collision (Death) - unless in slingshot mode
+                if (!this.slingshotMode) {
+                    // We check basic overlap here, but rely on the logic above to handle the "falling onto" case safely.
+                    // If we are here, it means we overlapped but weren't "falling onto the top half" enough to trigger the stomp,
+                    // or we are moving upwards.
+                    for (let enemy of enemies) {
+                        if (
+                            this.x < enemy.x + enemy.width &&
+                            this.x + this.width > enemy.x &&
+                            this.y < enemy.y + enemy.height &&
+                            this.y + this.height > enemy.y
+                        ) {
+                            // Check if we already handled the stomp
+                            // If player is falling and above enemy, we likely handled it.
+                            // But if we are rising, or hitting side/bottom -> DEATH
+                            const isStomp = (this.vy > 0 && this.y + this.height < enemy.y + enemy.height / 2 + 10);
+
+                            if (!isStomp) {
+                                gameOver();
+                            }
                         }
                     }
                 }
@@ -903,18 +927,24 @@
 
             // Initial Platforms
             let y = GAME_HEIGHT - 50;
-            while (y > -GAME_HEIGHT) { // Generate a screen and a half worth
-                let x = Math.random() * (GAME_WIDTH - 70);
+            // Calculate how many platforms per layer based on width (roughly 1 per 430px)
+            const platformsPerLayer = Math.max(1, Math.ceil(GAME_WIDTH / 430));
 
+            while (y > -GAME_HEIGHT) { // Generate a screen and a half worth
                 // First platform always under player
                 if (platforms.length === 0) {
-                    x = GAME_WIDTH / 2 - 35;
+                    platforms.push(new Platform(GAME_WIDTH / 2 - 35, GAME_HEIGHT - 100, 'branch'));
                     y = GAME_HEIGHT - 100;
+                } else {
+                    // Generate multiple platforms per layer for wider screens
+                    for (let i = 0; i < platformsPerLayer; i++) {
+                        let x = Math.random() * (GAME_WIDTH - 70);
+                        let type = Math.random() > 0.8 ? 'ornament' : 'branch';
+                        platforms.push(new Platform(x, y, type));
+                    }
                 }
 
-                let type = Math.random() > 0.8 ? 'ornament' : 'branch';
-                platforms.push(new Platform(x, y, type));
-                y -= 90 + Math.random() * 40; // Gap between platforms
+                y -= (GAME_HEIGHT * 0.09) + (Math.random() * GAME_HEIGHT * 0.04); // Gap between platforms (9-13% of screen height)
             }
         }
 
@@ -979,9 +1009,12 @@
             enemies.forEach(e => e.update());
 
             // Camera movement (Simulated by moving entities down)
-            // When player crosses middle of screen
-            if (player.y < GAME_HEIGHT / 2) {
-                let diff = (GAME_HEIGHT / 2) - player.y;
+            // Use a fixed threshold for camera trigger instead of screen-size-dependent
+            // Base it on mobile reference (930px / 3 = 310px) but cap at 35% of screen height
+            const CAMERA_TRIGGER_THRESHOLD = Math.min(310, GAME_HEIGHT * 0.35);
+
+            if (player.y < CAMERA_TRIGGER_THRESHOLD) {
+                let diff = CAMERA_TRIGGER_THRESHOLD - player.y;
                 player.y += diff;
                 cameraY += diff;
                 maxScore += diff;
@@ -1008,32 +1041,44 @@
             let minY = GAME_HEIGHT;
             platforms.forEach(p => minY = Math.min(minY, p.y));
 
+            // Calculate how many platforms per layer based on width (roughly 1 per 430px)
+            const platformsPerLayer = Math.max(1, Math.ceil(GAME_WIDTH / 430));
+
             // Generate up to -50
             if (maxScore < MAX_WIN_HEIGHT) {
                 while (minY > -50) {
-                    let y = minY - (90 + Math.random() * 50);
-                    let x = Math.random() * (GAME_WIDTH - 70);
-                    let type = Math.random() > 0.8 ? 'ornament' : 'branch';
-                    platforms.push(new Platform(x, y, type));
+                    let y = minY - ((GAME_HEIGHT * 0.09) + (Math.random() * GAME_HEIGHT * 0.05));
+
+                    // Generate multiple platforms per layer for wider screens
+                    for (let i = 0; i < platformsPerLayer; i++) {
+                        let x = Math.random() * (GAME_WIDTH - 70);
+                        let type = Math.random() > 0.8 ? 'ornament' : 'branch';
+                        platforms.push(new Platform(x, y, type));
+                    }
 
                     // Spawn Slingshot Logic - New
-                    // Rare chance to spawn a slingshot (e.g., 1.5% chance)
+                    // Rare chance to spawn a slingshot per layer (not per platform)
                     if (Math.random() < 0.015 && maxScore < MAX_WIN_HEIGHT - 2000) { // Don't spawn too close to top
-                        // Spawn slingshot. x is bottom-center, y is bottom.
-                        // Platform y is its top. Let's place slingshot on a platform.
-                        // A bit complex to find a platform here. Let's just spawn it in mid-air for now.
                         slingshots.push(new Slingshot(Math.random() * (GAME_WIDTH - 40) + 20, y - 50));
                     }
 
-                    // Spawn Grinch Logic
+                    // Spawn Grinch Logic - per layer, but scale with platform count
                     // Start appearing at 1/4 height (earlier)
                     if (maxScore > MAX_WIN_HEIGHT / 4) {
                         // Chance increases as we go higher: from 10% to 30% chance per platform gen
                         let progress = (maxScore - (MAX_WIN_HEIGHT / 4)) / (MAX_WIN_HEIGHT * 3 / 4);
-                        let spawnChance = 0.10 + (progress * 0.20);
+                        let baseSpawnChance = 0.10 + (progress * 0.20);
 
-                        if (Math.random() < spawnChance) {
-                            // Spawn enemy above platform
+                        // Scale enemy spawns with number of platforms to maintain density
+                        let enemiesThisLayer = 0;
+                        for (let i = 0; i < platformsPerLayer; i++) {
+                            if (Math.random() < baseSpawnChance) {
+                                enemiesThisLayer++;
+                            }
+                        }
+
+                        // Spawn the enemies
+                        for (let i = 0; i < enemiesThisLayer; i++) {
                             enemies.push(new Enemy(Math.random() * (GAME_WIDTH - 40), y - 60));
                         }
                     }
