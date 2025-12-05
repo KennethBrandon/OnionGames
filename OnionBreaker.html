@@ -116,6 +116,45 @@
             }
         }
 
+        /* Debug Menu */
+        #debugMenu {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ff4500;
+            padding: 15px;
+            color: #fff;
+            font-size: 0.7rem;
+            border-radius: 5px;
+            pointer-events: auto;
+            z-index: 1000;
+            min-width: 200px;
+        }
+
+        #debugMenu h3 {
+            margin: 0 0 10px 0;
+            font-size: 0.8rem;
+            color: #ff8c00;
+            text-shadow: 1px 1px 0px #000;
+        }
+
+        #debugMenu label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.6rem;
+        }
+
+        #debugMenu input[type="range"] {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        #debugMenu .value {
+            color: #ffaa00;
+            font-weight: bold;
+        }
+
         /* Mobile adjustments */
         @media (max-width: 600px) {
             h1 {
@@ -130,6 +169,14 @@
             button {
                 padding: 15px 30px;
                 font-size: 1rem;
+            }
+
+            #debugMenu {
+                top: 10px;
+                right: 10px;
+                font-size: 0.6rem;
+                padding: 10px;
+                min-width: 150px;
             }
         }
     </style>
@@ -156,6 +203,13 @@
                 <button id="playAgainBtn">Play Again</button>
             </div>
         </div>
+        <div id="debugMenu" class="hidden">
+            <h3>DEBUG MENU</h3>
+            <label>
+                Speed: <span class="value" id="speedValue">1.9x</span>
+            </label>
+            <input type="range" id="speedSlider" min="0.1" max="5" step="0.1" value="1.9">
+        </div>
     </div>
 
     <script>
@@ -168,8 +222,13 @@
             brickRows: 5,
             brickCols: 8,
             lives: 3,
-            wallOffset: 5  // Wall boundary - matches brick offsetLeft
+            wallOffset: 5,  // Wall boundary - matches brick offsetLeft
+            speedMultiplier: 1.9  // For debug menu
         };
+
+        // Check for debug mode
+        const urlParams = new URLSearchParams(window.location.search);
+        const debugMode = urlParams.get('d') === 't';
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -183,6 +242,9 @@
         const restartBtn = document.getElementById('restartBtn');
         const playAgainBtn = document.getElementById('playAgainBtn');
         const finalScoreEl = document.getElementById('finalScore');
+        const debugMenu = document.getElementById('debugMenu');
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValue = document.getElementById('speedValue');
 
         // Game State
         let animationId;
@@ -239,6 +301,15 @@
             startBtn.addEventListener('click', startGame);
             restartBtn.addEventListener('click', startGame);
             playAgainBtn.addEventListener('click', startGame);
+
+            // Debug Menu
+            if (debugMode) {
+                debugMenu.classList.remove('hidden');
+                speedSlider.addEventListener('input', (e) => {
+                    config.speedMultiplier = parseFloat(e.target.value);
+                    speedValue.textContent = config.speedMultiplier.toFixed(1) + 'x';
+                });
+            }
 
             // Initial background animation while in menu
             requestAnimationFrame(menuLoop);
@@ -398,10 +469,10 @@
         function gameLoop(timestamp) {
             if (gameState !== 'PLAYING') return;
 
-            const deltaTime = timestamp - lastTime;
+            const deltaTime = (timestamp - lastTime) / 16.67; // Normalize to 60fps
             lastTime = timestamp;
 
-            update();
+            update(deltaTime);
             draw();
 
             if (lives <= 0) {
@@ -437,14 +508,16 @@
         /**
          * Update Logic
          */
-        function update() {
+        function update(deltaTime) {
+            const speedFactor = deltaTime * config.speedMultiplier;
+
             // Move Paddle
             if (mouseX !== null) {
                 paddle.x = mouseX - paddle.width / 2;
                 mouseX = null; // Clear to prevent sticky movement if needed
             } else {
-                if (keys.ArrowLeft) paddle.x -= config.paddleSpeed;
-                if (keys.ArrowRight) paddle.x += config.paddleSpeed;
+                if (keys.ArrowLeft) paddle.x -= config.paddleSpeed * speedFactor;
+                if (keys.ArrowRight) paddle.x += config.paddleSpeed * speedFactor;
             }
 
             // Clamp Paddle
@@ -454,8 +527,8 @@
             // Move Balls
             for (let i = balls.length - 1; i >= 0; i--) {
                 let ball = balls[i];
-                ball.x += ball.dx;
-                ball.y += ball.dy;
+                ball.x += ball.dx * speedFactor;
+                ball.y += ball.dy * speedFactor;
 
                 // Wall Collision - constrained to brick area
                 if (ball.x + ball.radius > canvas.width - config.wallOffset) {
@@ -554,7 +627,7 @@
             // Powerup Update
             for (let i = powerups.length - 1; i >= 0; i--) {
                 let p = powerups[i];
-                p.y += p.dy;
+                p.y += p.dy * speedFactor;
 
                 // Catch Powerup
                 if (p.y + p.size > paddle.y &&
@@ -576,8 +649,8 @@
 
             // Particle Update
             particles.forEach(p => {
-                p.y += p.speedY;
-                p.x += Math.sin(Date.now() / 1000 + p.y) * 0.5; // Slight drift
+                p.y += p.speedY * speedFactor;
+                p.x += Math.sin(Date.now() / 1000 + p.y) * 0.5 * speedFactor; // Slight drift
                 if (p.y < 0) {
                     p.y = canvas.height;
                     p.x = Math.random() * canvas.width;
