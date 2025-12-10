@@ -1,8 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JV4DNLEE4R"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-JV4DNLEE4R');
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Brick Eater 4.0</title>
     <style>
         body {
@@ -13,10 +22,12 @@
             font-family: 'Courier New', Courier, monospace;
             cursor: none;
         }
+
         canvas {
             display: block;
             background-color: #111;
         }
+
         #ui {
             position: absolute;
             top: 20px;
@@ -24,6 +35,7 @@
             pointer-events: none;
             text-shadow: 2px 2px 0 #000;
         }
+
         #gameOverScreen {
             position: absolute;
             top: 50%;
@@ -37,6 +49,7 @@
             display: none;
             cursor: default;
         }
+
         button {
             background: #d35400;
             color: white;
@@ -48,475 +61,521 @@
             font-family: inherit;
             font-weight: bold;
         }
-        button:hover { background: #e67e22; }
+
+        button:hover {
+            background: #e67e22;
+        }
     </style>
 </head>
+
 <body>
 
-<div id="ui">
-    <h1 style="color: #d35400;">BRICK EATER 4.0</h1>
-    <p>Score: <span id="scoreDisplay">0</span></p>
-    <p>Teeth Left: <span id="teethDisplay">10</span>/10</p>
-</div>
+    <div id="ui">
+        <h1 style="color: #d35400;">BRICK EATER 4.0</h1>
+        <p>Score: <span id="scoreDisplay">0</span></p>
+        <p>Teeth Left: <span id="teethDisplay">10</span>/10</p>
+    </div>
 
-<div id="gameOverScreen">
-    <h1 style="color: #d35400;">MOUTH DESTROYED</h1>
-    <p>Final Score: <span id="finalScore">0</span></p>
-    <button onclick="resetGame()">EAT AGAIN</button>
-</div>
+    <div id="gameOverScreen">
+        <h1 style="color: #d35400;">MOUTH DESTROYED</h1>
+        <p>Final Score: <span id="finalScore">0</span></p>
+        <button onclick="resetGame()">EAT AGAIN</button>
+    </div>
 
-<canvas id="gameCanvas"></canvas>
+    <canvas id="gameCanvas"></canvas>
 
-<script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-    // Game State
-    let width, height;
-    let mouthX, mouthY;
+        // Game State
+        let width, height;
+        let mouthX, mouthY;
 
-    let score = 0;
-    let teethStatus = [];
-    let gameRunning = true;
-    let frameCount = 0;
+        let score = 0;
+        let teethStatus = [];
+        let gameRunning = true;
+        let frameCount = 0;
 
-    // Difficulty
-    let spawnRate = 90;
-    let baseSpeed = 3;
+        // Difficulty
+        let spawnRate = 90;
+        let baseSpeed = 3;
 
-    // Mouth State
-    const MOUTH_WIDTH = 140;
-    const OPEN_GAP = 70;
-    let jawOffset = OPEN_GAP;
-    let isClosing = false;
-    const teethVariations = Array.from({length: 10}, () => Math.random() * 4 - 2);
+        // Mouth State
+        const MOUTH_WIDTH = 140;
+        const OPEN_GAP = 70;
+        let jawOffset = OPEN_GAP;
+        let isClosing = false;
+        const teethVariations = Array.from({ length: 10 }, () => Math.random() * 4 - 2);
 
-    // Arrays
-    let bricks = [];
-    let particles = [];
+        // Arrays
+        let bricks = [];
+        let particles = [];
 
-    // Tooth dimensions
-    const baseToothW = 22;
-    const baseToothH = 24;
-    const startX = -MOUTH_WIDTH/2 + 10;
+        // Tooth dimensions
+        const baseToothW = 22;
+        const baseToothH = 24;
+        const startX = -MOUTH_WIDTH / 2 + 10;
 
-    // Setup Canvas
-    function resize() {
-        width = canvas.width = window.innerWidth;
-        height = canvas.height = window.innerHeight;
-        mouthX = width / 2;
-        mouthY = height / 2;
-    }
-    window.addEventListener('resize', resize);
-    resize();
-    initTeeth();
+        // Setup Canvas
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
 
-    function initTeeth() {
-        // Initialize all 10 teeth as intact (true)
-        teethStatus = Array(10).fill(true);
-    }
-
-    // Input Handling
-    window.addEventListener('keydown', (e) => {
-        if (e.code === 'Space') isClosing = true;
-    });
-    window.addEventListener('keyup', (e) => {
-        if (e.code === 'Space') isClosing = false;
-    });
-
-    // Mouse Tracking
-    window.addEventListener('mousemove', (e) => {
-        if(gameRunning) {
-            mouthX += (e.clientX - mouthX) * 0.15;
-            mouthY += (e.clientY - mouthY) * 0.15;
+            // Initial positioning if not set
+            if (mouthX === undefined || mouthY === undefined) {
+                mouthX = width / 2;
+                mouthY = height / 2;
+            } else {
+                // Clamp to screen
+                mouthX = Math.max(0, Math.min(width, mouthX));
+                mouthY = Math.max(0, Math.min(height, mouthY));
+            }
         }
-    });
+        window.addEventListener('resize', resize);
+        resize();
+        initTeeth();
 
-    // --- CLASSES ---
-
-    class Brick {
-        constructor() {
-            // 1 in 10 chance to spawn a hammer
-            this.isHammer = Math.random() < 0.1;
-
-            const side = Math.floor(Math.random() * 4);
-            if (side === 0) { this.x = Math.random() * width; this.y = -30; }
-            else if (side === 1) { this.x = width + 30; this.y = Math.random() * height; }
-            else if (side === 2) { this.x = Math.random() * width; this.y = height + 30; }
-            else { this.x = -30; this.y = Math.random() * height; }
-
-            const targetX = mouthX + (Math.random() - 0.5) * 100;
-            const targetY = mouthY + (Math.random() - 0.5) * 100;
-
-            const angle = Math.atan2(targetY - this.y, targetX - this.x);
-
-            const speedMultiplier = 1 + (score * 0.02);
-            this.speed = (baseSpeed + Math.random() * 2) * speedMultiplier;
-
-            this.vx = Math.cos(angle) * this.speed;
-            this.vy = Math.sin(angle) * this.speed;
-
-            // Dimensions
-            this.w = this.isHammer ? 40 : 35;
-            this.h = this.isHammer ? 25 : 10;
-
-            // Colors
-            const hue = this.isHammer ? 40 : (10 + Math.random() * 20); // Yellow/Orange for hammer
-            this.mainColor = `hsl(${hue}, 80%, ${this.isHammer ? 60 : 50}%)`;
-            this.darkColor = `hsl(${hue}, 80%, ${this.isHammer ? 40 : 30}%)`;
-
-            this.rotation = Math.atan2(this.vy, this.vx);
-            this.markedForDeletion = false;
+        function initTeeth() {
+            // Initialize all 10 teeth as intact (true)
+            teethStatus = Array(10).fill(true);
         }
 
-        update() {
-            this.vx += (Math.random() - 0.5) * 0.2;
-            this.vy += (Math.random() - 0.5) * 0.2;
+        // Input Handling
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') isClosing = true;
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'Space') isClosing = false;
+        });
 
-            this.x += this.vx;
-            this.y += this.vy;
+        // Mouse Tracking
+        window.addEventListener('mousemove', (e) => {
+            if (gameRunning) {
+                mouthX += (e.clientX - mouthX) * 0.15;
+                mouthY += (e.clientY - mouthY) * 0.15;
+            }
+        });
 
-            const dx = this.x - mouthX;
-            const dy = this.y - mouthY;
-            const dist = Math.sqrt(dx*dx + dy*dy);
+        // Touch Tracking
+        window.addEventListener('touchstart', handleTouch, { passive: false });
+        window.addEventListener('touchmove', handleTouch, { passive: false });
+        window.addEventListener('touchend', handleTouch, { passive: false });
 
-            if (jawOffset < 15) {
-                if (dist < 35) { // EAT
-                    if (this.isHammer) {
-                        score += 50; // Hammer is worth 50 points!
-                        createParticles(this.x, this.y, "#ffcc00", 20); // Gold particles for hammer
-                    } else {
-                        score += 10;
-                        createParticles(this.x, this.y, this.mainColor, 12);
+        function handleTouch(e) {
+            e.preventDefault(); // Prevent scrolling/zooming
+
+            if (!gameRunning) {
+                // For "Eat Again" button or other UI interactions on end screen, 
+                // we might need to let clicks through, but for now we handle game running logic.
+                // Actually, let's just allow default if touching UI elements? 
+                // Simpler: just track touches for game logic.
+                // If we preventDefault everywhere, buttons might not click.
+                // Let's check target.
+                if (e.target.tagName === 'BUTTON') return;
+            }
+
+            if (gameRunning && e.touches.length > 0) {
+                const touch = e.touches[0];
+                // Smooth movement like mouse
+                mouthX += (touch.clientX - mouthX) * 0.15;
+                mouthY += (touch.clientY - mouthY) * 0.15;
+            }
+
+            // Biting logic: 2 or more fingers = closed
+            if (e.touches.length > 1) {
+                isClosing = true;
+            } else {
+                isClosing = false;
+            }
+        }
+
+        // --- CLASSES ---
+
+        class Brick {
+            constructor() {
+                // 1 in 10 chance to spawn a hammer
+                this.isHammer = Math.random() < 0.1;
+
+                const side = Math.floor(Math.random() * 4);
+                if (side === 0) { this.x = Math.random() * width; this.y = -30; }
+                else if (side === 1) { this.x = width + 30; this.y = Math.random() * height; }
+                else if (side === 2) { this.x = Math.random() * width; this.y = height + 30; }
+                else { this.x = -30; this.y = Math.random() * height; }
+
+                const targetX = mouthX + (Math.random() - 0.5) * 100;
+                const targetY = mouthY + (Math.random() - 0.5) * 100;
+
+                const angle = Math.atan2(targetY - this.y, targetX - this.x);
+
+                const speedMultiplier = 1 + (score * 0.02);
+                this.speed = (baseSpeed + Math.random() * 2) * speedMultiplier;
+
+                this.vx = Math.cos(angle) * this.speed;
+                this.vy = Math.sin(angle) * this.speed;
+
+                // Dimensions
+                this.w = this.isHammer ? 40 : 35;
+                this.h = this.isHammer ? 25 : 10;
+
+                // Colors
+                const hue = this.isHammer ? 40 : (10 + Math.random() * 20); // Yellow/Orange for hammer
+                this.mainColor = `hsl(${hue}, 80%, ${this.isHammer ? 60 : 50}%)`;
+                this.darkColor = `hsl(${hue}, 80%, ${this.isHammer ? 40 : 30}%)`;
+
+                this.rotation = Math.atan2(this.vy, this.vx);
+                this.markedForDeletion = false;
+            }
+
+            update() {
+                this.vx += (Math.random() - 0.5) * 0.2;
+                this.vy += (Math.random() - 0.5) * 0.2;
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                const dx = this.x - mouthX;
+                const dy = this.y - mouthY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (jawOffset < 15) {
+                    if (dist < 35) { // EAT
+                        if (this.isHammer) {
+                            score += 50; // Hammer is worth 50 points!
+                            createParticles(this.x, this.y, "#ffcc00", 20); // Gold particles for hammer
+                        } else {
+                            score += 10;
+                            createParticles(this.x, this.y, this.mainColor, 12);
+                        }
+                        this.markedForDeletion = true;
+                    } else if (dist < 75 && dist >= 35) { // HIT (Only happens if it's NOT a hammer)
+                        if (!this.isHammer) {
+                            const intactTeethIndices = [];
+                            for (let i = 0; i < teethStatus.length; i++) {
+                                if (teethStatus[i]) intactTeethIndices.push(i);
+                            }
+
+                            if (intactTeethIndices.length > 0) {
+                                const randomIndex = intactTeethIndices[Math.floor(Math.random() * intactTeethIndices.length)];
+                                teethStatus[randomIndex] = false;
+
+                                // Spawn the broken tooth shard (Increased speed)
+                                particles.push(new ToothShardParticle(this.x, this.y, true));
+                            }
+
+                            screenShake(15);
+                            this.markedForDeletion = true;
+                        } else {
+                            // Hammer hits the teeth but doesn't break them if mouth is closed too early
+                            // It just passes by or harmlessly bounces off (no penalty on purpose)
+                            this.markedForDeletion = true;
+                        }
                     }
+                }
+
+                if (this.x < -100 || this.x > width + 100 || this.y < -100 || this.y > height + 100) {
                     this.markedForDeletion = true;
-                } else if (dist < 75 && dist >= 35) { // HIT (Only happens if it's NOT a hammer)
-                    if (!this.isHammer) {
-                        const intactTeethIndices = [];
-                        for(let i=0; i<teethStatus.length; i++) {
-                            if(teethStatus[i]) intactTeethIndices.push(i);
-                        }
-
-                        if (intactTeethIndices.length > 0) {
-                            const randomIndex = intactTeethIndices[Math.floor(Math.random() * intactTeethIndices.length)];
-                            teethStatus[randomIndex] = false;
-
-                            // Spawn the broken tooth shard (Increased speed)
-                            particles.push(new ToothShardParticle(this.x, this.y, true));
-                        }
-
-                        screenShake(15);
-                        this.markedForDeletion = true;
-                    } else {
-                        // Hammer hits the teeth but doesn't break them if mouth is closed too early
-                        // It just passes by or harmlessly bounces off (no penalty on purpose)
-                        this.markedForDeletion = true;
-                    }
                 }
             }
 
-            if (this.x < -100 || this.x > width + 100 || this.y < -100 || this.y > height + 100) {
-                this.markedForDeletion = true;
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                if (this.isHammer) {
+                    // Draw Hammer Head (Box)
+                    ctx.fillStyle = this.mainColor;
+                    ctx.fillRect(-this.w / 2, -this.h / 2, this.w * 0.6, this.h);
+                    ctx.fillRect(-this.w / 2 + this.w * 0.7, -this.h / 2, this.w * 0.3, this.h);
+
+                    // Draw Hammer Handle (Rectangle)
+                    ctx.fillStyle = '#8b4513'; // Brown
+                    ctx.fillRect(0, -this.h / 4, this.w * 0.8, this.h * 0.5);
+
+                } else {
+                    // Draw 3D Brick
+                    ctx.fillStyle = this.mainColor;
+                    ctx.fillRect(-this.w / 2, -this.h / 2, this.w, this.h);
+
+                    ctx.fillStyle = this.darkColor;
+                    ctx.beginPath();
+                    ctx.moveTo(this.w / 2, -this.h / 2);
+                    ctx.lineTo(this.w / 2, this.h / 2);
+                    ctx.lineTo(this.w / 2 - 4, this.h / 2 + 4);
+                    ctx.lineTo(this.w / 2 - 4, -this.h / 2 + 4);
+                    ctx.fill();
+                }
+
+                ctx.restore();
             }
         }
 
-        draw() {
-            ctx.save();
-            ctx.translate(this.x, this.y);
-            ctx.rotate(this.rotation);
-
-            if (this.isHammer) {
-                // Draw Hammer Head (Box)
-                ctx.fillStyle = this.mainColor;
-                ctx.fillRect(-this.w/2, -this.h/2, this.w * 0.6, this.h);
-                ctx.fillRect(-this.w/2 + this.w * 0.7, -this.h/2, this.w * 0.3, this.h);
-
-                // Draw Hammer Handle (Rectangle)
-                ctx.fillStyle = '#8b4513'; // Brown
-                ctx.fillRect(0, -this.h/4, this.w * 0.8, this.h * 0.5);
-
-            } else {
-                // Draw 3D Brick
-                ctx.fillStyle = this.mainColor;
-                ctx.fillRect(-this.w/2, -this.h/2, this.w, this.h);
-
-                ctx.fillStyle = this.darkColor;
+        class Particle {
+            // ... (standard particle kept the same)
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 8 + 2;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.life = 1.0;
+                this.decay = Math.random() * 0.03 + 0.02;
+                this.color = color;
+                this.size = Math.random() * 6 + 2;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.2;
+                this.life -= this.decay;
+            }
+            draw() {
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
                 ctx.beginPath();
-                ctx.moveTo(this.w/2, -this.h/2);
-                ctx.lineTo(this.w/2, this.h/2);
-                ctx.lineTo(this.w/2 - 4, this.h/2 + 4);
-                ctx.lineTo(this.w/2 - 4, -this.h/2 + 4);
+                ctx.rect(this.x, this.y, this.size, this.size);
                 ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        class ToothShardParticle {
+            // Updated speed for further flight
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.color = "#fdfefe";
+                this.size = Math.random() * 8 + 10;
+                this.life = 1.0;
+                this.decay = 0.05;
+                this.angle = Math.random() * Math.PI * 2;
+                this.rotation = Math.random() * 0.5 - 0.25;
+
+                // Increased initial speed for "flying further"
+                const speed = Math.random() * 15 + 10;
+                this.vx = Math.cos(this.angle) * speed;
+                this.vy = Math.sin(this.angle) * speed;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.2;
+                this.life -= this.decay;
+                this.angle += this.rotation;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.strokeStyle = "#d0d3d4";
+                ctx.lineWidth = 1;
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+
+                // Draw a pointy, shard-like shape
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(this.size, 0);
+                ctx.lineTo(this.size * 0.7, -this.size * 0.6);
+                ctx.lineTo(this.size * 0.3, -this.size * 0.2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.restore();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        // --- GAME FUNCTIONS ---
+
+        function createParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        let shakeDuration = 0;
+        function screenShake(amount) {
+            shakeDuration = amount;
+        }
+
+        function drawConstructionBackground() {
+            ctx.save();
+            ctx.globalAlpha = 0.05;
+            ctx.strokeStyle = '#444';
+            ctx.lineWidth = 2;
+
+            const patternSize = 80;
+            for (let i = 0; i < width; i += patternSize) {
+                for (let j = 0; j < height; j += patternSize) {
+                    ctx.translate(i, j);
+                    ctx.strokeRect(10, 10, patternSize - 20, 10);
+                    ctx.strokeRect(10, patternSize - 20, patternSize - 20, 10);
+                    ctx.beginPath();
+                    ctx.moveTo(10, 10);
+                    ctx.lineTo(patternSize - 10, patternSize - 10);
+                    ctx.moveTo(patternSize - 10, 10);
+                    ctx.lineTo(10, patternSize - 10);
+                    ctx.stroke();
+
+                    ctx.translate(-i, -j);
+                }
             }
 
             ctx.restore();
         }
-    }
 
-    class Particle {
-        // ... (standard particle kept the same)
-        constructor(x, y, color) {
-            this.x = x;
-            this.y = y;
-            const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * 8 + 2;
-            this.vx = Math.cos(angle) * speed;
-            this.vy = Math.sin(angle) * speed;
-            this.life = 1.0;
-            this.decay = Math.random() * 0.03 + 0.02;
-            this.color = color;
-            this.size = Math.random() * 6 + 2;
-        }
-        update() {
-            this.x += this.vx;
-            this.y += this.vy;
-            this.vy += 0.2;
-            this.life -= this.decay;
-        }
-        draw() {
-            ctx.globalAlpha = this.life;
-            ctx.fillStyle = this.color;
+
+        function drawRoundedRect(x, y, w, h, r) {
             ctx.beginPath();
-            ctx.rect(this.x, this.y, this.size, this.size);
-            ctx.fill();
-            ctx.globalAlpha = 1.0;
-        }
-    }
-
-    class ToothShardParticle {
-        // Updated speed for further flight
-        constructor(x, y) {
-            this.x = x;
-            this.y = y;
-            this.color = "#fdfefe";
-            this.size = Math.random() * 8 + 10;
-            this.life = 1.0;
-            this.decay = 0.05;
-            this.angle = Math.random() * Math.PI * 2;
-            this.rotation = Math.random() * 0.5 - 0.25;
-
-            // Increased initial speed for "flying further"
-            const speed = Math.random() * 15 + 10;
-            this.vx = Math.cos(this.angle) * speed;
-            this.vy = Math.sin(this.angle) * speed;
-        }
-
-        update() {
-            this.x += this.vx;
-            this.y += this.vy;
-            this.vy += 0.2;
-            this.life -= this.decay;
-            this.angle += this.rotation;
-        }
-
-        draw() {
-            ctx.save();
-            ctx.globalAlpha = this.life;
-            ctx.fillStyle = this.color;
-            ctx.strokeStyle = "#d0d3d4";
-            ctx.lineWidth = 1;
-            ctx.translate(this.x, this.y);
-            ctx.rotate(this.angle);
-
-            // Draw a pointy, shard-like shape
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(this.size, 0);
-            ctx.lineTo(this.size * 0.7, -this.size * 0.6);
-            ctx.lineTo(this.size * 0.3, -this.size * 0.2);
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
+        }
+
+        function drawMouth() {
+            if (isClosing) {
+                jawOffset = Math.max(0, jawOffset - 12);
+            } else {
+                jawOffset = Math.min(OPEN_GAP, jawOffset + 4);
+            }
+
+            ctx.save();
+            ctx.translate(mouthX, mouthY);
+
+            // Draw Tonsil/Throat area (NEW COLOR)
+            ctx.fillStyle = "#a84545"; // Tonsil/throat red-pink
+            ctx.beginPath();
+            ctx.ellipse(0, 0, MOUTH_WIDTH / 2 - 10, jawOffset + 20, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Lips Styling
+            ctx.fillStyle = "#c0392b";
+            ctx.strokeStyle = "#922b21";
+            ctx.lineWidth = 2;
+
+            drawRoundedRect(-MOUTH_WIDTH / 2, -jawOffset - 25, MOUTH_WIDTH, 25, 5); // Top Lip
+            drawRoundedRect(-MOUTH_WIDTH / 2, jawOffset, MOUTH_WIDTH, 25, 5); // Bottom Lip
+
+            // Teeth Styling
+            ctx.fillStyle = "#fdfefe";
+            ctx.strokeStyle = "#d0d3d4";
+            ctx.lineWidth = 1;
+
+            // Upper Teeth (indices 0-4)
+            for (let i = 0; i < 5; i++) {
+                if (teethStatus[i]) {
+                    let varW = teethVariations[i];
+                    let varH = teethVariations[(i + 1) % 5];
+                    let tx = startX + (i * baseToothW) + varW / 2;
+                    let ty = -jawOffset + 2;
+                    drawRoundedRect(tx, ty, baseToothW - varW, baseToothH + varH, 4);
+                }
+            }
+
+            // Lower Teeth (indices 5-9)
+            for (let i = 0; i < 5; i++) {
+                if (teethStatus[i + 5]) {
+                    let varW = teethVariations[(i + 5) % 10];
+                    let varH = teethVariations[(i + 6) % 10];
+                    let tx = startX + (i * baseToothW) + varW / 2;
+                    let ty = jawOffset - (baseToothH + varH) - 2;
+                    drawRoundedRect(tx, ty, baseToothW - varW, baseToothH + varH, 4);
+                }
+            }
 
             ctx.restore();
-            ctx.globalAlpha = 1.0;
         }
-    }
 
-    // --- GAME FUNCTIONS ---
+        function update() {
+            if (!gameRunning) return;
+            frameCount++;
 
-    function createParticles(x, y, color, count) {
-        for(let i=0; i<count; i++) {
-            particles.push(new Particle(x, y, color));
-        }
-    }
-
-    let shakeDuration = 0;
-    function screenShake(amount) {
-        shakeDuration = amount;
-    }
-
-    function drawConstructionBackground() {
-        ctx.save();
-        ctx.globalAlpha = 0.05;
-        ctx.strokeStyle = '#444';
-        ctx.lineWidth = 2;
-
-        const patternSize = 80;
-        for (let i = 0; i < width; i += patternSize) {
-            for (let j = 0; j < height; j += patternSize) {
-                ctx.translate(i, j);
-                ctx.strokeRect(10, 10, patternSize - 20, 10);
-                ctx.strokeRect(10, patternSize - 20, patternSize - 20, 10);
-                ctx.beginPath();
-                ctx.moveTo(10, 10);
-                ctx.lineTo(patternSize - 10, patternSize - 10);
-                ctx.moveTo(patternSize - 10, 10);
-                ctx.lineTo(10, patternSize - 10);
-                ctx.stroke();
-
-                ctx.translate(-i, -j);
+            let currentSpawnRate = Math.max(15, spawnRate - Math.floor(score / 50) * 5);
+            if (frameCount % currentSpawnRate === 0) {
+                bricks.push(new Brick());
             }
+
+            bricks.forEach(b => b.update());
+            bricks = bricks.filter(b => !b.markedForDeletion);
+            particles.forEach(p => p.update());
+            particles = particles.filter(p => p.life > 0);
+
+            const intactTeethCount = teethStatus.filter(t => t).length;
+
+            // Game Over when 0 teeth remain (NEW: all 10 teeth lost)
+            if (intactTeethCount === 0) { endGame(); }
+
+            document.getElementById('scoreDisplay').innerText = score;
+            document.getElementById('teethDisplay').innerText = intactTeethCount;
         }
 
-        ctx.restore();
-    }
-
-
-    function drawRoundedRect(x, y, w, h, r) {
-        ctx.beginPath();
-        ctx.moveTo(x+r, y);
-        ctx.arcTo(x+w, y,   x+w, y+h, r);
-        ctx.arcTo(x+w, y+h, x,   y+h, r);
-        ctx.arcTo(x,   y+h, x,   y,   r);
-        ctx.arcTo(x,   y,   x+w, y,   r);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-    }
-
-    function drawMouth() {
-        if (isClosing) {
-            jawOffset = Math.max(0, jawOffset - 12);
-        } else {
-            jawOffset = Math.min(OPEN_GAP, jawOffset + 4);
-        }
-
-        ctx.save();
-        ctx.translate(mouthX, mouthY);
-
-        // Draw Tonsil/Throat area (NEW COLOR)
-        ctx.fillStyle = "#a84545"; // Tonsil/throat red-pink
-        ctx.beginPath();
-        ctx.ellipse(0, 0, MOUTH_WIDTH/2 - 10, jawOffset + 20, 0, 0, Math.PI*2);
-        ctx.fill();
-
-        // Lips Styling
-        ctx.fillStyle = "#c0392b";
-        ctx.strokeStyle = "#922b21";
-        ctx.lineWidth = 2;
-
-        drawRoundedRect(-MOUTH_WIDTH/2, -jawOffset - 25, MOUTH_WIDTH, 25, 5); // Top Lip
-        drawRoundedRect(-MOUTH_WIDTH/2, jawOffset, MOUTH_WIDTH, 25, 5); // Bottom Lip
-
-        // Teeth Styling
-        ctx.fillStyle = "#fdfefe";
-        ctx.strokeStyle = "#d0d3d4";
-        ctx.lineWidth = 1;
-
-        // Upper Teeth (indices 0-4)
-        for (let i = 0; i < 5; i++) {
-            if (teethStatus[i]) {
-                let varW = teethVariations[i];
-                let varH = teethVariations[(i+1)%5];
-                let tx = startX + (i * baseToothW) + varW/2;
-                let ty = -jawOffset + 2;
-                drawRoundedRect(tx, ty, baseToothW - varW, baseToothH + varH, 4);
+        function draw() {
+            ctx.save();
+            if (shakeDuration > 0) {
+                let dx = (Math.random() - 0.5) * shakeDuration * 2;
+                let dy = (Math.random() - 0.5) * shakeDuration * 2;
+                ctx.translate(dx, dy);
+                shakeDuration *= 0.9;
+                if (shakeDuration < 0.5) shakeDuration = 0;
             }
+
+            ctx.fillStyle = 'rgba(17, 17, 17, 0.4)';
+            ctx.fillRect(0, 0, width, height);
+
+            drawConstructionBackground();
+
+            drawMouth();
+            bricks.forEach(b => b.draw());
+            particles.forEach(p => p.draw());
+
+            ctx.restore();
+
+            if (gameRunning) requestAnimationFrame(loop);
         }
 
-        // Lower Teeth (indices 5-9)
-        for (let i = 0; i < 5; i++) {
-            if (teethStatus[i + 5]) {
-                let varW = teethVariations[(i+5)%10];
-                let varH = teethVariations[(i+6)%10];
-                let tx = startX + (i * baseToothW) + varW/2;
-                let ty = jawOffset - (baseToothH + varH) - 2;
-                drawRoundedRect(tx, ty, baseToothW - varW, baseToothH + varH, 4);
-            }
+        function loop() {
+            update();
+            draw();
         }
 
-        ctx.restore();
-    }
-
-    function update() {
-        if (!gameRunning) return;
-        frameCount++;
-
-        let currentSpawnRate = Math.max(15, spawnRate - Math.floor(score / 50) * 5);
-        if (frameCount % currentSpawnRate === 0) {
-            bricks.push(new Brick());
+        function endGame() {
+            gameRunning = false;
+            document.body.style.cursor = 'default';
+            document.getElementById('gameOverScreen').style.display = 'block';
+            document.getElementById('finalScore').innerText = score;
         }
 
-        bricks.forEach(b => b.update());
-        bricks = bricks.filter(b => !b.markedForDeletion);
-        particles.forEach(p => p.update());
-        particles = particles.filter(p => p.life > 0);
+        function resetGame() {
+            score = 0;
+            initTeeth();
+            bricks = [];
+            particles = [];
+            frameCount = 0;
+            shakeDuration = 0;
+            gameRunning = true;
+            document.body.style.cursor = 'none';
+            document.getElementById('gameOverScreen').style.display = 'none';
 
-        const intactTeethCount = teethStatus.filter(t => t).length;
-
-        // Game Over when 0 teeth remain (NEW: all 10 teeth lost)
-        if (intactTeethCount === 0) { endGame(); }
-
-        document.getElementById('scoreDisplay').innerText = score;
-        document.getElementById('teethDisplay').innerText = intactTeethCount;
-    }
-
-    function draw() {
-        ctx.save();
-        if (shakeDuration > 0) {
-            let dx = (Math.random() - 0.5) * shakeDuration * 2;
-            let dy = (Math.random() - 0.5) * shakeDuration * 2;
-            ctx.translate(dx, dy);
-            shakeDuration *= 0.9;
-            if(shakeDuration < 0.5) shakeDuration = 0;
+            mouthX = window.innerWidth / 2;
+            mouthY = window.innerHeight / 2;
+            loop();
         }
 
-        ctx.fillStyle = 'rgba(17, 17, 17, 0.4)';
-        ctx.fillRect(0, 0, width, height);
-
-        drawConstructionBackground();
-
-        drawMouth();
-        bricks.forEach(b => b.draw());
-        particles.forEach(p => p.draw());
-
-        ctx.restore();
-
-        if (gameRunning) requestAnimationFrame(loop);
-    }
-
-    function loop() {
-        update();
-        draw();
-    }
-
-    function endGame() {
-        gameRunning = false;
-        document.body.style.cursor = 'default';
-        document.getElementById('gameOverScreen').style.display = 'block';
-        document.getElementById('finalScore').innerText = score;
-    }
-
-    function resetGame() {
-        score = 0;
-        initTeeth();
-        bricks = [];
-        particles = [];
-        frameCount = 0;
-        shakeDuration = 0;
-        gameRunning = true;
-        document.body.style.cursor = 'none';
-        document.getElementById('gameOverScreen').style.display = 'none';
-
-        mouthX = window.innerWidth / 2;
-        mouthY = window.innerHeight / 2;
+        // Start
         loop();
-    }
 
-    // Start
-    loop();
-
-</script>
+    </script>
 </body>
+
 </html>

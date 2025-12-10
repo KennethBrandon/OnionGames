@@ -130,6 +130,15 @@
             flex: 1;
         }
 
+        .author {
+            font-size: 0.9rem;
+            color: var(--accent);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
         .play-btn {
             display: inline-block;
             background-color: var(--accent);
@@ -208,6 +217,7 @@
                 onclick="gtag('event', 'game_start', {'game_name': 'Operation: Sleigh Ride', 'game_file': 'SantaSleigh.html'}); window.location.href='SantaSleigh.html';">
             <div class="card-content">
                 <h2>Operation: Sleigh Ride</h2>
+                <div class="author">By: Onion</div>
                 <p>Fly Santa's Sleigh, avoid the Grinches, and deliver Christmas to the finish line!</p>
                 <a href="SantaSleigh.html" class="play-btn"
                     onclick="gtag('event', 'game_start', {'game_name': 'Operation: Sleigh Ride', 'game_file': 'SantaSleigh.html'});">Play
@@ -222,6 +232,7 @@
                 onclick="gtag('event', 'game_start', {'game_name': 'Tree Topper', 'game_file': 'ChristmasHopper.html'}); window.location.href='ChristmasHopper.html';">
             <div class="card-content">
                 <h2>Tree Topper</h2>
+                <div class="author">By: Onion</div>
                 <p>Carry the star to the top of the Christmas tree! Jump on platforms, avoid the Grinch, and save the
                     holiday.</p>
                 <a href="ChristmasHopper.html" class="play-btn"
@@ -237,6 +248,7 @@
                 onclick="gtag('event', 'game_start', {'game_name': 'Onion Breaker', 'game_file': 'OnionBreaker.html'}); window.location.href='OnionBreaker.html';">
             <div class="card-content">
                 <h2>Onion Breaker</h2>
+                <div class="author">By: Onion</div>
                 <p>Mustafar Edition. Help the Onion survive the heat in this intense breakout-style arcade game.</p>
                 <a href="OnionBreaker.html" class="play-btn"
                     onclick="gtag('event', 'game_start', {'game_name': 'Onion Breaker', 'game_file': 'OnionBreaker.html'});">Play
@@ -251,6 +263,7 @@
                 onclick="gtag('event', 'game_start', {'game_name': 'Shadow Chase', 'game_file': 'ShadowChase.html'}); window.location.href='ShadowChase.html';">
             <div class="card-content">
                 <h2>Shadow Chase</h2>
+                <div class="author">By: Onion</div>
                 <p>You are the light in a consuming darkness. Evade the shadow monster and survive as long as you can.
                 </p>
                 <a href="ShadowChase.html" class="play-btn"
@@ -266,6 +279,7 @@
                 onclick="gtag('event', 'game_start', {'game_name': 'Soldier Showdown', 'game_file': 'BobCards.html'}); window.location.href='BobCards.html';">
             <div class="card-content">
                 <h2>Soldier Showdown</h2>
+                <div class="author">By: Onion</div>
                 <p>A tactical wave warfare card game. Build your army, plan your waves, and defeat the enemy commander.
                 </p>
                 <a href="BobCards.html" class="play-btn"
@@ -281,6 +295,7 @@
                 onclick="gtag('event', 'game_start', {'game_name': 'Sleigh Drop', 'game_file': 'sliegh-drop.html'}); window.location.href='sliegh-drop.html';">
             <div class="card-content">
                 <h2>Sleigh Drop</h2>
+                <div class="author">By: DD</div>
                 <p>Guide Santa's sleigh and drop presents down chimneys! Avoid crashing into chimneys and deliver all
                     the gifts to win.</p>
                 <a href="sliegh-drop.html" class="play-btn"
@@ -289,21 +304,70 @@
             </div>
         </article>
 
-
-
         <!-- Brick Eater -->
         <article class="game-card">
             <img src="assets/images/brick-eater.png" alt="Brick Eater" class="card-image"
-                 onerror="this.style.display='none'"
-                 onclick="gtag('event', 'game_start', {'game_name': 'Brick Eater', 'game_file': 'brick-eater.html'}); window.location.href='brick-eater.html';">
+                onerror="this.style.display='none'"
+                onclick="gtag('event', 'game_start', {'game_name': 'Brick Eater', 'game_file': 'brick-eater.html'}); window.location.href='brick-eater.html';">
             <div class="card-content">
                 <h2>Brick Eater</h2>
+                <div class="author">By: DD</div>
                 <p>Eat Bricks, Breack Teeths</p>
                 <a href="brick-eater.html" class="play-btn"
-                   onclick="gtag('event', 'game_start', {'game_name': 'Brick Eater', 'game_file': 'brick-eater.html'});">Play
+                    onclick="gtag('event', 'game_start', {'game_name': 'Brick Eater', 'game_file': 'brick-eater.html'});">Play
                     Now</a>
             </div>
         </article>
+        <!-- Christmas Cut -->
+        <article class="game-card">
+            <img src="assets/images/ChrismasCut.png" alt="Christmas Cut" class="card-image"
+                onerror="this.style.display='none'"
+                onclick="gtag('event', 'game_start', {'game_name': 'Christmas Cut', 'game_file': 'ChrismasCut.html'}); window.location.href='ChrismasCut.html';">
+            <div class="card-content">
+                <h2>Christmas Cut</h2>
+                <div class="author">By: B-Master</div>
+                <p>Physics puzzle fun! Cut the ropes to guide the star to the top of the tree before the snow buries
+                    everything.</p>
+                <a href="ChrismasCut.html" class="play-btn"
+                    onclick="gtag('event', 'game_start', {'game_name': 'Christmas Cut', 'game_file': 'ChrismasCut.html'});">Play
+                    Now</a>
+            </div>
+        </article>
+
+        <!-- Cursor Chase -->
+        <article class="game-card">
+            <img src="assets/images/CursorChase.png" alt="Cursor Chase" class="card-image"
+                onerror="this.style.display='none'"
+                onclick="gtag('event', 'game_start', {'game_name': 'Cursor Chase', 'game_file': 'CursorChase.html'}); window.location.href='CursorChase.html';">
+            <div class="card-content">
+                <h2>Cursor Chase</h2>
+                <div class="author">By: EE</div>
+                <p>Survive as long as you can! Guide your cursor to avoid the relentless swarm of monsters in this
+                    intense arcade challenge.</p>
+                <a href="CursorChase.html" class="play-btn"
+                    onclick="gtag('event', 'game_start', {'game_name': 'Cursor Chase', 'game_file': 'CursorChase.html'});">Play
+                    Now</a>
+            </div>
+        </article>
+
+        <!-- Tree Decorator -->
+        <article class="game-card">
+            <img src="assets/images/TreeDecorator.png" alt="Tree Decorator" class="card-image"
+                onerror="this.style.display='none'"
+                onclick="gtag('event', 'game_start', {'game_name': 'Tree Decorator', 'game_file': 'TreeDecorator.html'}); window.location.href='TreeDecorator.html';">
+            <div class="card-content">
+                <h2>Tree Decorator</h2>
+                <div class="author">By: EE</div>
+                <p>Get into the holiday spirit! Choose your tree, design custom ornaments, and light up your very own
+                    Christmas tree masterpiece.</p>
+                <a href="TreeDecorator.html" class="play-btn"
+                    onclick="gtag('event', 'game_start', {'game_name': 'Tree Decorator', 'game_file': 'TreeDecorator.html'});">Play
+                    Now</a>
+            </div>
+        </article>
+
+
+
 
     </main>
 

@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JV4DNLEE4R"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-JV4DNLEE4R');
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Christmas Tree Workshop</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@400;700&family=Nunito:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(to bottom, #dbeafe, #eff6ff);
+            overflow: hidden;
+            /* Prevent scrolling during drag */
+            touch-action: none;
+            /* Prevent browser zooming/swiping */
+        }
+
+        h1,
+        h2,
+        .festive-font {
+            font-family: 'Mountains of Christmas', cursive;
+        }
+
+        /* Tree Container */
+        #tree-container {
+            position: relative;
+            transition: filter 1s ease;
+        }
+
+        /* Dragging Items */
+        .draggable-item {
+            cursor: grab;
+            transition: transform 0.1s;
+            filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.1));
+            z-index: 20;
+            /* Ensure manual decorations are above auto lights */
+        }
+
+        .draggable-item:active {
+            cursor: grabbing;
+            transform: scale(1.1);
+        }
+
+        /* Lighting Ceremony Mode */
+        body.night-mode {
+            background: radial-gradient(circle at center, #1e3a8a, #0f172a);
+        }
+
+        .night-mode #tree-container {
+            filter: brightness(0.9);
+        }
+
+        /* Light bulb glow animation */
+        @keyframes twinkle {
+
+            0%,
+            100% {
+                filter: drop-shadow(0 0 5px currentColor) brightness(1);
+                opacity: 1;
+            }
+
+            50% {
+                filter: drop-shadow(0 0 15px currentColor) brightness(1.5);
+                opacity: 0.8;
+            }
+        }
+
+        .light-glow {
+            animation: twinkle 1.5s infinite alternate ease-in-out;
+        }
+
+        /* Random offsets for twinkling */
+        .light-glow:nth-child(2n) {
+            animation-delay: 0.5s;
+        }
+
+        .light-glow:nth-child(3n) {
+            animation-delay: 1s;
+        }
+
+        .light-glow:nth-child(5n) {
+            animation-delay: 0.2s;
+        }
+
+        /* Snow Animation */
+        .snowflake {
+            position: absolute;
+            color: white;
+            font-size: 1em;
+            font-family: Arial;
+            text-shadow: 0 0 1px #000;
+            top: -10%;
+            z-index: 10;
+            user-select: none;
+            pointer-events: none;
+            animation-name: snowflakes-fall, snowflakes-shake;
+            animation-duration: 10s, 3s;
+            animation-timing-function: linear, ease-in-out;
+            animation-iteration-count: infinite, infinite;
+            animation-play-state: running, running;
+        }
+
+        @keyframes snowflakes-fall {
+            0% {
+                top: -10%;
+            }
+
+            100% {
+                top: 100%;
+            }
+        }
+
+        @keyframes snowflakes-shake {
+            0% {
+                transform: translateX(0px);
+            }
+
+            50% {
+                transform: translateX(80px);
+            }
+
+            100% {
+                transform: translateX(0px);
+            }
+        }
+
+        /* Custom Scrollbar for palette */
+        .palette-scroll::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .palette-scroll::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .palette-scroll::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+
+        /* Canvas drawing cursor */
+        canvas {
+            touch-action: none;
+        }
+
+        #paint-canvas {
+            cursor: crosshair;
+        }
+
+        /* Fireworks Canvas */
+        #fireworks-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            /* Behind UI, front of bg */
+            pointer-events: none;
+        }
+
+        /* Auto Lights styling */
+        .auto-light {
+            position: absolute;
+            border-radius: 50%;
+            z-index: 15;
+            transition: opacity 1s;
+        }
+
+        /* Ground transition */
+        .night-mode #ground-path {
+            fill: #cbd5e1;
+        }
+    </style>
+</head>
+
+<body class="h-screen w-screen flex flex-col transition-colors duration-1000">
+
+    <!-- FIREWORKS CANVAS -->
+    <canvas id="fireworks-canvas"></canvas>
+
+    <!-- GROUND LAYER -->
+    <div class="fixed bottom-0 left-0 w-full pointer-events-none z-0">
+        <svg viewBox="0 0 1440 320" class="w-full h-auto min-h-[250px] md:min-h-[350px]" preserveAspectRatio="none">
+            <path id="ground-path" fill="#f1f5f9" class="transition-colors duration-1000"
+                d="M0,160L48,170.7C96,181,192,203,288,213.3C384,224,480,224,576,202.7C672,181,768,139,864,133.3C960,128,1056,160,1152,181.3C1248,203,1344,213,1392,218.7L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z">
+            </path>
+        </svg>
+    </div>
+
+    <!-- SNOW CONTAINER (Hidden by default) -->
+    <div id="snow-container" class="fixed inset-0 pointer-events-none hidden"></div>
+
+    <!-- HEADER -->
+    <header
+        class="w-full p-4 flex justify-between items-center z-20 bg-white/80 backdrop-blur-sm shadow-sm transition-opacity duration-500"
+        id="main-header">
+        <h1 class="text-3xl font-bold text-green-700 festive-font drop-shadow-sm">
+            <i class="fa-solid fa-tree mr-2"></i>Tree Workshop
+        </h1>
+        <div id="header-controls" class="flex gap-2">
+            <button onclick="takeSnapshot()"
+                class="text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-full transition flex items-center gap-1">
+                <i class="fa-solid fa-camera"></i> <span class="hidden md:inline">Snap</span>
+            </button>
+            <button onclick="resetGame()"
+                class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded-full transition">
+                Start Over
+            </button>
+        </div>
+    </header>
+
+    <!-- PHASE 1: TREE SELECTION -->
+    <div id="phase-select" class="flex-1 flex flex-col items-center justify-center p-4 gap-8 animate-fade-in z-30">
+        <div class="text-center">
+            <h2 class="text-4xl text-green-800 font-bold mb-2">Pick Your Tree</h2>
+            <p class="text-gray-600">Choose the perfect canvas for your masterpiece.</p>
+        </div>
+
+        <div class="flex flex-col md:flex-row gap-6 items-end justify-center w-full max-w-4xl">
+            <!-- Tree Option 1 -->
+            <button onclick="selectTree('classic')"
+                class="group relative flex flex-col items-center gap-4 p-6 bg-white rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all w-full md:w-1/3">
+                <div class="w-32 h-40 relative">
+                    <svg viewBox="0 0 100 130"
+                        class="w-full h-full drop-shadow-md group-hover:drop-shadow-lg transition">
+                        <path d="M50 10 L20 50 L35 50 L15 90 L40 90 L10 120 L90 120 L60 90 L85 90 L65 50 L80 50 Z"
+                            fill="#15803d" />
+                        <rect x="45" y="120" width="10" height="10" fill="#78350f" />
+                    </svg>
+                </div>
+                <span class="font-bold text-gray-700">The Classic</span>
+            </button>
+
+            <!-- Tree Option 2 -->
+            <button onclick="selectTree('bushy')"
+                class="group relative flex flex-col items-center gap-4 p-6 bg-white rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all w-full md:w-1/3">
+                <div class="w-32 h-40 relative">
+                    <svg viewBox="0 0 100 130"
+                        class="w-full h-full drop-shadow-md group-hover:drop-shadow-lg transition">
+                        <path
+                            d="M50 10 C20 40, 20 50, 25 50 C10 80, 10 90, 15 90 C5 120, 15 120, 95 120 C95 120, 105 120, 85 90 C90 90, 90 80, 75 50 C80 50, 80 40, 50 10 Z"
+                            fill="#166534" />
+                        <rect x="45" y="120" width="10" height="10" fill="#78350f" />
+                    </svg>
+                </div>
+                <span class="font-bold text-gray-700">The Fluffy Pine</span>
+            </button>
+
+            <!-- Tree Option 3 -->
+            <button onclick="selectTree('modern')"
+                class="group relative flex flex-col items-center gap-4 p-6 bg-white rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all w-full md:w-1/3">
+                <div class="w-32 h-40 relative">
+                    <svg viewBox="0 0 100 130"
+                        class="w-full h-full drop-shadow-md group-hover:drop-shadow-lg transition">
+                        <polygon points="50,10 90,120 10,120" fill="#064e3b" />
+                        <rect x="45" y="120" width="10" height="10" fill="#78350f" />
+                    </svg>
+                </div>
+                <span class="font-bold text-gray-700">The Modern Spruce</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- PHASE 2: DECORATION -->
+    <div id="phase-decorate" class="hidden flex-1 flex flex-col h-full overflow-hidden relative z-10">
+
+        <!-- Main Workspace -->
+        <div id="workspace" class="flex-1 relative flex items-center justify-center bg-transparent z-10 w-full min-h-0"
+            onclick="deselectAll(event)">
+            <!-- Tree Drop Zone -->
+            <div id="tree-wrapper"
+                class="relative w-full max-w-lg h-full flex justify-center items-end transition-transform duration-500">
+                <!-- SVG Tree will be injected here -->
+                <div id="active-tree" class="h-full w-full pointer-events-none drop-shadow-2xl"></div>
+
+                <!-- Auto Lights Layer -->
+                <div id="auto-lights-layer" class="absolute inset-0 pointer-events-none"></div>
+
+                <!-- Overlay layer for dropped items -->
+                <div id="decoration-layer" class="absolute inset-0 pointer-events-none"></div>
+
+                <!-- Garland Layer (SVG) -->
+                <svg id="garland-layer" class="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-10"
+                    viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+            </div>
+
+            <!-- Selection Controls (Floating) -->
+            <div id="selection-controls"
+                class="absolute hidden flex-col gap-2 bg-white/90 backdrop-blur p-3 rounded-xl shadow-xl z-50 transform pointer-events-auto"
+                style="top: 50%; left: 50%;">
+                <div class="flex justify-between items-center border-b border-gray-200 pb-2 mb-2 gap-4">
+                    <span class="text-xs font-bold text-gray-500 uppercase">Edit Item</span>
+                    <button onclick="deleteSelected()" class="text-red-500 hover:bg-red-50 p-1 rounded transition"><i
+                            class="fa-solid fa-trash-can"></i></button>
+                </div>
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-expand text-gray-400 text-xs w-4"></i>
+                    <input type="range" min="0.5" max="3" step="0.1" id="scale-control" class="w-24 accent-green-600"
+                        oninput="updateTransform()">
+                </div>
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-rotate-right text-gray-400 text-xs w-4"></i>
+                    <input type="range" min="-180" max="180" step="5" id="rotate-control" class="w-24 accent-blue-600"
+                        oninput="updateTransform()">
+                </div>
+                <div class="text-center mt-1">
+                    <button onclick="deselectAll()" class="text-xs text-blue-500 font-bold">Done</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls UI -->
+        <div id="controls-panel"
+            class="bg-white/90 backdrop-blur-md shadow-[0_-5px_20px_rgba(0,0,0,0.1)] z-30 flex flex-col transition-transform duration-500 pb-safe shrink-0">
+
+            <!-- Action Bar -->
+            <div class="flex justify-between items-center px-4 py-2 border-b border-gray-100">
+                <div class="text-sm text-gray-500 font-semibold uppercase tracking-wider">Decorations</div>
+                <div class="flex gap-2">
+                    <button onclick="clearDecorations()"
+                        class="text-red-500 hover:bg-red-50 p-2 rounded-full text-xs font-bold transition"
+                        title="Clear All">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                    <button onclick="startCeremony()"
+                        class="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 px-4 py-1 rounded-full text-sm font-bold shadow-sm transition animate-bounce">
+                        <i class="fa-solid fa-star mr-1"></i> Light It Up!
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scrollable Palette -->
+            <div class="overflow-x-auto palette-scroll">
+                <div class="flex p-3 gap-3 min-w-max items-center">
+
+                    <!-- New Ornament Button -->
+                    <button onclick="openBuilder()"
+                        class="flex flex-col items-center justify-center w-16 h-16 rounded-xl border-2 border-dashed border-blue-400 bg-blue-50 text-blue-500 hover:bg-blue-100 transition shrink-0">
+                        <i class="fa-solid fa-paintbrush text-lg mb-1"></i>
+                        <span class="text-[10px] font-bold">Build</span>
+                    </button>
+
+                    <button onclick="toggleGarlandMode()" id="garland-btn"
+                        class="flex flex-col items-center justify-center w-16 h-16 rounded-xl border-dashed border-2 border-yellow-400 bg-yellow-50 text-yellow-600 hover:bg-yellow-100 transition shrink-0">
+                        <i class="fa-solid fa-code-merge text-lg mb-1"></i>
+                        <span class="text-[10px] font-bold">Garland</span>
+                    </button>
+
+                    <button onclick="openPresentModal()"
+                        class="flex flex-col items-center justify-center w-16 h-16 rounded-xl border-dashed border-2 border-red-400 bg-red-50 text-red-500 hover:bg-red-100 transition shrink-0">
+                        <i class="fa-solid fa-gift text-lg mb-1"></i>
+                        <span class="text-[10px] font-bold">Gift</span>
+                    </button>
+
+                    <div class="w-px h-10 bg-gray-300 mx-1"></div>
+
+                    <!-- Draggable Items -->
+                    <!-- Balls -->
+                    <div class="palette-item cursor-grab hover:scale-110 transition active:scale-95"
+                        onmousedown="startDrag(event, 'ball', 'red')" ontouchstart="startDrag(event, 'ball', 'red')">
+                        <svg viewBox="0 0 24 24" class="w-12 h-12 drop-shadow-sm">
+                            <circle cx="12" cy="12" r="10" fill="#ef4444" />
+                            <circle cx="8" cy="8" r="3" fill="rgba(255,255,255,0.4)" />
+                        </svg>
+                    </div>
+                    <div class="palette-item cursor-grab hover:scale-110 transition active:scale-95"
+                        onmousedown="startDrag(event, 'ball', 'gold')" ontouchstart="startDrag(event, 'ball', 'gold')">
+                        <svg viewBox="0 0 24 24" class="w-12 h-12 drop-shadow-sm">
+                            <circle cx="12" cy="12" r="10" fill="#eab308" />
+                            <circle cx="8" cy="8" r="3" fill="rgba(255,255,255,0.4)" />
+                        </svg>
+                    </div>
+                    <div class="palette-item cursor-grab hover:scale-110 transition active:scale-95"
+                        onmousedown="startDrag(event, 'ball', 'blue')" ontouchstart="startDrag(event, 'ball', 'blue')">
+                        <svg viewBox="0 0 24 24" class="w-12 h-12 drop-shadow-sm">
+                            <circle cx="12" cy="12" r="10" fill="#3b82f6" />
+                            <circle cx="8" cy="8" r="3" fill="rgba(255,255,255,0.4)" />
+                        </svg>
+                    </div>
+
+                    <!-- Shapes -->
+                    <div class="palette-item cursor-grab hover:scale-110 transition active:scale-95"
+                        onmousedown="startDrag(event, 'star', 'gold')" ontouchstart="startDrag(event, 'star', 'gold')">
+                        <svg viewBox="0 0 24 24" class="w-12 h-12 drop-shadow-sm">
+                            <path
+                                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                                fill="#facc15" />
+                        </svg>
+                    </div>
+                    <div class="palette-item cursor-grab hover:scale-110 transition active:scale-95"
+                        onmousedown="startDrag(event, 'cane', 'red')" ontouchstart="startDrag(event, 'cane', 'red')">
+                        <svg viewBox="0 0 24 24" class="w-12 h-12 drop-shadow-sm">
+                            <path d="M7 16v-6c0-3.31 2.69-6 6-6s6 2.69 6 6h-3c0-1.66-1.34-3-3-3s-3 1.34-3 3v6H7z"
+                                fill="#ef4444" transform="rotate(180 12 12)" />
+                        </svg>
+                    </div>
+
+                    <!-- Lights -->
+                    <div class="palette-item cursor-grab hover:scale-110 transition active:scale-95"
+                        onmousedown="startDrag(event, 'light', 'warm')"
+                        ontouchstart="startDrag(event, 'light', 'warm')">
+                        <svg viewBox="0 0 24 24" class="w-12 h-12 drop-shadow-sm">
+                            <path d="M12 2 C12 2 16 8 16 14 C16 19 12 22 12 22 C12 22 8 19 8 14 C8 8 12 2 12 2 Z"
+                                fill="#fde047" stroke="#eab308" stroke-width="1" />
+                        </svg>
+                    </div>
+                    <div class="palette-item cursor-grab hover:scale-110 transition active:scale-95"
+                        onmousedown="startDrag(event, 'light', 'color')"
+                        ontouchstart="startDrag(event, 'light', 'color')">
+                        <svg viewBox="0 0 24 24" class="w-12 h-12 drop-shadow-sm">
+                            <path d="M12 2 C12 2 16 8 16 14 C16 19 12 22 12 22 C12 22 8 19 8 14 C8 8 12 2 12 2 Z"
+                                fill="#ec4899" stroke="#db2777" stroke-width="1" />
+                        </svg>
+                    </div>
+
+                    <!-- Container for custom created ornaments -->
+                    <div id="custom-palette" class="flex gap-3"></div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ORNAMENT BUILDER -->
+    <div id="builder-modal"
+        class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden animate-pop-in">
+            <div class="p-4 bg-gray-50 border-b flex justify-between items-center">
+                <h3 class="font-bold text-gray-700">Design Ornament</h3>
+                <button onclick="closeBuilder()" class="text-gray-400 hover:text-gray-600"><i
+                        class="fa-solid fa-times text-xl"></i></button>
+            </div>
+
+            <div class="p-6 flex flex-col items-center gap-4">
+                <div class="relative group cursor-crosshair">
+                    <canvas id="paint-canvas" width="200" height="200"
+                        class="rounded-full border-4 border-gray-200 bg-white shadow-inner"></canvas>
+                    <div
+                        class="absolute inset-0 rounded-full pointer-events-none shadow-[inset_0_0_20px_rgba(0,0,0,0.1)]">
+                    </div>
+                    <div class="absolute top-2 right-6 w-8 h-8 bg-white/50 rounded-full blur-sm pointer-events-none">
+                    </div>
+                </div>
+
+                <div class="flex gap-2 w-full justify-center">
+                    <button onclick="setBrushColor('#ef4444')"
+                        class="w-8 h-8 rounded-full bg-red-500 hover:scale-110 transition border-2 border-white shadow ring-1 ring-gray-200"></button>
+                    <button onclick="setBrushColor('#3b82f6')"
+                        class="w-8 h-8 rounded-full bg-blue-500 hover:scale-110 transition border-2 border-white shadow ring-1 ring-gray-200"></button>
+                    <button onclick="setBrushColor('#22c55e')"
+                        class="w-8 h-8 rounded-full bg-green-500 hover:scale-110 transition border-2 border-white shadow ring-1 ring-gray-200"></button>
+                    <button onclick="setBrushColor('#eab308')"
+                        class="w-8 h-8 rounded-full bg-yellow-500 hover:scale-110 transition border-2 border-white shadow ring-1 ring-gray-200"></button>
+                    <button onclick="setBrushColor('#ffffff')"
+                        class="w-8 h-8 rounded-full bg-white hover:scale-110 transition border-2 border-gray-200 shadow ring-1 ring-gray-200"></button>
+                    <div class="w-px h-8 bg-gray-300 mx-1"></div>
+
+                    <!-- Color Picker -->
+                    <label class="cursor-pointer relative group">
+                        <input type="color" id="custom-color-input" onchange="setBrushColor(this.value)"
+                            class="opacity-0 absolute inset-0 w-full h-full cursor-pointer">
+                        <div
+                            class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 border-2 border-white shadow ring-1 ring-gray-200 flex items-center justify-center">
+                            <i class="fa-solid fa-plus text-white text-[10px]"></i>
+                        </div>
+                    </label>
+
+                    <div class="w-px h-8 bg-gray-300 mx-1"></div>
+
+                    <!-- Tools -->
+                    <button onclick="setTool('brush')" id="tool-brush"
+                        class="text-gray-600 hover:text-blue-500 font-bold px-2 p-1 rounded transition bg-blue-100">
+                        <i class="fa-solid fa-paintbrush"></i>
+                    </button>
+                    <button onclick="setTool('fill')" id="tool-fill"
+                        class="text-gray-400 hover:text-blue-500 font-bold px-2 p-1 rounded transition">
+                        <i class="fa-solid fa-fill-drip"></i>
+                    </button>
+
+                    <button onclick="clearCanvas()"
+                        class="text-xs text-gray-500 hover:text-red-500 font-bold px-2 ml-2">CLEAR</button>
+                </div>
+            </div>
+
+            <div class="p-4 border-t bg-gray-50 flex gap-2">
+                <button onclick="saveCustomOrnament()"
+                    class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl shadow-md transition transform active:scale-95">
+                    Add to Collection
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: PRESENT BUILDER -->
+    <div id="present-modal"
+        class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden animate-pop-in">
+            <div class="p-4 bg-gray-50 border-b flex justify-between items-center">
+                <h3 class="font-bold text-gray-700">Wrap a Gift</h3>
+                <button onclick="closePresentModal()" class="text-gray-400 hover:text-gray-600"><i
+                        class="fa-solid fa-times text-xl"></i></button>
+            </div>
+
+            <div class="p-6 flex flex-col gap-4">
+                <!-- Preview -->
+                <div class="flex justify-center">
+                    <canvas id="present-preview-canvas" width="120" height="120"></canvas>
+                </div>
+
+                <!-- Controls -->
+                <div>
+                    <label class="text-xs font-bold text-gray-500 uppercase">Box Color</label>
+                    <div class="flex gap-2 mt-1">
+                        <button onclick="updatePresentConfig('box', '#ef4444')"
+                            class="w-8 h-8 rounded bg-red-500 ring-2 ring-transparent focus:ring-blue-400"></button>
+                        <button onclick="updatePresentConfig('box', '#3b82f6')"
+                            class="w-8 h-8 rounded bg-blue-500 ring-2 ring-transparent focus:ring-blue-400"></button>
+                        <button onclick="updatePresentConfig('box', '#22c55e')"
+                            class="w-8 h-8 rounded bg-green-500 ring-2 ring-transparent focus:ring-blue-400"></button>
+                        <button onclick="updatePresentConfig('box', '#a855f7')"
+                            class="w-8 h-8 rounded bg-purple-500 ring-2 ring-transparent focus:ring-blue-400"></button>
+                        <button onclick="updatePresentConfig('box', '#ffffff')"
+                            class="w-8 h-8 rounded bg-white border border-gray-300 ring-2 ring-transparent focus:ring-blue-400"></button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-gray-500 uppercase">Ribbon Color</label>
+                    <div class="flex gap-2 mt-1">
+                        <button onclick="updatePresentConfig('ribbon', '#fbbf24')"
+                            class="w-8 h-8 rounded bg-yellow-400 ring-2 ring-transparent focus:ring-blue-400"></button>
+                        <button onclick="updatePresentConfig('ribbon', '#ef4444')"
+                            class="w-8 h-8 rounded bg-red-500 ring-2 ring-transparent focus:ring-blue-400"></button>
+                        <button onclick="updatePresentConfig('ribbon', '#ffffff')"
+                            class="w-8 h-8 rounded bg-white border border-gray-300 ring-2 ring-transparent focus:ring-blue-400"></button>
+                        <button onclick="updatePresentConfig('ribbon', '#1e293b')"
+                            class="w-8 h-8 rounded bg-slate-800 ring-2 ring-transparent focus:ring-blue-400"></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t bg-gray-50">
+                <button onclick="createPresent()"
+                    class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-md transition">
+                    Wrap & Add
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PHASE 3: LIGHTING CEREMONY OVERLAY -->
+    <div id="ceremony-controls" class="fixed top-24 left-1/2 transform -translate-x-1/2 hidden z-40 text-center w-full">
+        <div class="inline-block bg-black/30 backdrop-blur-md px-6 py-3 rounded-full text-white animate-fade-in">
+            <h2 class="text-3xl festive-font text-yellow-300 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">Merry Christmas!
+            </h2>
+            <div class="mt-2 flex justify-center gap-4">
+                <button onclick="toggleMusic()" id="music-btn"
+                    class="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-full transition">
+                    <i class="fa-solid fa-music"></i>
+                </button>
+                <button onclick="stopCeremony()"
+                    class="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-full transition text-sm">
+                    Keep Decorating
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Game State ---
+        let currentTreeType = '';
+        let decorations = []; // { id, type, style, x, y, customImg, scale, rotation }
+        let nextId = 1;
+        let selectedDecorationId = null;
+        let isGarlandMode = false;
+        let activeGarlandPoints = [];
+        let garlands = []; // { id, points: [{x,y}, ...], type: 'gold' }
+        let isDragging = false;
+        let dragItem = null;
+        let activeDragElement = null; // The DOM element being dragged
+        let fireworksInterval = null;
+        let animationFrame = null;
+
+        // Canvas Builder State
+        const canvas = document.getElementById('paint-canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        let isDrawing = false;
+        let brushColor = '#ef4444';
+        let currentTool = 'brush'; // 'brush' or 'fill'
+
+        // --- Initialization ---
+        function initBuilder() {
+            // Fill canvas with base color
+            ctx.fillStyle = '#f3f4f6';
+            ctx.beginPath();
+            ctx.arc(100, 100, 100, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Mouse Events
+            canvas.addEventListener('mousedown', startPaint);
+            canvas.addEventListener('mousemove', paint);
+            canvas.addEventListener('mouseup', endPaint);
+            canvas.addEventListener('mouseleave', endPaint);
+
+            // Touch Events
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                startPaint({ clientX: touch.clientX, clientY: touch.clientY });
+            }, { passive: false });
+
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                paint({ clientX: touch.clientX, clientY: touch.clientY });
+            }, { passive: false });
+
+            canvas.addEventListener('touchend', endPaint);
+        }
+
+        function setBrushColor(color) {
+            brushColor = color;
+            // Update UI if needed (could highlight the active color btn)
+        }
+
+        function setTool(tool) {
+            currentTool = tool;
+
+            // UI Updates
+            const brushBtn = document.getElementById('tool-brush');
+            const fillBtn = document.getElementById('tool-fill');
+
+            if (tool === 'brush') {
+                brushBtn.classList.add('bg-blue-100', 'text-blue-600');
+                brushBtn.classList.remove('text-gray-400');
+                fillBtn.classList.remove('bg-blue-100', 'text-blue-600');
+                fillBtn.classList.add('text-gray-400');
+                canvas.parentElement.classList.add('cursor-crosshair');
+                canvas.parentElement.classList.remove('cursor-crosshair'); // Reset cursor based on tool? 
+                canvas.style.cursor = 'crosshair';
+            } else {
+                fillBtn.classList.add('bg-blue-100', 'text-blue-600');
+                fillBtn.classList.remove('text-gray-400');
+                brushBtn.classList.remove('bg-blue-100', 'text-blue-600');
+                brushBtn.classList.add('text-gray-400');
+                canvas.style.cursor = `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="black"><path d="M19 11.5c-1.1 0-2 .9-2 2 0 .55.22 1.05.59 1.41l-4.59 4.59c-.59.59-.59 1.54 0 2.12l4.59 4.59c.59.59 1.54.59 2.12 0l4.59-4.59c.59-.59.59-1.54 0-2.12l-4.59-4.59c-.37-.37-.87-.59-1.42-.59zm-3-8.5c-1.1 0-2 .9-2 2 0 .55.22 1.05.59 1.41l-10.59 10.59c-.59.59-.59 1.54 0 2.12l4.59 4.59c.59.59 1.54.59 2.12 0l10.59-10.59c.37-.37.87-.59 1.42-.59-1.1 0-2-.9-2-2s.9-2 2-2-5.71 0-5.71 0z"/></svg>') 0 20, auto`; // Simplify cursor for now
+                canvas.style.cursor = 'alias';
+            }
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = '#f3f4f6';
+            ctx.beginPath();
+            ctx.arc(100, 100, 100, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16),
+                a: 255
+            } : null;
+        }
+
+        function floodFill(startX, startY, fillColorHex) {
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
+            const width = imgData.width;
+            const height = imgData.height;
+
+            const fillColor = hexToRgb(fillColorHex);
+            if (!fillColor) return;
+
+            const startPos = (startY * width + startX) * 4;
+            const startColor = {
+                r: data[startPos],
+                g: data[startPos + 1],
+                b: data[startPos + 2],
+                a: data[startPos + 3]
+            };
+
+            // Don't fill if color is same
+            if (startColor.r === fillColor.r && startColor.g === fillColor.g && startColor.b === fillColor.b) return;
+
+            const pixelStack = [[startX, startY]];
+
+            const matchStartColor = (pos) => {
+                return data[pos] === startColor.r &&
+                    data[pos + 1] === startColor.g &&
+                    data[pos + 2] === startColor.b;
+            };
+
+            const colorPixel = (pos) => {
+                data[pos] = fillColor.r;
+                data[pos + 1] = fillColor.g;
+                data[pos + 2] = fillColor.b;
+                data[pos + 3] = 255;
+            };
+
+            while (pixelStack.length) {
+                const newPos = pixelStack.pop();
+                let x = newPos[0];
+                let y = newPos[1];
+                let pixelPos = (y * width + x) * 4;
+
+                while (y-- >= 0 && matchStartColor(pixelPos)) {
+                    pixelPos -= width * 4;
+                }
+                pixelPos += width * 4;
+                ++y;
+
+                let reachLeft = false;
+                let reachRight = false;
+
+                while (y++ < height - 1 && matchStartColor(pixelPos)) {
+                    colorPixel(pixelPos);
+
+                    if (x > 0) {
+                        if (matchStartColor(pixelPos - 4)) {
+                            if (!reachLeft) {
+                                pixelStack.push([x - 1, y]);
+                                reachLeft = true;
+                            }
+                        } else if (reachLeft) {
+                            reachLeft = false;
+                        }
+                    }
+
+                    if (x < width - 1) {
+                        if (matchStartColor(pixelPos + 4)) {
+                            if (!reachRight) {
+                                pixelStack.push([x + 1, y]);
+                                reachRight = true;
+                            }
+                        } else if (reachRight) {
+                            reachRight = false;
+                        }
+                    }
+
+                    pixelPos += width * 4;
+                }
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+
+            // Re-apply circular clip visually by redrawing the border or just ensuring transparency outside?
+            // Actually flood fill will fill the square buffer, but our CSS rounded-full handles the visual circle.
+            // But if we want to be clean, we can re-composite the circle. 
+            // For now, css rounded-full is sufficient for simple usage.
+        }
+
+        function startPaint(e) {
+            if (currentTool === 'fill') {
+                const rect = canvas.getBoundingClientRect();
+                const x = Math.floor((e.clientX - rect.left) * (canvas.width / rect.width));
+                const y = Math.floor((e.clientY - rect.top) * (canvas.height / rect.height));
+                floodFill(x, y, brushColor);
+                return;
+            }
+
+            isDrawing = true;
+            paint(e);
+        }
+
+        function paint(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            // Clip to circle
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(100, 100, 100, 0, Math.PI * 2);
+            ctx.clip();
+
+            ctx.beginPath();
+            ctx.lineCap = 'round';
+            ctx.lineWidth = 15;
+            ctx.strokeStyle = brushColor;
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+
+            ctx.restore();
+        }
+
+        function endPaint() {
+            isDrawing = false;
+            ctx.beginPath(); // Reset path
+        }
+
+        function openBuilder() {
+            document.getElementById('builder-modal').classList.remove('hidden');
+            clearCanvas();
+        }
+
+        function closeBuilder() {
+            document.getElementById('builder-modal').classList.add('hidden');
+        }
+
+        function saveCustomOrnament() {
+            const dataUrl = canvas.toDataURL();
+
+            // Add to palette UI
+            const paletteContainer = document.getElementById('custom-palette');
+            const div = document.createElement('div');
+            div.className = "palette-item cursor-grab hover:scale-110 transition active:scale-95 shrink-0";
+            div.innerHTML = `<img src="${dataUrl}" class="w-12 h-12 drop-shadow-sm rounded-full">`;
+
+            // Add event listeners manually since it's dynamic
+            div.onmousedown = (e) => startDrag(e, 'custom', 'custom', dataUrl);
+            div.ontouchstart = (e) => startDrag(e, 'custom', 'custom', dataUrl);
+
+            paletteContainer.appendChild(div);
+            closeBuilder();
+        }
+
+        initBuilder();
+
+        // --- Tree Logic ---
+        // CHANGED: preserveAspectRatio="xMidYMid meet" to ensure the whole tree fits and isn't cropped.
+        const trees = {
+            'classic': `
+                <svg viewBox="0 0 100 160" class="w-full h-full drop-shadow-2xl" preserveAspectRatio="xMidYMid meet">
+                    <defs>
+                        <linearGradient id="treeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#14532d;stop-opacity:1" />
+                            <stop offset="50%" style="stop-color:#16a34a;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#14532d;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <rect x="42" y="110" width="16" height="50" fill="#451a03" />
+                    <path d="M10 110 L90 110 L50 60 Z" fill="url(#treeGrad)" />
+                    <path d="M20 75 L80 75 L50 35 Z" fill="url(#treeGrad)" />
+                    <path d="M30 45 L70 45 L50 5 Z" fill="url(#treeGrad)" />
+                </svg>`,
+            'bushy': `
+                <svg viewBox="0 0 100 160" class="w-full h-full drop-shadow-2xl" preserveAspectRatio="xMidYMid meet">
+                    <defs>
+                         <radialGradient id="bushyGrad" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                            <stop offset="0%" style="stop-color:#22c55e;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#15803d;stop-opacity:1" />
+                        </radialGradient>
+                    </defs>
+                    <rect x="42" y="110" width="16" height="50" fill="#451a03" />
+                    <path d="M50 5 C20 40, 10 70, 10 110 L90 110 C90 70, 80 40, 50 5 Z" fill="url(#bushyGrad)" />
+                    <path d="M50 5 C30 40, 20 60, 20 90 L80 90 C80 60, 70 40, 50 5 Z" fill="rgba(255,255,255,0.1)" />
+                </svg>`,
+            'modern': `
+                <svg viewBox="0 0 100 160" class="w-full h-full drop-shadow-2xl" preserveAspectRatio="xMidYMid meet">
+                     <defs>
+                        <linearGradient id="modernGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style="stop-color:#065f46;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#022c22;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <rect x="45" y="110" width="10" height="50" fill="#451a03" />
+                    <polygon points="50,5 90,110 10,110" fill="url(#modernGrad)" />
+                    <path d="M50 5 L90 110 L50 110 Z" fill="rgba(255,255,255,0.05)" />
+                </svg>`
+        };
+
+        function selectTree(type) {
+            currentTreeType = type;
+            document.getElementById('phase-select').classList.add('hidden');
+            document.getElementById('phase-decorate').classList.remove('hidden');
+            document.getElementById('active-tree').innerHTML = trees[type];
+            // Brief animation for tree appearing
+            const tree = document.getElementById('tree-wrapper');
+            tree.style.transform = 'scale(0.8) translateY(50px)';
+            tree.style.opacity = '0';
+            setTimeout(() => {
+                tree.style.transform = 'scale(1) translateY(0)';
+                tree.style.opacity = '1';
+            }, 50);
+        }
+
+        function resetGame() {
+            document.getElementById('phase-select').classList.remove('hidden');
+            document.getElementById('phase-decorate').classList.add('hidden');
+            stopCeremony();
+            clearDecorations();
+            document.getElementById('custom-palette').innerHTML = ''; // Clear custom ones
+            isGarlandMode = false;
+            activeGarlandPoints = [];
+            garlands = [];
+            renderGarlands();
+            document.getElementById('garland-btn').classList.remove('ring-4', 'ring-yellow-400');
+        }
+
+        function clearDecorations() {
+            decorations = [];
+            garlands = [];
+            activeGarlandPoints = [];
+            renderDecorations();
+            renderGarlands();
+            document.getElementById('auto-lights-layer').innerHTML = '';
+        }
+
+        // --- Garland System ---
+        function toggleGarlandMode() {
+            isGarlandMode = !isGarlandMode;
+            const btn = document.getElementById('garland-btn');
+
+            if (isGarlandMode) {
+                btn.classList.add('ring-4', 'ring-yellow-400');
+                deselectAll(); // Clear any item selection
+            } else {
+                finishGarland();
+                btn.classList.remove('ring-4', 'ring-yellow-400');
+            }
+        }
+
+        function addGarlandPoint(x, y) {
+            activeGarlandPoints.push({ x, y });
+
+            // If this is the 2nd point or more, we create a segment
+            if (activeGarlandPoints.length > 0) {
+                renderGarlands();
+            }
+        }
+
+        function finishGarland() {
+            if (activeGarlandPoints.length >= 2) {
+                garlands.push({
+                    id: nextId++,
+                    points: [...activeGarlandPoints],
+                    type: 'gold'
+                });
+            }
+            activeGarlandPoints = [];
+            renderGarlands();
+        }
+
+        function renderGarlands() {
+            const svg = document.getElementById('garland-layer');
+            svg.innerHTML = '';
+
+            // Helper to draw a curve
+            const drawCurve = (points, isPreview = false) => {
+                let d = `M ${points[0].x} ${points[0].y}`;
+
+                for (let i = 0; i < points.length - 1; i++) {
+                    const p1 = points[i];
+                    const p2 = points[i + 1];
+
+                    // Controlled droop based on distance
+                    const midX = (p1.x + p2.x) / 2;
+                    const midY = (p1.y + p2.y) / 2;
+                    const dx = p1.x - p2.x;
+                    const dy = p1.y - p2.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const droop = dist * 0.5; // Droop factor
+
+                    const cpX = midX;
+                    const cpY = midY + droop;
+
+                    d += ` Q ${cpX} ${cpY} ${p2.x} ${p2.y}`;
+                }
+
+                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                path.setAttribute("d", d);
+                path.setAttribute("fill", "none");
+                path.setAttribute("stroke", isPreview ? "#fbbf24" : "#f59e0b");
+                path.setAttribute("stroke-width", isPreview ? "1" : "3");
+                path.setAttribute("stroke-linecap", "round");
+                path.setAttribute("filter", "drop-shadow(0 2px 2px rgba(0,0,0,0.3))");
+
+                if (isPreview) {
+                    path.setAttribute("stroke-dasharray", "5,5");
+                }
+
+                svg.appendChild(path);
+            };
+
+            // Render saved garlands
+            garlands.forEach(g => drawCurve(g.points));
+
+            // Render active points
+            if (activeGarlandPoints.length > 0) {
+                if (activeGarlandPoints.length >= 2) {
+                    drawCurve(activeGarlandPoints, true);
+                }
+
+                activeGarlandPoints.forEach(p => {
+                    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    circle.setAttribute("cx", p.x);
+                    circle.setAttribute("cy", p.y);
+                    circle.setAttribute("r", "1.5");
+                    circle.setAttribute("fill", "red");
+                    svg.appendChild(circle);
+                });
+            }
+        }
+
+        // --- Drag and Drop System ---
+        const treeZone = document.getElementById('tree-wrapper');
+        const decLayer = document.getElementById('decoration-layer');
+
+        function startDrag(e, type, style, customImg = null) {
+            e.preventDefault();
+
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            activeDragElement = document.createElement('div');
+            activeDragElement.style.position = 'fixed';
+            activeDragElement.style.left = clientX + 'px';
+            activeDragElement.style.top = clientY + 'px';
+            activeDragElement.style.width = '48px';
+            activeDragElement.style.height = '48px';
+            activeDragElement.style.pointerEvents = 'none';
+            activeDragElement.style.zIndex = '1000';
+            activeDragElement.style.transform = 'translate(-50%, -50%) scale(1.2)';
+
+            if (type === 'custom' && customImg) {
+                activeDragElement.innerHTML = `<img src="${customImg}" class="w-full h-full drop-shadow-md">`;
+            } else if (type === 'ball') {
+                const colors = { 'red': '#ef4444', 'gold': '#eab308', 'blue': '#3b82f6' };
+                activeDragElement.innerHTML = `<svg viewBox="0 0 24 24" class="w-full h-full"><circle cx="12" cy="12" r="10" fill="${colors[style]}"/><circle cx="8" cy="8" r="3" fill="rgba(255,255,255,0.4)"/><rect x="10" y="0" width="4" height="4" fill="#666"/></svg>`;
+            } else if (type === 'star') {
+                activeDragElement.innerHTML = `<svg viewBox="0 0 24 24" class="w-full h-full"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#facc15"/></svg>`;
+            } else if (type === 'cane') {
+                activeDragElement.innerHTML = `<svg viewBox="0 0 24 24" class="w-full h-full"><path d="M7 16v-6c0-3.31 2.69-6 6-6s6 2.69 6 6h-3c0-1.66-1.34-3-3-3s-3 1.34-3 3v6H7z" fill="#ef4444" transform="rotate(180 12 12)"/></svg>`;
+            } else if (type === 'light') {
+                const color = style === 'warm' ? '#fde047' : '#ec4899';
+                const stroke = style === 'warm' ? '#eab308' : '#db2777';
+                activeDragElement.innerHTML = `<svg viewBox="0 0 24 24" class="w-full h-full"><path d="M12 2 C12 2 16 8 16 14 C16 19 12 22 12 22 C12 22 8 19 8 14 C8 8 12 2 12 2 Z" fill="${color}" stroke="${stroke}" stroke-width="1"/></svg>`;
+            }
+
+            document.body.appendChild(activeDragElement);
+
+            dragItem = { type, style, customImg };
+            isDragging = true;
+
+            document.addEventListener('mousemove', onDragMove);
+            document.addEventListener('touchmove', onDragMove, { passive: false });
+            document.addEventListener('mouseup', onDragEnd);
+            document.addEventListener('touchend', onDragEnd);
+        }
+
+        function onDragMove(e) {
+            if (!isDragging || !activeDragElement) return;
+            e.preventDefault();
+
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            activeDragElement.style.left = clientX + 'px';
+            activeDragElement.style.top = clientY + 'px';
+        }
+
+        function onDragEnd(e) {
+            if (!isDragging) return;
+
+            const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+            const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+
+            const rect = decLayer.getBoundingClientRect();
+
+            if (clientX >= rect.left && clientX <= rect.right &&
+                clientY >= rect.top && clientY <= rect.bottom) {
+
+                const relX = ((clientX - rect.left) / rect.width) * 100;
+                const relY = ((clientY - rect.top) / rect.height) * 100;
+
+                addDecoration(relX, relY);
+            }
+
+            activeDragElement.remove();
+            activeDragElement = null;
+            isDragging = false;
+            dragItem = null;
+
+            document.removeEventListener('mousemove', onDragMove);
+            document.removeEventListener('touchmove', onDragMove);
+            document.removeEventListener('mouseup', onDragEnd);
+            document.removeEventListener('touchend', onDragEnd);
+        }
+
+        function addDecoration(x, y) {
+            decorations.push({
+                id: nextId++,
+                ...dragItem,
+                x, y,
+                scale: 1,
+                rotation: 0
+            });
+            renderDecorations();
+        }
+
+        function selectDecoration(id, event) {
+            if (event) event.stopPropagation();
+            selectedDecorationId = id;
+
+            const dec = decorations.find(d => d.id === id);
+            if (!dec) return;
+
+            // Show UI
+            const ui = document.getElementById('selection-controls');
+            ui.classList.remove('hidden');
+            ui.classList.add('flex');
+
+            // Set input values
+            document.getElementById('scale-control').value = dec.scale;
+            document.getElementById('rotate-control').value = dec.rotation;
+            renderDecorations();
+        }
+
+        function deselectAll(event) {
+            if (event && event.target.closest('.palette-item') || event && event.target.closest('#selection-controls')) return;
+
+            // Garland Logic
+            if (isGarlandMode && event) {
+                const rect = document.getElementById('tree-wrapper').getBoundingClientRect();
+                // Use clientX/Y from event
+                const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+                const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+
+                const x = ((clientX - rect.left) / rect.width) * 100;
+                const y = ((clientY - rect.top) / rect.height) * 100;
+
+                // Constrain loosely
+                if (x > -20 && x < 120 && y > -20 && y < 120) {
+                    addGarlandPoint(x, y);
+                }
+                return;
+            }
+
+            selectedDecorationId = null;
+            const ui = document.getElementById('selection-controls');
+            ui.classList.add('hidden');
+            ui.classList.remove('flex');
+            renderDecorations();
+        }
+
+        function updateTransform() {
+            if (!selectedDecorationId) return;
+
+            const scale = parseFloat(document.getElementById('scale-control').value);
+            const rotation = parseInt(document.getElementById('rotate-control').value);
+
+            const dec = decorations.find(d => d.id === selectedDecorationId);
+            if (dec) {
+                dec.scale = scale;
+                dec.rotation = rotation;
+                renderDecorations();
+            }
+        }
+
+        function deleteSelected() {
+            if (selectedDecorationId) {
+                removeDecoration(selectedDecorationId);
+                selectedDecorationId = null;
+                document.getElementById('selection-controls').classList.add('hidden');
+            }
+        }
+
+        function removeDecoration(id) {
+            decorations = decorations.filter(d => d.id !== id);
+            renderDecorations();
+        }
+
+        function renderDecorations() {
+            decLayer.innerHTML = '';
+            decorations.forEach(dec => {
+                const el = document.createElement('div');
+                el.className = 'absolute cursor-pointer w-8 h-8 md:w-10 md:h-10 transform -translate-x-1/2 -translate-y-1/2 touch-manipulation transition-transform duration-75';
+                el.style.left = dec.x + '%';
+                el.style.top = dec.y + '%';
+                // Apply transform
+                el.style.transform = `translate(-50%, -50%) rotate(${dec.rotation}deg) scale(${dec.scale})`;
+
+                // Selection highlight
+                if (selectedDecorationId === dec.id) {
+                    el.style.filter = "drop-shadow(0 0 5px cyan)";
+                    el.style.zIndex = "50";
+                }
+
+                let inner = '';
+                if (dec.type === 'custom') {
+                    inner = `<img src="${dec.customImg}" class="w-full h-full drop-shadow-sm">`;
+                } else if (dec.type === 'ball') {
+                    const colors = { 'red': '#ef4444', 'gold': '#eab308', 'blue': '#3b82f6' };
+                    inner = `<svg viewBox="0 0 24 24" class="w-full h-full"><circle cx="12" cy="12" r="10" fill="${colors[dec.style]}"/><circle cx="8" cy="8" r="3" fill="rgba(255,255,255,0.4)"/><rect x="10" y="0" width="4" height="4" fill="#666"/></svg>`;
+                } else if (dec.type === 'star') {
+                    inner = `<svg viewBox="0 0 24 24" class="w-full h-full"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#facc15"/></svg>`;
+                } else if (dec.type === 'cane') {
+                    inner = `<svg viewBox="0 0 24 24" class="w-full h-full"><path d="M7 16v-6c0-3.31 2.69-6 6-6s6 2.69 6 6h-3c0-1.66-1.34-3-3-3s-3 1.34-3 3v6H7z" fill="#ef4444" transform="rotate(180 12 12)"/></svg>`;
+                } else if (dec.type === 'light') {
+                    const color = dec.style === 'warm' ? '#fde047' : '#ec4899';
+                    const stroke = dec.style === 'warm' ? '#eab308' : '#db2777';
+                    const glowClass = document.body.classList.contains('night-mode') ? 'light-glow' : '';
+                    el.classList.add('transition-colors', 'duration-1000');
+                    inner = `<svg viewBox="0 0 24 24" class="w-full h-full ${glowClass}" style="color:${color}"><path d="M12 2 C12 2 16 8 16 14 C16 19 12 22 12 22 C12 22 8 19 8 14 C8 8 12 2 12 2 Z" fill="${color}" stroke="${stroke}" stroke-width="1"/></svg>`;
+                }
+
+                el.innerHTML = inner;
+                // Click to select
+                el.onmousedown = (e) => selectDecoration(dec.id, e);
+                el.ontouchstart = (e) => selectDecoration(dec.id, e);
+
+                decLayer.appendChild(el);
+            });
+        }
+
+        // --- Ceremony Logic ---
+        function startCeremony() {
+            document.body.classList.add('night-mode');
+            document.getElementById('controls-panel').classList.add('translate-y-full');
+            document.getElementById('ceremony-controls').classList.remove('hidden');
+            document.getElementById('snow-container').classList.remove('hidden');
+            document.getElementById('main-header').classList.add('opacity-0', 'pointer-events-none');
+
+            createSnow();
+            generateAutoLights();
+            renderDecorations();
+            startFireworks();
+        }
+
+        function stopCeremony() {
+            document.body.classList.remove('night-mode');
+            document.getElementById('controls-panel').classList.remove('translate-y-full');
+            document.getElementById('ceremony-controls').classList.add('hidden');
+            document.getElementById('snow-container').classList.add('hidden');
+            document.getElementById('main-header').classList.remove('opacity-0', 'pointer-events-none');
+
+            document.getElementById('snow-container').innerHTML = '';
+            document.getElementById('auto-lights-layer').innerHTML = ''; // Clear auto lights
+            renderDecorations();
+            stopFireworks();
+        }
+
+        function createSnow() {
+            const container = document.getElementById('snow-container');
+            container.innerHTML = '';
+            for (let i = 0; i < 50; i++) {
+                const flake = document.createElement('div');
+                flake.className = 'snowflake';
+                flake.innerHTML = '❅';
+                flake.style.left = Math.random() * 100 + '%';
+                flake.style.animationDelay = Math.random() * 5 + 's, ' + Math.random() * 2 + 's';
+                flake.style.fontSize = (Math.random() * 10 + 10) + 'px';
+                flake.style.opacity = Math.random();
+                container.appendChild(flake);
+            }
+        }
+
+        // --- Automatic Lights Generation ---
+        function generateAutoLights() {
+            const container = document.getElementById('auto-lights-layer');
+            container.innerHTML = '';
+
+            const colors = ['#fde047', '#f87171', '#60a5fa', '#a78bfa', '#34d399'];
+
+            // 1. Generate "Ringed" Strings
+            // We'll create draped sine waves
+            const numStrings = 4;
+            const startY = 15; // Top %
+            const endY = 85;   // Bottom %
+            const stepY = (endY - startY) / numStrings;
+
+            for (let i = 0; i < numStrings; i++) {
+                const layerY = startY + (i * stepY);
+                // Create a string of lights
+                for (let t = 0; t <= Math.PI; t += 0.15) {
+                    const treeWidthAtY = ((layerY + (Math.sin(t) * 5) - 5) / 85) * 80; // Rough width calc based on tree triangle
+                    const xCenter = 50;
+
+                    // Arc logic
+                    const x = xCenter + (Math.cos(t) * (treeWidthAtY / 2));
+                    const y = layerY + (Math.sin(t) * 5) + (i * 1.5); // Draping effect
+
+                    // Only place if mostly inside bounds
+                    if (y < 85) {
+                        const light = document.createElement('div');
+                        light.className = 'auto-light light-glow';
+                        light.style.left = x + '%';
+                        light.style.top = y + '%';
+                        light.style.width = '6px';
+                        light.style.height = '6px';
+                        light.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                        light.style.boxShadow = `0 0 4px ${light.style.backgroundColor}`;
+                        light.style.animationDelay = Math.random() + 's';
+                        container.appendChild(light);
+                    }
+                }
+            }
+
+            // 2. Generate Random Twinkle Filler Lights
+            for (let i = 0; i < 60; i++) {
+                const y = 10 + Math.random() * 75; // 10% to 85% height
+                const widthAtY = (y / 100) * 80; // Triangle approximation
+                const xOffset = (Math.random() - 0.5) * widthAtY;
+                const x = 50 + xOffset;
+
+                const light = document.createElement('div');
+                light.className = 'auto-light light-glow';
+                light.style.left = x + '%';
+                light.style.top = y + '%';
+                light.style.width = '4px';
+                light.style.height = '4px';
+                light.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                light.style.animationDelay = Math.random() * 2 + 's';
+                container.appendChild(light);
+            }
+        }
+
+        let audio = null;
+        function toggleMusic() {
+            const btn = document.getElementById('music-btn');
+            btn.classList.toggle('text-yellow-300');
+            btn.classList.toggle('scale-110');
+        }
+
+        // --- Fireworks System ---
+        const fwCanvas = document.getElementById('fireworks-canvas');
+        const fwCtx = fwCanvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            fwCanvas.width = window.innerWidth;
+            fwCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = Math.random() * 4 + 1;
+                this.vx = Math.cos(angle) * velocity;
+                this.vy = Math.sin(angle) * velocity;
+                this.life = 100;
+                this.alpha = 1;
+                this.gravity = 0.05;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += this.gravity;
+                this.life--;
+                this.alpha -= 0.015;
+            }
+
+            draw() {
+                fwCtx.globalAlpha = Math.max(0, this.alpha);
+                fwCtx.fillStyle = this.color;
+                fwCtx.beginPath();
+                fwCtx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                fwCtx.fill();
+            }
+        }
+
+        class Rocket {
+            constructor() {
+                this.x = Math.random() * fwCanvas.width;
+                this.y = fwCanvas.height;
+                this.color = `hsl(${Math.random() * 360}, 100%, 60%)`;
+                this.vx = (Math.random() - 0.5) * 4;
+                this.vy = -(Math.random() * 5 + 10);
+                this.exploded = false;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.15; // Gravity
+
+                // Explode at peak
+                if (this.vy >= -1 && !this.exploded) {
+                    this.explode();
+                    return false; // Remove rocket
+                }
+                return true; // Keep rocket
+            }
+
+            draw() {
+                fwCtx.globalAlpha = 1;
+                fwCtx.fillStyle = this.color;
+                fwCtx.beginPath();
+                fwCtx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+                fwCtx.fill();
+            }
+
+            explode() {
+                for (let i = 0; i < 40; i++) {
+                    particles.push(new Particle(this.x, this.y, this.color));
+                }
+            }
+        }
+
+        let rockets = [];
+
+        function startFireworks() {
+            rockets = [];
+            particles = [];
+
+            function loop() {
+                // Clear canvas with trail effect
+                fwCtx.globalAlpha = 0.1;
+                fwCtx.fillStyle = 'rgba(0,0,0,0)'; // Transparent clear
+                fwCtx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
+
+                // Randomly spawn rockets
+                if (Math.random() < 0.05) {
+                    rockets.push(new Rocket());
+                }
+
+                // Update Rockets
+                rockets = rockets.filter(r => {
+                    r.draw();
+                    return r.update();
+                });
+
+                // Update Particles
+                particles = particles.filter(p => {
+                    p.draw();
+                    p.update();
+                    return p.life > 0;
+                });
+
+                animationFrame = requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        function stopFireworks() {
+            if (animationFrame) cancelAnimationFrame(animationFrame);
+            fwCtx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
+        }
+
+        // --- Utils ---
+        document.addEventListener('contextmenu', event => event.preventDefault());
+
+        // --- Present Builder ---
+        let presentConfig = { box: '#ef4444', ribbon: '#fbbf24' };
+
+        function openPresentModal() {
+            document.getElementById('present-modal').classList.remove('hidden');
+            renderPresentPreview();
+        }
+
+        function closePresentModal() {
+            document.getElementById('present-modal').classList.add('hidden');
+        }
+
+        function updatePresentConfig(key, val) {
+            presentConfig[key] = val;
+            renderPresentPreview();
+        }
+
+        function renderPresentPreview() {
+            const cvs = document.getElementById('present-preview-canvas');
+            const c = cvs.getContext('2d');
+            c.clearRect(0, 0, 120, 120);
+
+            // Draw Box
+            c.fillStyle = presentConfig.box;
+            c.fillRect(20, 40, 80, 60);
+
+            // Draw Ribbon (Vertical)
+            c.fillStyle = presentConfig.ribbon;
+            c.fillRect(52, 40, 16, 60);
+
+            // Draw Ribbon (Horizontal)
+            c.fillRect(20, 62, 80, 16);
+
+            // Bow
+            c.beginPath();
+            c.moveTo(60, 40);
+            c.bezierCurveTo(60, 10, 20, 10, 55, 40);
+            c.bezierCurveTo(90, 10, 60, 10, 60, 40);
+            c.fill();
+        }
+
+        function createPresent() {
+            const cvs = document.getElementById('present-preview-canvas');
+            const dataUrl = cvs.toDataURL();
+
+            // Add to palette (reuse custom logic)
+            const paletteContainer = document.getElementById('custom-palette');
+            const div = document.createElement('div');
+            div.className = "palette-item cursor-grab hover:scale-110 transition active:scale-95 shrink-0";
+            div.innerHTML = `<img src="${dataUrl}" class="w-12 h-12 drop-shadow-sm">`;
+
+            div.onmousedown = (e) => startDrag(e, 'custom', 'present', dataUrl);
+            div.ontouchstart = (e) => startDrag(e, 'custom', 'present', dataUrl);
+
+            paletteContainer.appendChild(div);
+            closePresentModal();
+        }
+
+        // --- Snapshot System ---
+        function takeSnapshot() {
+            // Hide UI temporarily
+            const originalBg = document.body.style.background;
+
+            const element = document.getElementById('workspace');
+
+            // We want to capture the whole tree, so we might need to be careful about background.
+            // But html2canvas captures element. 
+            // We'll capture the #tree-wrapper specifically to avoid UI noise, or the whole body?
+            // User probably wants the full "scene" but without the palette.
+            // capturing #workspace is best.
+
+            html2canvas(element, {
+                backgroundColor: null, // Transparent
+                scale: 2 // High res
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'MyChristmasTree.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        }
+
+    </script>
+</body>
+
+</html>
