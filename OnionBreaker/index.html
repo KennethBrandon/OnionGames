@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JV4DNLEE4R"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-JV4DNLEE4R');
+    </script>
+
+    <title>Onion Breaker - Mustafar Edition</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #1a0505;
+            /* Deep dark red base */
+            touch-action: none;
+            /* Prevent default touch scrolling */
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            box-shadow: 0 0 50px rgba(255, 69, 0, 0.5);
+        }
+
+        #uiLayer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            /* Let clicks pass through to canvas when playing */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: #ffaa00;
+            text-shadow: 4px 4px 0px #3d0000;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #ff4500;
+            animation: pulse 2s infinite;
+        }
+
+        p {
+            font-size: 1.2rem;
+            line-height: 1.5;
+            margin-bottom: 30px;
+            color: #fff;
+        }
+
+        button {
+            pointer-events: auto;
+            background: linear-gradient(to bottom, #ff8c00, #ff4500);
+            border: 4px solid #3d0000;
+            color: #3d0000;
+            padding: 20px 40px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: transform 0.1s;
+            text-transform: uppercase;
+        }
+
+        button:active {
+            transform: scale(0.95);
+            background: linear-gradient(to bottom, #ff4500, #cc3700);
+        }
+
+        @keyframes pulse {
+            0% {
+                text-shadow: 0 0 10px #ff4500;
+                transform: scale(1);
+            }
+
+            50% {
+                text-shadow: 0 0 25px #ff8c00;
+                transform: scale(1.05);
+            }
+
+            100% {
+                text-shadow: 0 0 10px #ff4500;
+                transform: scale(1);
+            }
+        }
+
+        /* Debug Menu */
+        #debugMenu {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ff4500;
+            padding: 15px;
+            color: #fff;
+            font-size: 0.7rem;
+            border-radius: 5px;
+            pointer-events: auto;
+            z-index: 1000;
+            min-width: 200px;
+        }
+
+        #debugMenu h3 {
+            margin: 0 0 10px 0;
+            font-size: 0.8rem;
+            color: #ff8c00;
+            text-shadow: 1px 1px 0px #000;
+        }
+
+        #debugMenu label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.6rem;
+        }
+
+        #debugMenu input[type="range"] {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        #debugMenu .value {
+            color: #ffaa00;
+            font-weight: bold;
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            p {
+                font-size: 0.8rem;
+                padding: 0 20px;
+            }
+
+            button {
+                padding: 15px 30px;
+                font-size: 1rem;
+            }
+
+            #debugMenu {
+                top: 10px;
+                right: 10px;
+                font-size: 0.6rem;
+                padding: 10px;
+                min-width: 150px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div id="uiLayer">
+            <div id="startScreen">
+                <h1>LAVA BREAKER</h1>
+                <p>Help the Onion survive the heat!<br>Destroy the bricks.</p>
+                <button id="startBtn">Play Now</button>
+            </div>
+            <div id="gameOverScreen" class="hidden">
+                <h1>GAME OVER</h1>
+                <p id="finalScore">Score: 0</p>
+                <button id="restartBtn">Try Again</button>
+            </div>
+            <div id="winScreen" class="hidden">
+                <h1>VICTORY!</h1>
+                <p>The Onion reigns supreme!</p>
+                <button id="playAgainBtn">Play Again</button>
+            </div>
+            <div id="levelCompleteScreen" class="hidden">
+                <h1>LEVEL COMPLETE!</h1>
+                <p>Great job! Get ready for the next challenge.</p>
+                <button id="nextLevelBtn">Next Level</button>
+            </div>
+        </div>
+        <div id="debugMenu" class="hidden">
+            <h3>DEBUG MENU</h3>
+            <label>
+                Speed: <span class="value" id="speedValue">1.9x</span>
+            </label>
+            <input type="range" id="speedSlider" min="0.1" max="5" step="0.1" value="1.9">
+            <label>
+                Level: <span class="value" id="levelValue">1</span>
+            </label>
+            <input type="range" id="levelSlider" min="1" max="20" step="1" value="1">
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Game Configuration
+         */
+        const config = {
+            paddleSpeed: 8,
+            ballSpeed: 6,
+            brickRows: 5,
+            brickCols: 8,
+            lives: 3,
+            wallOffset: 5,  // Wall boundary - matches brick offsetLeft
+            speedMultiplier: 1.9,  // For debug menu
+            levelSpeedIncrease: 0.05
+        };
+
+        // Check for debug mode
+        const urlParams = new URLSearchParams(window.location.search);
+        const debugMode = urlParams.get('d') === 't';
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // UI Elements
+        const uiLayer = document.getElementById('uiLayer');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const winScreen = document.getElementById('winScreen');
+        const startBtn = document.getElementById('startBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const playAgainBtn = document.getElementById('playAgainBtn');
+        const nextLevelBtn = document.getElementById('nextLevelBtn');
+        const levelCompleteScreen = document.getElementById('levelCompleteScreen');
+        const finalScoreEl = document.getElementById('finalScore');
+        const debugMenu = document.getElementById('debugMenu');
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValue = document.getElementById('speedValue');
+        const levelSlider = document.getElementById('levelSlider');
+        const levelValue = document.getElementById('levelValue');
+
+        // Game State
+        let animationId;
+        let lastTime = 0;
+        let score = 0;
+        let lives = config.lives;
+        let level = 1;
+        let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER, WON, LEVEL_COMPLETE
+        let particles = []; // For lava ash/sparks
+        let powerups = []; // Falling onion powerups
+        let flashTime = 0; // For screen flash effect
+        let scoreMilestones = new Set(); // Track which score milestones we've logged
+
+        // Extra Lives Scaling
+        let nextLifeThreshold = 20000;
+        let lifeGap = 10000;
+
+        // Entity Objects
+        let balls = [];
+
+        const paddle = {
+            x: 0, y: 0, width: 100, height: 15,
+            color: '#888'
+        };
+
+        let bricks = [];
+
+        // Input State
+        const keys = {
+            ArrowLeft: false,
+            ArrowRight: false
+        };
+        let mouseX = null;
+
+        /**
+         * Initialization
+         */
+        function init() {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Controls
+            window.addEventListener('keydown', (e) => { if (keys.hasOwnProperty(e.code)) keys[e.code] = true; });
+            window.addEventListener('keyup', (e) => { if (keys.hasOwnProperty(e.code)) keys[e.code] = false; });
+
+            // Mouse/Touch
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                mouseX = e.clientX - rect.left;
+            });
+
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                mouseX = e.touches[0].clientX - rect.left;
+            }, { passive: false });
+
+            // Buttons
+            startBtn.addEventListener('click', startGame);
+            restartBtn.addEventListener('click', startGame);
+            playAgainBtn.addEventListener('click', startGame);
+            nextLevelBtn.addEventListener('click', startNextLevel);
+
+            // Debug Menu
+            if (debugMode) {
+                debugMenu.classList.remove('hidden');
+                speedSlider.addEventListener('input', (e) => {
+                    config.speedMultiplier = parseFloat(e.target.value);
+                    speedValue.textContent = config.speedMultiplier.toFixed(1) + 'x';
+                });
+                levelSlider.addEventListener('input', (e) => {
+                    level = parseInt(e.target.value);
+                    levelValue.textContent = level;
+                    // Reset for new level
+                    resetBall();
+                    createBricks();
+                    particles = [];
+                    powerups = [];
+                });
+            }
+
+            // Initial background animation while in menu
+            requestAnimationFrame(menuLoop);
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // Reset paddle Y if resized
+            paddle.y = canvas.height - 40;
+            // Keep paddle on screen
+            if (paddle.x > canvas.width - paddle.width) paddle.x = canvas.width - paddle.width;
+        }
+
+        function resetGame() {
+            score = 0;
+            lives = config.lives;
+            level = 1;
+
+            // Reset Paddle
+            paddle.width = Math.min(120, canvas.width * 0.2); // Responsive paddle width
+            paddle.x = (canvas.width - paddle.width) / 2;
+            paddle.y = canvas.height - 50;
+
+            // Reset Balls
+            resetBall();
+
+            // Generate Bricks
+            createBricks();
+
+            // Reset Particles & Powerups
+            particles = [];
+            powerups = [];
+            for (let i = 0; i < 50; i++) {
+                particles.push(createParticle());
+            }
+        }
+
+        function nextLevel() {
+            gameState = 'LEVEL_COMPLETE';
+            levelCompleteScreen.classList.remove('hidden');
+
+            // Celebration particles
+            particles = [];
+            for (let i = 0; i < 100; i++) {
+                particles.push(createParticle(true)); // Pass true for celebration colors
+            }
+        }
+
+        function startNextLevel() {
+            level++;
+            levelCompleteScreen.classList.add('hidden');
+            gameState = 'PLAYING';
+
+            // Reset Balls
+            resetBall();
+
+            // Generate Bricks
+            createBricks();
+
+            // Reset Particles & Powerups
+            particles = [];
+            powerups = [];
+
+            // Optional: Add visual flair for new level here
+
+            // Update debug slider if visible
+            if (debugMode && levelSlider) {
+                levelSlider.value = level;
+                levelValue.textContent = level;
+            }
+
+            lastTime = performance.now();
+            gameLoop(lastTime);
+        }
+
+        function createBall(x, y, speed, angle) {
+            return {
+                x: x,
+                y: y,
+                dx: speed * Math.sin(angle),
+                dy: -speed * Math.cos(angle),
+                radius: 10,
+                speed: speed
+            };
+        }
+
+        function resetBall() {
+            balls = [];
+            const x = paddle.x + paddle.width / 2;
+            const y = paddle.y - 30;
+            const speed = config.ballSpeed + (score > 500 ? 2 : 0);
+            // Random launch angle between -45 and 45 degrees from up
+            const angle = (Math.random() * 60 - 30) * (Math.PI / 180);
+
+            balls.push(createBall(x, y, speed, angle));
+        }
+
+        function spawnMultiball() {
+            if (balls.length === 0) return;
+
+            // Base new balls off the first existing ball or the paddle
+            const origin = balls[0] || { x: paddle.x + paddle.width / 2, y: paddle.y - 20 };
+            const speed = config.ballSpeed;
+
+            // Spawn 2 new balls
+            balls.push(createBall(origin.x, origin.y, speed, -Math.PI / 4)); // Left-ish
+            balls.push(createBall(origin.x, origin.y, speed, Math.PI / 4));  // Right-ish
+        }
+
+        function createBricks() {
+            bricks = [];
+            const padding = 2; // Very tight spacing
+            const offsetTop = 80;
+            const offsetLeft = config.wallOffset; // Use wall offset for tight boundary
+
+            // Calculate columns based on width
+            const responsiveCols = Math.floor((canvas.width - 2 * offsetLeft) / 60);
+            const cols = Math.min(config.brickCols + 2, Math.max(4, responsiveCols));
+
+            const brickWidth = (canvas.width - 2 * offsetLeft - (cols - 1) * padding) / cols;
+            const brickHeight = 25;
+
+            const rowColors = ['rainbow', 'blue', 'blue', 'green', 'green', 'brown', 'brown'];
+            const rows = Math.min(rowColors.length, Math.floor(canvas.height * 0.4 / (brickHeight + padding)));
+
+            for (let c = 0; c < cols; c++) {
+                for (let r = 0; r < rows; r++) {
+                    let type = rowColors[r] || 'brown';
+
+                    // Random chance for rainbow in other rows
+                    if (type !== 'rainbow' && Math.random() < 0.05) type = 'rainbow';
+
+                    // Powerup chance
+                    let hasPowerup = false;
+                    if (Math.random() < 0.1) hasPowerup = true; // 10% chance for extra onions
+
+                    let hits = 1;
+                    if (type === 'rainbow') {
+                        hits = 3;
+                    }
+
+                    bricks.push({
+                        x: (c * (brickWidth + padding)) + offsetLeft,
+                        y: (r * (brickHeight + padding)) + offsetTop,
+                        w: brickWidth,
+                        h: brickHeight,
+                        status: 1,
+                        hits: hits,
+                        maxHits: hits,
+                        type: type,
+                        hasPowerup: hasPowerup
+                    });
+                }
+            }
+            console.log(`Created ${bricks.length} bricks. Rainbows: ${bricks.filter(b => b.type === 'rainbow').length}`);
+            bricks.filter(b => b.type === 'rainbow').forEach((b, i) => console.log(`Rainbow ${i}: hits=${b.hits}`));
+        }
+
+        function createParticle(celebration = false) {
+            const baseHue = (level - 1) * 35;
+            return {
+                x: Math.random() * canvas.width,
+                y: celebration ? Math.random() * canvas.height : Math.random() * canvas.height,
+                size: Math.random() * 3 + 1,
+                speedY: celebration ? (Math.random() - 0.5) * 10 : -(Math.random() * 1 + 0.5), // Float up or explosion
+                speedX: celebration ? (Math.random() - 0.5) * 10 : 0,
+                color: celebration ? `hsl(${Math.random() * 360}, 100%, 50%)` :
+                    (Math.random() > 0.8 ? `hsl(${baseHue + 20}, 100%, 50%)` :
+                        (Math.random() > 0.5 ? `hsl(${baseHue}, 100%, 20%)` : '#222')),
+                alpha: Math.random()
+            };
+        }
+
+        /**
+         * Game Loop
+         */
+        function startGame() {
+            // Track game start
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'game_start', {
+                    'game_name': 'Lava Breaker'
+                });
+            }
+
+            resetGame();
+            scoreMilestones.clear(); // Reset milestone tracking
+            nextLifeThreshold = 20000;
+            lifeGap = 10000;
+            gameState = 'PLAYING';
+            startScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            winScreen.classList.add('hidden');
+            levelCompleteScreen.classList.add('hidden');
+            lastTime = performance.now();
+            cancelAnimationFrame(animationId);
+            gameLoop(lastTime);
+        }
+
+        function menuLoop(timestamp) {
+            if (gameState !== 'MENU') return;
+            drawBackground();
+            animationId = requestAnimationFrame(menuLoop);
+        }
+
+        function gameLoop(timestamp) {
+            if (gameState === 'LEVEL_COMPLETE') {
+                // Keep animating background/particles
+                drawBackground();
+                // Animate celebration particles
+                particles.forEach(p => {
+                    p.x += p.speedX;
+                    p.y += p.speedY;
+                    p.alpha -= 0.01;
+                    if (p.alpha <= 0) {
+                        // Reset particle
+                        Object.assign(p, createParticle(true));
+                        p.x = canvas.width / 2;
+                        p.y = canvas.height / 2;
+                    }
+                });
+                // Draw particles on top of background
+                particles.forEach(p => {
+                    ctx.save();
+                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = p.alpha;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+
+                animationId = requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            if (gameState !== 'PLAYING') return;
+
+            const deltaTime = (timestamp - lastTime) / 16.67; // Normalize to 60fps
+            lastTime = timestamp;
+
+            update(deltaTime);
+            draw();
+
+            if (lives <= 0) {
+                endGame(false);
+            } else if (bricks.every(b => b.status === 0)) {
+                nextLevel();
+                animationId = requestAnimationFrame(gameLoop);
+            } else {
+                animationId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function endGame(win) {
+            gameState = win ? 'WON' : 'GAMEOVER';
+
+            // Track victory or game over
+            if (typeof gtag !== 'undefined') {
+                gtag('event', win ? 'victory' : 'game_over', {
+                    'game_name': 'Lava Breaker',
+                    'final_score': score,
+                    'remaining_lives': lives,
+                    'result': win ? 'victory' : 'defeat'
+                });
+            }
+
+            if (win) {
+                winScreen.classList.remove('hidden');
+            } else {
+                finalScoreEl.innerText = `Score: ${score}`;
+                gameOverScreen.classList.remove('hidden');
+            }
+        }
+
+        /**
+         * Update Logic
+         */
+        function update(deltaTime) {
+            const currentSpeedMultiplier = config.speedMultiplier + ((level - 1) * config.levelSpeedIncrease);
+            const speedFactor = deltaTime * currentSpeedMultiplier;
+
+            // Move Paddle
+            if (mouseX !== null) {
+                paddle.x = mouseX - paddle.width / 2;
+                mouseX = null; // Clear to prevent sticky movement if needed
+            } else {
+                if (keys.ArrowLeft) paddle.x -= config.paddleSpeed * speedFactor;
+                if (keys.ArrowRight) paddle.x += config.paddleSpeed * speedFactor;
+            }
+
+            // Clamp Paddle
+            if (paddle.x < 0) paddle.x = 0;
+            if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
+
+            // Move Balls
+            for (let i = balls.length - 1; i >= 0; i--) {
+                let ball = balls[i];
+                ball.x += ball.dx * speedFactor;
+                ball.y += ball.dy * speedFactor;
+
+                // Wall Collision - constrained to brick area
+                if (ball.x + ball.radius > canvas.width - config.wallOffset) {
+                    ball.dx = -ball.dx;
+                    ball.x = canvas.width - config.wallOffset - ball.radius;
+                }
+                if (ball.x - ball.radius < config.wallOffset) {
+                    ball.dx = -ball.dx;
+                    ball.x = config.wallOffset + ball.radius;
+                }
+                if (ball.y - ball.radius < 0) {
+                    ball.dy = Math.abs(ball.dy); // Force down
+                    ball.y = ball.radius; // Clamp to prevent sticking/tunneling
+                } else if (ball.y + ball.radius > canvas.height) {
+                    // Ball lost
+                    balls.splice(i, 1);
+                    continue;
+                }
+
+                // Paddle Collision
+                if (ball.y + ball.radius > paddle.y &&
+                    ball.y - ball.radius < paddle.y + paddle.height &&
+                    ball.x > paddle.x &&
+                    ball.x < paddle.x + paddle.width) {
+
+                    // Dynamic bounce angle based on where it hit the paddle
+                    let hitPoint = ball.x - (paddle.x + paddle.width / 2);
+                    // Normalize hit point (-1 to 1)
+                    hitPoint = hitPoint / (paddle.width / 2);
+
+                    // Calculate new angle (max 60 degrees)
+                    let angle = hitPoint * (Math.PI / 3);
+
+                    ball.dx = ball.speed * Math.sin(angle);
+                    ball.dy = -ball.speed * Math.cos(angle);
+
+                    // Ensure ball moves up
+                    if (ball.dy > 0) ball.dy = -ball.dy;
+                }
+
+                // Brick Collision
+                for (let b of bricks) {
+                    if (b.status === 1) {
+                        if (ball.x > b.x && ball.x < b.x + b.w && ball.y > b.y && ball.y < b.y + b.h) {
+                            // Determine collision side
+                            const overlapLeft = ball.x - b.x;
+                            const overlapRight = (b.x + b.w) - ball.x;
+                            const overlapTop = ball.y - b.y;
+                            const overlapBottom = (b.y + b.h) - ball.y;
+
+                            const minOverlapX = Math.min(overlapLeft, overlapRight);
+                            const minOverlapY = Math.min(overlapTop, overlapBottom);
+
+                            if (minOverlapX < minOverlapY) {
+                                // Horizontal collision
+                                ball.dx = -ball.dx;
+                                // Push out
+                                if (overlapLeft < overlapRight) ball.x = b.x - 0.1;
+                                else ball.x = b.x + b.w + 0.1;
+                            } else {
+                                // Vertical collision
+                                ball.dy = -ball.dy;
+                                // Push out
+                                if (overlapTop < overlapBottom) ball.y = b.y - 0.1;
+                                else ball.y = b.y + b.h + 0.1;
+                            }
+
+                            b.hits--;
+                            if (b.type === 'rainbow') console.log(`Rainbow hit! Remaining hits: ${b.hits}`);
+
+                            if (b.hits <= 0) {
+                                b.status = 0;
+                                // Scoring
+                                if (b.type === 'rainbow') score += 50 * level;
+                                else if (b.type === 'blue') score += 30 * level;
+                                else if (b.type === 'green') score += 20 * level;
+                                else score += 10 * level;
+
+                                // Track score milestones
+                                const milestones = [500, 1000, 2000, 5000];
+                                for (const milestone of milestones) {
+                                    if (score >= milestone && !scoreMilestones.has(milestone)) {
+                                        scoreMilestones.add(milestone);
+                                        if (typeof gtag !== 'undefined') {
+                                            gtag('event', 'score_milestone', {
+                                                'game_name': 'Lava Breaker',
+                                                'milestone': milestone
+                                            });
+                                        }
+                                    }
+                                }
+
+                                // Extra Lives Logic
+                                const extraLifeMilestones = [1000, 5000, 10000];
+                                // Check fixed milestones
+                                for (const milestone of extraLifeMilestones) {
+                                    if (score >= milestone && !scoreMilestones.has('life_' + milestone)) {
+                                        lives++;
+                                        scoreMilestones.add('life_' + milestone);
+                                        // Optional: Sound or visual effect
+                                    }
+                                }
+
+                                // Check scaling milestones (after 10k)
+                                if (score >= nextLifeThreshold) {
+                                    lives++;
+                                    // Increase the gap for the next life
+                                    nextLifeThreshold += lifeGap;
+                                    lifeGap += 5000; // Gap increases by 5k each time (10k, 15k, 20k...)
+                                }
+
+                                // Drop Powerup
+                                if (b.hasPowerup) {
+                                    powerups.push({
+                                        x: b.x + b.w / 2,
+                                        y: b.y + b.h,
+                                        dy: 2,
+                                        size: 15
+                                    });
+                                }
+                            } else {
+                                // Hit sound visual or effect could go here
+                                score += 5 * level; // Small points for damaging
+                            }
+
+                            break; // Only hit one brick per frame per ball
+                        }
+                    }
+                }
+            }
+
+            // Check Lives logic
+            if (balls.length === 0) {
+                lives--;
+                if (lives > 0) resetBall();
+            }
+
+            // Powerup Update
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                let p = powerups[i];
+                p.y += p.dy * speedFactor;
+
+                // Catch Powerup
+                if (p.y + p.size > paddle.y &&
+                    p.y < paddle.y + paddle.height &&
+                    p.x > paddle.x &&
+                    p.x < paddle.x + paddle.width) {
+
+                    spawnMultiball();
+                    score += 100 * level;
+                    powerups.splice(i, 1);
+                    continue;
+                }
+
+                // Remove if off screen
+                if (p.y > canvas.height) {
+                    powerups.splice(i, 1);
+                }
+            }
+
+            // Particle Update
+            particles.forEach(p => {
+                p.y += p.speedY * speedFactor;
+                p.x += Math.sin(Date.now() / 1000 + p.y) * 0.5 * speedFactor; // Slight drift
+                if (p.y < 0) {
+                    p.y = canvas.height;
+                    p.x = Math.random() * canvas.width;
+                }
+            });
+        }
+
+        /**
+         * Drawing Logic
+         */
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawBackground();
+            drawBricks();
+            drawPaddle();
+            balls.forEach(ball => drawOnion(ball.x, ball.y, ball.radius));
+            drawPowerups();
+            drawScore();
+        }
+
+        function drawBackground() {
+            const baseHue = (level - 1) * 35;
+
+            // Base Lava Gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, `hsl(${baseHue}, 100%, 10%)`); // Dark top
+            gradient.addColorStop(0.8, `hsl(${baseHue}, 100%, 15%)`); // Mid
+            gradient.addColorStop(1, `hsl(${baseHue + 20}, 100%, 50%)`); // Bottom glow
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw "Mustafar" Magma streams
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.strokeStyle = `hsl(${baseHue + 30}, 100%, 50%)`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                let x = (canvas.width / 4) * i;
+                ctx.moveTo(x, 0);
+                ctx.bezierCurveTo(
+                    x + Math.sin(Date.now() / 1000 + i) * 50, canvas.height / 3,
+                    x - Math.sin(Date.now() / 1000 + i) * 50, canvas.height / 3 * 2,
+                    x, canvas.height
+                );
+            }
+            ctx.stroke();
+            ctx.restore();
+
+            // Draw Ash Particles
+            particles.forEach(p => {
+                ctx.save();
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.alpha;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // Draw wall boundaries
+            ctx.save();
+            const wallGradientLeft = ctx.createLinearGradient(0, 0, config.wallOffset, 0);
+            wallGradientLeft.addColorStop(0, `hsl(${baseHue}, 100%, 5%)`);
+            wallGradientLeft.addColorStop(1, `hsla(${baseHue}, 100%, 5%, 0.5)`);
+            ctx.fillStyle = wallGradientLeft;
+            ctx.fillRect(0, 0, config.wallOffset, canvas.height);
+
+            const wallGradientRight = ctx.createLinearGradient(canvas.width - config.wallOffset, 0, canvas.width, 0);
+            wallGradientRight.addColorStop(0, `hsla(${baseHue}, 100%, 5%, 0.5)`);
+            wallGradientRight.addColorStop(1, `hsl(${baseHue}, 100%, 5%)`);
+            ctx.fillStyle = wallGradientRight;
+            ctx.fillRect(canvas.width - config.wallOffset, 0, config.wallOffset, canvas.height);
+            ctx.restore();
+        }
+
+        function drawOnion(x, y, r) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            // Rotate ball based on x position just for visual effect
+            const rotation = (x / 50);
+            ctx.rotate(rotation);
+
+            // Onion Body (Layered for depth)
+            const onionColor = '#F7E7CE'; // Pale skin
+
+            // Main bulb
+            ctx.fillStyle = onionColor;
+            ctx.beginPath();
+            ctx.ellipse(0, 2, r, r * 0.9, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Texture lines (Vertical curves)
+            ctx.strokeStyle = '#E6D0B0';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.ellipse(0, 2, r * 0.7, r * 0.85, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.ellipse(0, 2, r * 0.4, r * 0.8, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Little root hairs at bottom
+            ctx.strokeStyle = '#C0A080';
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.3, r - 2); ctx.lineTo(-r * 0.4, r + 3);
+            ctx.moveTo(0, r); ctx.lineTo(0, r + 4);
+            ctx.moveTo(r * 0.3, r - 2); ctx.lineTo(r * 0.4, r + 3);
+            ctx.stroke();
+
+            // The Sprout (Green top)
+            ctx.fillStyle = '#66AA44';
+            ctx.beginPath();
+            // Pointy top
+            ctx.moveTo(-3, -r * 0.6);
+            ctx.quadraticCurveTo(0, -r * 1.5, 3, -r * 0.6);
+            ctx.lineTo(0, 0);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawPowerups() {
+            powerups.forEach(p => {
+                // Draw smaller falling onion
+                drawOnion(p.x, p.y, p.size / 2 + 5);
+
+                // Glow effect
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#ffff00';
+                ctx.fillStyle = 'rgba(255, 255, 0, 0.2)';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            });
+        }
+
+        function drawPaddle() {
+            ctx.save();
+            // Metallic futuristic look
+            const grad = ctx.createLinearGradient(paddle.x, 0, paddle.x, paddle.height);
+            grad.addColorStop(0, '#555');
+            grad.addColorStop(0.5, '#aaa');
+            grad.addColorStop(1, '#555');
+
+            ctx.fillStyle = grad;
+            // Rounded rect
+            ctx.beginPath();
+            ctx.roundRect(paddle.x, paddle.y, paddle.width, paddle.height, 5);
+            ctx.fill();
+
+            // Engine glow
+            ctx.fillStyle = '#00ffff';
+            ctx.globalAlpha = 0.6;
+            ctx.fillRect(paddle.x + 5, paddle.y + paddle.height - 3, paddle.width - 10, 3);
+
+            ctx.restore();
+        }
+
+        function drawBricks() {
+            bricks.forEach(b => {
+                if (b.status === 1) {
+                    ctx.save();
+
+                    if (b.type === 'rainbow') {
+                        // Rainbow Effect
+                        const hue = (Date.now() / 5) % 360;
+                        ctx.fillStyle = `hsl(${hue}, 80%, 50%)`;
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = `hsl(${hue}, 80%, 50%)`;
+
+                        // Opacity based on damage
+                        if (b.hits < b.maxHits) {
+                            ctx.globalAlpha = 0.6;
+                            ctx.fillStyle = `hsl(${hue}, 80%, 30%)`; // Darker
+                        }
+                    } else {
+                        // Standard Colors
+                        switch (b.type) {
+                            case 'brown': ctx.fillStyle = '#8B4513'; break;
+                            case 'green': ctx.fillStyle = '#228B22'; break;
+                            case 'blue': ctx.fillStyle = '#4169E1'; break;
+                            default: ctx.fillStyle = '#888';
+                        }
+                        // 3D Bevel effect
+                        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                    }
+
+                    // Draw brick with slight inset
+                    ctx.fillRect(b.x, b.y, b.w, b.h);
+
+                    // Highlight
+                    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                    ctx.fillRect(b.x, b.y, b.w, b.h / 2);
+
+                    // Border
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(b.x, b.y, b.w, b.h);
+
+                    // Cracks for damaged rainbow
+                    if (b.type === 'rainbow' && b.hits < b.maxHits) {
+                        ctx.strokeStyle = '#000';
+                        ctx.beginPath();
+                        ctx.moveTo(b.x + 5, b.y + 5);
+                        ctx.lineTo(b.x + b.w / 2, b.y + b.h / 2);
+                        if (b.hits === 1) {
+                            ctx.lineTo(b.x + b.w - 5, b.y + 5);
+                        }
+                        ctx.stroke();
+                    }
+
+                    // Hint at powerup (subtle sparkle)
+                    if (b.hasPowerup && Math.random() > 0.95) {
+                        ctx.fillStyle = '#fff';
+                        ctx.fillRect(b.x + Math.random() * b.w, b.y + Math.random() * b.h, 2, 2);
+                    }
+
+                    // Debug: Show hits
+                    if (debugMode) {
+                        ctx.fillStyle = '#fff';
+                        ctx.font = '10px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(b.hits, b.x + b.w / 2, b.y + b.h / 2);
+                    }
+
+                    ctx.restore();
+                }
+            });
+        }
+
+        function drawScore() {
+            ctx.save();
+            ctx.font = '16px "Press Start 2P"';
+            ctx.fillStyle = '#fff';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Level: ${level}`, canvas.width / 2, 60);
+
+            ctx.textAlign = 'left';
+            ctx.fillText(`Score: ${score}`, 20, 30);
+
+            ctx.textAlign = 'right';
+            ctx.fillText(`Lives: ${lives}`, canvas.width - 20, 30);
+            ctx.restore();
+        }
+
+        // Polyfill for roundRect if not supported
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+                if (w < 2 * r) r = w / 2;
+                if (h < 2 * r) r = h / 2;
+                this.beginPath();
+                this.moveTo(x + r, y);
+                this.arcTo(x + w, y, x + w, y + h, r);
+                this.arcTo(x + w, y + h, x, y + h, r);
+                this.arcTo(x, y + h, x, y, r);
+                this.arcTo(x, y, x + w, y, r);
+                this.closePath();
+                return this;
+            };
+        }
+
+        // Boot
+        init();
+
+    </script>
+</body>
+
+</html>

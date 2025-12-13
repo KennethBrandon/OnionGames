@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JV4DNLEE4R"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-JV4DNLEE4R');
+    </script>
+
+    <title>Christmas Jump</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #0f172a;
+            /* Dark blue night sky */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none;
+            /* Prevent pull-to-refresh on mobile */
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .screen {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2rem;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            pointer-events: auto;
+            max-width: 80%;
+            display: none;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 4px solid #c0392b;
+            /* Christmas Red */
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        h1 {
+            color: #166534;
+            /* Pine Green */
+            margin: 0 0 10px 0;
+            font-size: 2.5rem;
+            text-shadow: 1px 1px 0px #fff;
+        }
+
+        p {
+            color: #333;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background: #c0392b;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.1s, background 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            background: #e74c3c;
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        #score-hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #height-bar-container {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 60%;
+            width: 60px;
+            /* Wider to look like a tree */
+            background: rgba(20, 83, 45, 0.4);
+            /* Dark pine semi-transparent */
+            border-radius: 0;
+            /* Remove radius for sharp corners */
+            pointer-events: none;
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            /* Triangle shape */
+        }
+
+        #height-bar-fill {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 0%;
+            background: linear-gradient(to top, #166534, #4ade80);
+            /* Tree Green Gradient */
+            transition: height 0.2s;
+        }
+
+        .touch-hint {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+            pointer-events: none;
+        }
+
+
+
+        #debug-menu {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            color: white;
+            font-family: monospace;
+            font-size: 14px;
+            z-index: 100;
+            pointer-events: auto;
+            display: none;
+            min-width: 280px;
+        }
+
+        #debug-menu.active {
+            display: block;
+        }
+
+        #debug-menu h3 {
+            margin: 0 0 10px 0;
+            color: #4ade80;
+            font-size: 16px;
+        }
+
+        #debug-menu label {
+            display: block;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+
+        #debug-menu input[type="range"] {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        #debug-menu .value-display {
+            color: #f1c40f;
+            font-weight: bold;
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Mobile specific adjustments */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .screen {
+                padding: 1.5rem;
+                width: 90%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="score-hud">Score: 0</div>
+
+    <div id="height-bar-container">
+        <div id="height-bar-fill"></div>
+    </div>
+
+
+
+    <div id="ui-layer">
+        <!-- Start Screen -->
+        <div id="start-screen" class="screen active">
+            <h1>Tree Topper</h1>
+            <p>Carry the Star to the top of the tree!</p>
+            <p style="font-size: 0.9rem; color: #666;">
+                Use <b>Arrow Keys</b> or <b>Tap Sides</b> to move.<br>
+                Watch out for the Grinch! Jump on his head to defeat him.<br>
+                Jump into <b>Slingshots</b> for a boost!
+            </p>
+            <button onclick="startGame()">Start Jumping</button>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="screen">
+            <h1 style="color: #c0392b;">Oh no!</h1>
+            <p>You dropped the star!</p>
+            <p>Score: <span id="final-score">0</span></p>
+            <button onclick="startGame()">Try Again</button>
+        </div>
+
+        <!-- Win Screen -->
+        <div id="win-screen" class="screen">
+            <h1 style="color: #f1c40f;">Merry Christmas!</h1>
+            <p>You placed the star at the top!</p>
+            <p>Final Score: <span id="win-score">0</span></p>
+            <button onclick="startGame()">Play Again</button>
+        </div>
+    </div>
+
+    <div class="touch-hint" id="touch-hint">Tap Left / Right to Move</div>
+
+    <!-- Debug Menu -->
+    <div id="debug-menu">
+        <h3>🔧 Debug Menu</h3>
+        <label>Vertical Density: <span class="value-display" id="vertical-density-value">0.7x</span></label>
+        <input type="range" id="vertical-density" min="0.5" max="2.0" step="0.1" value="0.7">
+
+        <label>Horizontal Density: <span class="value-display" id="horizontal-density-value">0.8x</span></label>
+        <input type="range" id="horizontal-density" min="0.5" max="3.0" step="0.1" value="0.8">
+
+        <label>Game Speed: <span class="value-display" id="game-speed-value">1.8x</span></label>
+        <input type="range" id="game-speed" min="0.5" max="5.0" step="0.1" value="1.8">
+
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.3); font-size: 12px;">
+            <div>V-Gap: <span class="value-display" id="v-gap-display">0</span>px</div>
+            <div>Platforms/Layer: <span class="value-display" id="h-plat-display">0</span></div>
+        </div>
+
+        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.3);">
+            <button id="debug-btn-menu" onclick="debugJump()"
+                style="width: 100%; background: rgba(74, 222, 128, 0.2); border: 2px solid #4ade80; color: white; padding: 10px; border-radius: 5px; cursor: pointer; font-size: 16px;">🚀
+                Skip to Top</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreHud = document.getElementById('score-hud');
+        const heightBarFill = document.getElementById('height-bar-fill');
+        const touchHint = document.getElementById('touch-hint');
+
+        // Screens
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const winScreen = document.getElementById('win-screen');
+        const finalScoreSpan = document.getElementById('final-score');
+        const winScoreSpan = document.getElementById('win-score');
+
+        // Debug Mode Detection
+        const urlParams = new URLSearchParams(window.location.search);
+        const debugMode = urlParams.get('d') === 't';
+
+        // Debug Menu Elements
+        const debugMenu = document.getElementById('debug-menu');
+        const verticalDensitySlider = document.getElementById('vertical-density');
+        const horizontalDensitySlider = document.getElementById('horizontal-density');
+        const verticalDensityValue = document.getElementById('vertical-density-value');
+        const horizontalDensityValue = document.getElementById('horizontal-density-value');
+        const gameSpeedSlider = document.getElementById('game-speed');
+        const gameSpeedValue = document.getElementById('game-speed-value');
+        const vGapDisplay = document.getElementById('v-gap-display');
+        const hPlatDisplay = document.getElementById('h-plat-display');
+
+        // Debug Density Multipliers
+        let verticalDensityMultiplier = 0.7;
+        let horizontalDensityMultiplier = 0.8;
+        let gameSpeedMultiplier = 1.8;
+
+        // Show debug menu if debug mode is enabled
+        if (debugMode) {
+            debugMenu.classList.add('active');
+
+            // Wire up slider event listeners
+            verticalDensitySlider.addEventListener('input', (e) => {
+                verticalDensityMultiplier = parseFloat(e.target.value);
+                verticalDensityValue.textContent = verticalDensityMultiplier.toFixed(1) + 'x';
+                updateDebugDisplay();
+            });
+
+            horizontalDensitySlider.addEventListener('input', (e) => {
+                horizontalDensityMultiplier = parseFloat(e.target.value);
+                horizontalDensityValue.textContent = horizontalDensityMultiplier.toFixed(1) + 'x';
+                updateDebugDisplay();
+            });
+
+            gameSpeedSlider.addEventListener('input', (e) => {
+                gameSpeedMultiplier = parseFloat(e.target.value);
+                gameSpeedValue.textContent = gameSpeedMultiplier.toFixed(1) + 'x';
+            });
+        }
+
+        function updateDebugDisplay() {
+            if (debugMode) {
+                // Calculate current values
+                const baseVerticalGap = GAME_HEIGHT * 0.09;
+                const currentVerticalGap = baseVerticalGap / verticalDensityMultiplier;
+                const basePlatformsPerLayer = Math.max(1, Math.ceil(GAME_WIDTH / 430));
+                const currentPlatformsPerLayer = Math.max(1, Math.ceil(basePlatformsPerLayer * horizontalDensityMultiplier));
+
+                vGapDisplay.textContent = Math.round(currentVerticalGap);
+                hPlatDisplay.textContent = currentPlatformsPerLayer;
+            }
+        }
+
+        // Game Constants
+        let GAME_WIDTH = 0;
+        let GAME_HEIGHT = 0;
+        const GRAVITY = 0.1; /* Even lower gravity for very floaty jumps */
+        const JUMP_FORCE = -8; /* High jump relative to low gravity */
+        const MOVE_SPEED = 4; /* Slower horizontal movement for better control */
+        const MAX_WIN_HEIGHT = 15000; // Height required to win (Increased)
+
+        // Game State
+        let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER, WIN, CELEBRATING
+        let score = 0;
+        let maxScore = 0;
+        let cameraY = 0;
+        let animationFrameId;
+        let celebrationTimer = 0;
+        let celebrationDuration = 180; // 3 seconds at 60fps
+
+        // Input State
+        const keys = {
+            ArrowLeft: false,
+            ArrowRight: false
+        };
+        const touchInput = {
+            active: false,
+            speed: 0  // -1.0 to 1.0, negative = left, positive = right
+        };
+
+        // Delta Time (for consistent game speed)
+        let lastTime = 0;
+        let timeScale = 1;
+        let totalEnemiesDefeated = 0; // Track enemies defeated for analytics
+
+        // Entities
+        let player;
+        let platforms = [];
+        let slingshots = []; // New
+        let particles = [];
+        let enemies = [];
+        let treeTop;
+
+        class Player {
+            constructor() {
+                this.width = 40;
+                this.height = 40;
+                this.x = GAME_WIDTH / 2 - this.width / 2;
+                this.y = GAME_HEIGHT - 150;
+                this.vx = 0;
+                this.vy = 0;
+                this.color = '#fff';
+                this.direction = 1; // 1 right, -1 left
+                this.slingshotMode = false; // Immune and can kill from any direction
+            }
+
+            update() {
+                // Movement Logic
+                if (keys.ArrowLeft || keys.ArrowRight) {
+                    // Keyboard input (binary)
+                    if (keys.ArrowLeft) {
+                        this.vx = -MOVE_SPEED;
+                        this.direction = -1;
+                    } else if (keys.ArrowRight) {
+                        this.vx = MOVE_SPEED;
+                        this.direction = 1;
+                    }
+                } else if (touchInput.active) {
+                    // Touch input (variable speed)
+                    this.vx = touchInput.speed * MOVE_SPEED;
+                    if (touchInput.speed < -0.1) {
+                        this.direction = -1;
+                    } else if (touchInput.speed > 0.1) {
+                        this.direction = 1;
+                    }
+                } else {
+                    this.vx = 0;
+                }
+
+                // Physics
+                this.x += this.vx * timeScale;
+                this.y += this.vy * timeScale;
+                this.vy += GRAVITY * timeScale;
+
+                // Screen Wrapping
+                if (this.x + this.width < 0) {
+                    this.x = GAME_WIDTH;
+                } else if (this.x > GAME_WIDTH) {
+                    this.x = -this.width;
+                }
+
+                // Check collisions (only when falling)
+                if (this.vy > 0) {
+                    for (let platform of platforms) {
+                        if (
+                            this.x < platform.x + platform.width &&
+                            this.x + this.width > platform.x &&
+                            this.y + this.height > platform.y &&
+                            this.y + this.height < platform.y + platform.height + 10 // Tolerance
+                        ) {
+                            // Hit platform
+                            this.vy = JUMP_FORCE;
+                            this.slingshotMode = false; // Deactivate slingshot mode on normal platform
+                            createDust(this.x + this.width / 2, this.y + this.height);
+                        }
+                    }
+
+                    // Check Slingshot Collision (Launch) - New
+                    for (let slingshot of slingshots) {
+                        let slingshotTop = slingshot.y - slingshot.height;
+                        if (
+                            !slingshot.launched &&
+                            this.x < slingshot.x + slingshot.width / 2 &&
+                            this.x + this.width > slingshot.x - slingshot.width / 2 &&
+                            this.y + this.height > slingshotTop &&
+                            this.y + this.height < slingshotTop + 25 // Tolerance region around the band
+                        ) {
+                            // Hit slingshot from above
+                            this.vy = JUMP_FORCE * 2.5; // Super boost!
+                            this.slingshotMode = true; // Activate slingshot power mode!
+                            slingshot.launched = true;
+                            createDust(this.x + this.width / 2, this.y + this.height);
+                        }
+                    }
+
+                    // Check Tree Top Collision (Win)
+                    if (treeTop) {
+                        if (
+                            this.x < treeTop.x + treeTop.width &&
+                            this.x + this.width > treeTop.x &&
+                            this.y < treeTop.y + treeTop.height &&
+                            this.y + this.height > treeTop.y
+                        ) {
+                            winGame();
+                        }
+                    }
+
+                    // Check Enemy Collision (Stomp or Slingshot Mode)
+                    for (let i = enemies.length - 1; i >= 0; i--) {
+                        let enemy = enemies[i];
+                        if (
+                            this.x < enemy.x + enemy.width &&
+                            this.x + this.width > enemy.x &&
+                            this.y + this.height > enemy.y &&
+                            this.y + this.height < enemy.y + enemy.height / 2 // Hit top half
+                        ) {
+                            // Stomped the grinch
+                            this.vy = JUMP_FORCE; // Boost
+                            createDust(enemy.x + enemy.width / 2, enemy.y + enemy.height);
+                            enemies.splice(i, 1);
+                            maxScore += 500; // Bonus points
+                            totalEnemiesDefeated++; // Track for analytics
+                        }
+                    }
+                }
+
+                // Slingshot Mode - Kill enemies from any direction while rising
+                if (this.slingshotMode && this.vy < 0) {
+                    for (let i = enemies.length - 1; i >= 0; i--) {
+                        let enemy = enemies[i];
+                        if (
+                            this.x < enemy.x + enemy.width &&
+                            this.x + this.width > enemy.x &&
+                            this.y < enemy.y + enemy.height &&
+                            this.y + this.height > enemy.y
+                        ) {
+                            // Destroy enemy from any direction!
+                            createDust(enemy.x + enemy.width / 2, enemy.y + enemy.height);
+                            enemies.splice(i, 1);
+                            maxScore += 500; // Bonus points
+                            totalEnemiesDefeated++; // Track for analytics
+                        }
+                    }
+                }
+
+                // Check Enemy Collision (Death) - unless in slingshot mode
+                if (!this.slingshotMode) {
+                    // We check basic overlap here, but rely on the logic above to handle the "falling onto" case safely.
+                    // If we are here, it means we overlapped but weren't "falling onto the top half" enough to trigger the stomp,
+                    // or we are moving upwards.
+                    for (let enemy of enemies) {
+                        if (
+                            this.x < enemy.x + enemy.width &&
+                            this.x + this.width > enemy.x &&
+                            this.y < enemy.y + enemy.height &&
+                            this.y + this.height > enemy.y
+                        ) {
+                            // Check if we already handled the stomp
+                            // If player is falling and above enemy, we likely handled it.
+                            // But if we are rising, or hitting side/bottom -> DEATH
+                            const isStomp = (this.vy > 0 && this.y + this.height < enemy.y + enemy.height / 2 + 10);
+
+                            if (!isStomp) {
+                                gameOver();
+                            }
+                        }
+                    }
+                }
+
+                // Game Over Check
+                if (this.y > GAME_HEIGHT) {
+                    gameOver();
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+
+                // Flip if moving left
+                if (this.direction === -1) ctx.scale(-1, 1);
+
+                // Body (Snowman bottom)
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(0, 10, 15, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Head (Snowman top)
+                ctx.beginPath();
+                ctx.arc(0, -10, 10, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Eyes
+                ctx.fillStyle = '#333';
+                ctx.beginPath();
+                ctx.arc(4, -12, 1.5, 0, Math.PI * 2);
+                ctx.arc(-2, -12, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Nose (Carrot)
+                ctx.fillStyle = 'orange';
+                ctx.beginPath();
+                ctx.moveTo(0, -8);
+                ctx.lineTo(8, -5);
+                ctx.lineTo(0, -5);
+                ctx.fill();
+
+                // Santa Hat
+                ctx.fillStyle = '#c0392b'; // Red
+                ctx.beginPath();
+                ctx.moveTo(-10, -15);
+                ctx.lineTo(10, -15);
+                ctx.lineTo(0, -35);
+                ctx.fill();
+
+                // Hat Pom Pom
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(0, -35, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Hat Trim
+                ctx.beginPath();
+                ctx.roundRect(-12, -18, 24, 6, 3);
+                ctx.fill();
+
+                // Scarf
+                ctx.fillStyle = '#27ae60'; // Green
+                ctx.beginPath();
+                ctx.roundRect(-8, -2, 16, 4, 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.roundRect(2, 0, 4, 12, 2); // Scarf tail
+                ctx.fill();
+
+                // Holding the Star (only while playing, removed when placed on tree)
+                if (gameState === 'PLAYING') {
+                    ctx.save();
+                    ctx.translate(14, 0); // Position at "hand"
+                    ctx.rotate(Math.PI / 4);
+                    drawStarShape(ctx, 0, 0, 5, 15, 8, '#f1c40f');
+                    ctx.restore();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // Helper to draw a star shape
+        function drawStarShape(ctx, cx, cy, spikes, outerRadius, innerRadius, color) {
+            let rot = Math.PI / 2 * 3;
+            let x = cx;
+            let y = cy;
+            let step = Math.PI / spikes;
+
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - outerRadius)
+            for (i = 0; i < spikes; i++) {
+                x = cx + Math.cos(rot) * outerRadius;
+                y = cy + Math.sin(rot) * outerRadius;
+                ctx.lineTo(x, y)
+                rot += step
+
+                x = cx + Math.cos(rot) * innerRadius;
+                y = cy + Math.sin(rot) * innerRadius;
+                ctx.lineTo(x, y)
+                rot += step
+            }
+            ctx.lineTo(cx, cy - outerRadius)
+            ctx.closePath();
+            ctx.fillStyle = arguments.length > 6 ? color : '#f1c40f';
+            ctx.fill();
+        }
+
+
+        class Platform {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.width = 80;
+                this.height = 20;
+                this.type = type; // 'branch' or 'ornament'
+
+                if (this.type === 'ornament') {
+                    this.width = 40;
+                    this.height = 40;
+                }
+            }
+
+            draw() {
+                if (this.type === 'branch') {
+                    // Pine Branch Aesthetic
+
+                    // Main Branch
+                    ctx.fillStyle = '#5D4037'; // Brown wood
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y + this.height / 2);
+                    ctx.lineTo(this.x + this.width, this.y + this.height / 2);
+                    ctx.lineWidth = 4;
+                    ctx.strokeStyle = '#5D4037';
+                    ctx.stroke();
+
+                    // Needles
+                    ctx.fillStyle = '#166534'; // Deep Green
+                    ctx.beginPath();
+                    // Top jagged edge
+                    ctx.moveTo(this.x, this.y + 5);
+                    for (let i = 0; i <= this.width; i += 10) {
+                        ctx.lineTo(this.x + i, this.y - 5 + (Math.random() * 5));
+                        ctx.lineTo(this.x + i + 5, this.y + 5);
+                    }
+                    // Bottom jagged edge
+                    for (let i = this.width; i >= 0; i -= 10) {
+                        ctx.lineTo(this.x + i, this.y + 15 + (Math.random() * 5));
+                        ctx.lineTo(this.x + i - 5, this.y + 5);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Snow on top (jagged)
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y);
+                    for (let i = 0; i <= this.width; i += 8) {
+                        ctx.lineTo(this.x + i, this.y - 3);
+                        ctx.lineTo(this.x + i + 4, this.y);
+                    }
+                    ctx.lineTo(this.x + this.width, this.y + 5);
+                    ctx.lineTo(this.x, this.y + 5);
+                    ctx.fill();
+
+                } else if (this.type === 'ornament') {
+                    // Ornament Visual
+                    ctx.fillStyle = '#c0392b'; // Red
+                    // Shiny effect gradient
+                    let grad = ctx.createRadialGradient(
+                        this.x + this.width / 2 - 5, this.y + this.height / 2 - 5, 2,
+                        this.x + this.width / 2, this.y + this.height / 2, 20
+                    );
+                    grad.addColorStop(0, '#e74c3c');
+                    grad.addColorStop(1, '#922b21');
+                    ctx.fillStyle = grad;
+
+                    ctx.beginPath();
+                    ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Cap gold
+                    ctx.fillStyle = '#f1c40f';
+                    ctx.fillRect(this.x + this.width / 2 - 5, this.y - 4, 10, 6);
+                }
+            }
+        }
+
+        class Enemy {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 40;
+                this.height = 40;
+                this.vx = 2; // Moving speed
+                this.startX = x;
+                this.range = 100; // Patrol range
+                this.frame = 0;
+            }
+
+            update() {
+                this.x += this.vx * timeScale;
+
+                // Bounce off edges or patrol limit
+                if (this.x <= 0 || this.x + this.width >= GAME_WIDTH) {
+                    this.vx *= -1;
+                }
+
+                // Simple animation frame counter
+                this.frame += timeScale;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+                if (this.vx < 0) ctx.scale(-1, 1);
+
+                // Green Grinch Body (Furry)
+                ctx.fillStyle = '#6ab04c';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 18, 20, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Fur details
+                ctx.strokeStyle = '#488c2e';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < 5; i++) {
+                    ctx.beginPath();
+                    let ang = Math.random() * Math.PI * 2;
+                    let r = 18;
+                    ctx.moveTo(Math.cos(ang) * r, Math.sin(ang) * r);
+                    ctx.lineTo(Math.cos(ang) * (r + 3), Math.sin(ang) * (r + 3));
+                    ctx.stroke();
+                }
+
+                // Eyes (Yellow and Mean)
+                ctx.fillStyle = '#f9ca24';
+                ctx.beginPath();
+                ctx.ellipse(-6, -5, 4, 6, -0.3, 0, Math.PI * 2);
+                ctx.ellipse(6, -5, 4, 6, 0.3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Pupils
+                ctx.fillStyle = 'red';
+                ctx.beginPath();
+                ctx.arc(-6, -5, 1.5, 0, Math.PI * 2);
+                ctx.arc(6, -5, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Eyebrows (Angry)
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-10, -10);
+                ctx.lineTo(-2, -6);
+                ctx.moveTo(10, -10);
+                ctx.lineTo(2, -6);
+                ctx.stroke();
+
+                // Smile (Sneaky)
+                ctx.beginPath();
+                ctx.arc(0, 5, 8, 0.2, Math.PI - 0.2);
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        class TreeTop {
+            constructor(y) {
+                this.width = 60;
+                this.height = 60;
+                this.x = GAME_WIDTH / 2 - this.width / 2;
+                this.y = y;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+
+                // Tree Top Triangle
+                ctx.fillStyle = '#166534';
+                ctx.beginPath();
+                ctx.moveTo(0, -30);
+                ctx.lineTo(30, 30);
+                ctx.lineTo(-30, 30);
+                ctx.closePath();
+                ctx.fill();
+
+                // Snow
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.moveTo(0, -30);
+                ctx.lineTo(10, -10);
+                ctx.lineTo(-10, -10);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        class Slingshot {
+            constructor(x, y) {
+                this.x = x; // bottom-center x
+                this.y = y; // bottom y
+                this.width = 40;
+                this.height = 60;
+                this.launched = false;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Y-shape frame
+                ctx.strokeStyle = '#8B4513'; // SaddleBrown
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(0, 0); // Base
+                ctx.lineTo(0, -this.height / 2); // Stem
+                ctx.lineTo(-this.width / 2, -this.height); // Left arm top
+                ctx.moveTo(0, -this.height / 2);
+                ctx.lineTo(this.width / 2, -this.height); // Right arm top
+                ctx.stroke();
+
+                // Elastic band
+                if (!this.launched) {
+                    ctx.strokeStyle = '#C0392B'; // Red band
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(-this.width / 2, -this.height);
+                    ctx.quadraticCurveTo(0, -this.height + 20, this.width / 2, -this.height);
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // Particle System for Snow and Jump Dust
+        class Particle {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type; // 'snow' or 'dust'
+
+                if (type === 'snow') {
+                    this.vx = Math.random() * 2 - 1;
+                    this.vy = Math.random() * 2 + 1;
+                    this.size = Math.random() * 3 + 1;
+                    this.life = 1000; // infinite basically
+                } else {
+                    this.vx = (Math.random() - 0.5) * 4;
+                    this.vy = Math.random() * 2;
+                    this.size = Math.random() * 5 + 2;
+                    this.life = 30;
+                    this.color = `rgba(255,255,255,${Math.random()})`;
+                }
+            }
+
+            update() {
+                this.x += this.vx * timeScale;
+                this.y += this.vy * timeScale;
+
+                if (this.type === 'snow') {
+                    if (this.y > GAME_HEIGHT) {
+                        this.y = -10;
+                        this.x = Math.random() * GAME_WIDTH;
+                    }
+                } else {
+                    this.life -= timeScale;
+                    this.size *= Math.pow(0.9, timeScale);
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = this.type === 'snow' ? 'rgba(255,255,255,0.6)' : this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function createDust(x, y) {
+            for (let i = 0; i < 5; i++) {
+                particles.push(new Particle(x, y, 'dust'));
+            }
+        }
+
+        // Celebration Particle for win animation
+        class CelebrationParticle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 8 + 4;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed - 5; // Bias upward
+                this.size = Math.random() * 4 + 2;
+                this.life = 120;
+                this.maxLife = this.life;
+                this.color = ['#f1c40f', '#f39c12', '#fff', '#ffd700'][Math.floor(Math.random() * 4)];
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotationSpeed = (Math.random() - 0.5) * 0.2;
+            }
+
+            update() {
+                this.x += this.vx * timeScale;
+                this.y += this.vy * timeScale;
+                this.vy += 0.3 * timeScale; // Gravity
+                this.vx *= Math.pow(0.98, timeScale); // Air resistance
+                this.rotation += this.rotationSpeed * timeScale;
+                this.life -= timeScale;
+            }
+
+            draw() {
+                const alpha = this.life / this.maxLife;
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                // Glow effect
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+
+                // Draw as a small star
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = alpha;
+                ctx.beginPath();
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
+                    const x = Math.cos(angle) * this.size;
+                    const y = Math.sin(angle) * this.size;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        // Firework Particle
+        class FireworkParticle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 4 + 2;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.size = Math.random() * 3 + 1;
+                this.life = 60;
+                this.maxLife = this.life;
+                this.color = color;
+            }
+
+            update() {
+                this.x += this.vx * timeScale;
+                this.y += this.vy * timeScale;
+                this.vy += 0.15 * timeScale; // Gravity
+                this.vx *= Math.pow(0.98, timeScale);
+                this.life -= timeScale;
+            }
+
+            draw() {
+                const alpha = this.life / this.maxLife;
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 5;
+                ctx.shadowColor = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Firework Rocket
+        class Firework {
+            constructor() {
+                this.x = Math.random() * GAME_WIDTH;
+                this.y = GAME_HEIGHT;
+                this.targetY = Math.random() * (GAME_HEIGHT * 0.4) + (GAME_HEIGHT * 0.1);
+                this.vy = -8 - Math.random() * 4;
+                this.exploded = false;
+                this.colors = [
+                    ['#ff0000', '#ff6b6b', '#ffcccc'],  // Red
+                    ['#00ff00', '#6bff6b', '#ccffcc'],  // Green
+                    ['#0066ff', '#6b9dff', '#cce0ff'],  // Blue
+                    ['#ff00ff', '#ff6bff', '#ffccff'],  // Magenta
+                    ['#ffff00', '#ffff6b', '#ffffcc'],  // Yellow
+                    ['#00ffff', '#6bffff', '#ccffff'],  // Cyan
+                    ['#ff6600', '#ff9d6b', '#ffd4cc']   // Orange
+                ];
+                this.colorSet = this.colors[Math.floor(Math.random() * this.colors.length)];
+            }
+
+            update() {
+                if (!this.exploded) {
+                    this.y += this.vy * timeScale;
+                    this.vy += 0.1 * timeScale; // Slight gravity
+
+                    if (this.y <= this.targetY) {
+                        this.explode();
+                    }
+                }
+            }
+
+            explode() {
+                this.exploded = true;
+                // Create explosion particles
+                for (let i = 0; i < 30; i++) {
+                    const color = this.colorSet[Math.floor(Math.random() * this.colorSet.length)];
+                    particles.push(new FireworkParticle(this.x, this.y, color));
+                }
+            }
+
+            draw() {
+                if (!this.exploded) {
+                    ctx.save();
+                    ctx.fillStyle = this.colorSet[0];
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = this.colorSet[0];
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Trail
+                    ctx.globalAlpha = 0.5;
+                    ctx.fillStyle = this.colorSet[1];
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y + 5, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+        }
+
+        // Fireworks array
+        let fireworks = [];
+
+        // Init
+        function init() {
+            resize();
+            window.addEventListener('resize', resize);
+
+            // Keyboard
+            window.addEventListener('keydown', e => keys[e.code] = true);
+            window.addEventListener('keyup', e => keys[e.code] = false);
+
+            // Touch
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd);
+            canvas.addEventListener('touchcancel', handleTouchEnd);
+
+            // Background Snow
+            for (let i = 0; i < 50; i++) {
+                let p = new Particle(Math.random() * GAME_WIDTH, Math.random() * GAME_HEIGHT, 'snow');
+                particles.push(p);
+            }
+
+            // Start Loop
+            lastTime = 0;
+            loop(0);
+        }
+
+        function debugJump() {
+            if (gameState === 'PLAYING') {
+                // Boost score close to win height
+                maxScore = Math.max(maxScore, MAX_WIN_HEIGHT - 400);
+
+                // Visual feedback on button
+                const btn = document.getElementById('debug-btn');
+                btn.style.borderColor = '#4ade80';
+                setTimeout(() => btn.style.borderColor = 'rgba(255, 255, 255, 0.3)', 300);
+            }
+        }
+
+        function resize() {
+            GAME_WIDTH = window.innerWidth;
+            GAME_HEIGHT = window.innerHeight;
+            canvas.width = GAME_WIDTH;
+            canvas.height = GAME_HEIGHT;
+
+            // Re-center player if resizing
+            if (player) {
+                if (player.x > GAME_WIDTH) player.x = GAME_WIDTH - 50;
+            }
+
+            // Update debug display
+            updateDebugDisplay();
+        }
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            updateTouchSpeed(e.touches[0].clientX);
+
+            // Hide hint on first interaction
+            if (touchHint.style.opacity !== '0') {
+                touchHint.style.transition = 'opacity 0.5s';
+                touchHint.style.opacity = '0';
+            }
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            if (e.touches.length > 0) {
+                updateTouchSpeed(e.touches[0].clientX);
+            }
+        }
+
+        function handleTouchEnd(e) {
+            // Check remaining touches
+            if (e.touches.length === 0) {
+                touchInput.active = false;
+                touchInput.speed = 0;
+            }
+        }
+
+        function updateTouchSpeed(touchX) {
+            touchInput.active = true;
+
+            // Calculate normalized position (-1 to 1, 0 at center)
+            const centerX = GAME_WIDTH / 2;
+            const normalizedX = (touchX - centerX) / (GAME_WIDTH / 2);
+
+            // Map to speed with dead zone in middle and max speed in outer thirds
+            // Outer third (0.67 to 1.0) = max speed
+            // Middle third (-0.67 to 0.67) = scaled speed
+            const absX = Math.abs(normalizedX);
+            let speedMultiplier;
+
+            if (absX < 0.33) {
+                // Inner third: gentle scaling from 0 to 0.5
+                speedMultiplier = absX * 1.5; // 0 to 0.5
+            } else if (absX < 0.67) {
+                // Middle third: scale from 0.5 to 1.0
+                speedMultiplier = 0.5 + (absX - 0.33) * 1.47; // 0.5 to 1.0
+            } else {
+                // Outer third: max speed
+                speedMultiplier = 1.0;
+            }
+
+            // Apply direction
+            touchInput.speed = speedMultiplier * Math.sign(normalizedX);
+        }
+
+        function resetGame() {
+            score = 0;
+            maxScore = 0;
+            cameraY = 0;
+            platforms = [];
+            slingshots = []; // New
+            enemies = [];
+            particles = particles.filter(p => p.type === 'snow'); // Keep snow, remove dust
+            fireworks = []; // Clear fireworks
+            treeTop = null;
+
+            player = new Player();
+
+            // Initial Platforms
+            let y = GAME_HEIGHT - 50;
+            // Calculate how many platforms per layer based on width (roughly 1 per 430px)
+            const platformsPerLayer = Math.max(1, Math.ceil((GAME_WIDTH / 430) * horizontalDensityMultiplier));
+
+            while (y > -GAME_HEIGHT) { // Generate a screen and a half worth
+                // First platform always under player
+                if (platforms.length === 0) {
+                    platforms.push(new Platform(GAME_WIDTH / 2 - 35, GAME_HEIGHT - 100, 'branch'));
+                    y = GAME_HEIGHT - 100;
+                } else {
+                    // Generate multiple platforms per layer for wider screens
+                    for (let i = 0; i < platformsPerLayer; i++) {
+                        let x = Math.random() * (GAME_WIDTH - 70);
+                        let type = Math.random() > 0.8 ? 'ornament' : 'branch';
+                        platforms.push(new Platform(x, y, type));
+                    }
+                }
+
+                y -= ((GAME_HEIGHT * 0.09) + (Math.random() * GAME_HEIGHT * 0.04)) / verticalDensityMultiplier; // Gap between platforms (9-13% of screen height)
+            }
+        }
+
+        function startGame() {
+            // Track game start
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'game_start', {
+                    'game_name': 'Tree Topper'
+                });
+            }
+
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            resetGame();
+            totalEnemiesDefeated = 0; // Reset counter
+            gameState = 'PLAYING';
+        }
+
+        function gameOver() {
+            gameState = 'GAMEOVER';
+
+            // Track game over
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'game_over', {
+                    'game_name': 'Tree Topper',
+                    'final_score': Math.floor(maxScore),
+                    'max_height_reached': Math.floor(maxScore),
+                    'enemies_defeated': totalEnemiesDefeated
+                });
+            }
+
+            finalScoreSpan.innerText = Math.floor(maxScore);
+            gameOverScreen.classList.add('active');
+        }
+
+        function winGame() {
+            gameState = 'CELEBRATING';
+            celebrationTimer = 0;
+
+            // Create burst of golden particles from the star position
+            if (treeTop) {
+                for (let i = 0; i < 50; i++) {
+                    particles.push(new CelebrationParticle(
+                        treeTop.x + treeTop.width / 2,
+                        treeTop.y - 15
+                    ));
+                }
+            }
+        }
+
+        function finishCelebration() {
+            gameState = 'WIN';
+            const finalScore = Math.floor(maxScore) + 1000; // Bonus
+
+            // Track victory
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'victory', {
+                    'game_name': 'Tree Topper',
+                    'final_score': finalScore,
+                    'enemies_defeated': totalEnemiesDefeated
+                });
+            }
+
+            winScoreSpan.innerText = finalScore;
+            winScreen.classList.add('active');
+        }
+
+        function update() {
+            // Handle celebration animation
+            if (gameState === 'CELEBRATING') {
+                celebrationTimer++;
+
+                // Update all particles including celebration particles
+                particles.forEach((p, index) => {
+                    p.update();
+                    if (p.life !== undefined && p.life <= 0) {
+                        particles.splice(index, 1);
+                    }
+                });
+
+                // Add occasional sparkles during celebration
+                if (celebrationTimer % 5 === 0 && treeTop) {
+                    particles.push(new CelebrationParticle(
+                        treeTop.x + treeTop.width / 2 + (Math.random() - 0.5) * 20,
+                        treeTop.y - 15 + (Math.random() - 0.5) * 10
+                    ));
+                }
+
+                // Launch fireworks periodically
+                if (celebrationTimer % 20 === 0) {
+                    fireworks.push(new Firework());
+                }
+
+                // Update fireworks
+                fireworks.forEach((f, index) => {
+                    f.update();
+                    if (f.exploded && celebrationTimer > f.explodeTime + 120) {
+                        fireworks.splice(index, 1);
+                    }
+                });
+
+                // Finish celebration after duration
+                if (celebrationTimer >= celebrationDuration) {
+                    finishCelebration();
+                }
+                return;
+            }
+
+            if (gameState !== 'PLAYING') {
+                // Keep animating snow in background
+                particles.forEach(p => {
+                    if (p.type === 'snow') p.update();
+                });
+                return;
+            }
+
+            player.update();
+            enemies.forEach(e => e.update());
+
+            // Camera movement (Simulated by moving entities down)
+            // Use a fixed threshold for camera trigger instead of screen-size-dependent
+            // Base it on mobile reference (930px / 3 = 310px) but cap at 35% of screen height
+            const CAMERA_TRIGGER_THRESHOLD = Math.min(310, GAME_HEIGHT * 0.35);
+
+            if (player.y < CAMERA_TRIGGER_THRESHOLD) {
+                let diff = CAMERA_TRIGGER_THRESHOLD - player.y;
+                player.y += diff;
+                cameraY += diff;
+                maxScore += diff;
+
+                platforms.forEach(p => p.y += diff);
+                slingshots.forEach(s => s.y += diff); // New
+                enemies.forEach(e => e.y += diff);
+
+                // Move dust
+                particles.forEach(p => {
+                    if (p.type === 'dust') p.y += diff;
+                });
+
+                // Move Tree Top
+                if (treeTop) treeTop.y += diff;
+            }
+
+            // Entity Clean up
+            platforms = platforms.filter(p => p.y < GAME_HEIGHT + 50);
+            slingshots = slingshots.filter(s => s.y - s.height < GAME_HEIGHT + 50); // New
+            enemies = enemies.filter(e => e.y < GAME_HEIGHT + 50);
+
+            // Add new platforms if we haven't reached the win height
+            let minY = GAME_HEIGHT;
+            platforms.forEach(p => minY = Math.min(minY, p.y));
+
+            // Calculate how many platforms per layer based on width (roughly 1 per 430px)
+            const platformsPerLayer = Math.max(1, Math.ceil((GAME_WIDTH / 430) * horizontalDensityMultiplier));
+
+            // Generate up to -50
+            if (maxScore < MAX_WIN_HEIGHT) {
+                while (minY > -50) {
+                    let y = minY - (((GAME_HEIGHT * 0.09) + (Math.random() * GAME_HEIGHT * 0.05)) / verticalDensityMultiplier);
+
+                    // Generate multiple platforms per layer for wider screens
+                    for (let i = 0; i < platformsPerLayer; i++) {
+                        let x = Math.random() * (GAME_WIDTH - 70);
+                        let type = Math.random() > 0.8 ? 'ornament' : 'branch';
+                        platforms.push(new Platform(x, y, type));
+                    }
+
+                    // Spawn Slingshot Logic - New
+                    // Rare chance to spawn a slingshot per layer (not per platform)
+                    if (Math.random() < 0.015 && maxScore < MAX_WIN_HEIGHT - 2000) { // Don't spawn too close to top
+                        slingshots.push(new Slingshot(Math.random() * (GAME_WIDTH - 40) + 20, y - 50));
+                    }
+
+                    // Spawn Grinch Logic - per layer, but scale with platform count
+                    // Start appearing at 1/4 height (earlier)
+                    if (maxScore > MAX_WIN_HEIGHT / 4) {
+                        // Chance increases as we go higher: from 10% to 30% chance per platform gen
+                        let progress = (maxScore - (MAX_WIN_HEIGHT / 4)) / (MAX_WIN_HEIGHT * 3 / 4);
+                        let baseSpawnChance = 0.10 + (progress * 0.20);
+
+                        // Scale enemy spawns with number of platforms to maintain density
+                        let enemiesThisLayer = 0;
+                        for (let i = 0; i < platformsPerLayer; i++) {
+                            if (Math.random() < baseSpawnChance) {
+                                enemiesThisLayer++;
+                            }
+                        }
+
+                        // Spawn the enemies
+                        for (let i = 0; i < enemiesThisLayer; i++) {
+                            enemies.push(new Enemy(Math.random() * (GAME_WIDTH - 40), y - 60));
+                        }
+                    }
+
+                    minY = y;
+                }
+            } else if (!treeTop) {
+                // Reached max height, spawn Tree Top
+                treeTop = new TreeTop(minY - 150);
+            }
+
+            // Particles
+            particles.forEach((p, index) => {
+                p.update();
+                if (p.life <= 0) particles.splice(index, 1);
+            });
+
+            // Update UI
+            scoreHud.innerText = "Score: " + Math.floor(maxScore);
+            let progress = Math.min((maxScore / MAX_WIN_HEIGHT) * 100, 100);
+            heightBarFill.style.height = `${progress}%`;
+        }
+
+        function draw() {
+            // Clear
+            ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+            // Draw Background decorations (simple gradients or distant trees could go here)
+            // Just particles for now
+            particles.forEach(p => p.draw());
+
+            // Draw Fireworks
+            fireworks.forEach(f => f.draw());
+
+            // Draw Platforms
+            platforms.forEach(p => p.draw());
+
+            // Draw Slingshots - New
+            slingshots.forEach(s => s.draw());
+
+            // Draw Enemies
+            enemies.forEach(e => e.draw());
+
+            // Draw Tree Top
+            if (treeTop) {
+                treeTop.draw();
+
+                // During celebration, draw pulsing glowing star
+                if (gameState === 'CELEBRATING') {
+                    const pulse = Math.sin(celebrationTimer * 0.1) * 0.3 + 1;
+                    const starX = treeTop.x + treeTop.width / 2;
+                    const starY = treeTop.y - 15;
+
+                    ctx.save();
+                    // Outer glow
+                    ctx.shadowBlur = 30 * pulse;
+                    ctx.shadowColor = '#f1c40f';
+                    ctx.globalAlpha = 0.6;
+                    drawStarShape(ctx, starX, starY, 5, 35 * pulse, 17 * pulse, '#f1c40f');
+
+                    // Main star
+                    ctx.shadowBlur = 15;
+                    ctx.globalAlpha = 1;
+                    drawStarShape(ctx, starX, starY, 5, 25 * pulse, 12 * pulse, '#f1c40f');
+                    ctx.restore();
+                }
+
+                // If we win, draw the star on top (static)
+                if (gameState === 'WIN') {
+                    drawStarShape(ctx, treeTop.x + treeTop.width / 2, treeTop.y - 15, 5, 25, 12, '#f1c40f');
+                }
+            }
+
+            // Draw Player (only if playing or celebrating)
+            if (gameState === 'PLAYING' || gameState === 'CELEBRATING') {
+                player.draw();
+            }
+        }
+
+        function loop(timestamp) {
+            // Calculate Delta Time
+            if (lastTime === 0) lastTime = timestamp;
+            const dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            // Cap dt to prevent huge jumps if tab is inactive (e.g. max 0.1s)
+            const safeDt = Math.min(dt, 0.1);
+            timeScale = safeDt * 60 * gameSpeedMultiplier; // Normalize to 60 FPS and apply speed multiplier
+
+            update();
+            draw();
+            animationFrameId = requestAnimationFrame(loop);
+        }
+
+        // Start
+        init();
+
+    </script>
+</body>
+
+</html>

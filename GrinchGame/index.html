@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Grinch: Silent Night</title>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JV4DNLEE4R"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-JV4DNLEE4R');
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@400;700&family=Outfit:wght@300;400;700&display=swap');
+
+        :root {
+            --bg-color: #0f172a;
+            --text-color: #f1f5f9;
+            --accent-green: #65a30d;
+            /* Grinch Green */
+            --accent-red: #dc2626;
+            --accent-gold: #fbbf24;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Outfit', sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            background-color: #1e293b;
+        }
+
+        /* UI Overlay */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .screen {
+            background: rgba(15, 23, 42, 0.95);
+            padding: 2rem;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            pointer-events: auto;
+            max-width: 400px;
+            width: 90%;
+            display: none;
+            border: 2px solid var(--accent-green);
+        }
+
+        .screen.active {
+            display: flex;
+            /* Changed to flex for centering content if needed, but block is fine usually. Let's stick to flex column */
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            animation: popIn 0.3s ease-out;
+        }
+
+        h1 {
+            font-family: 'Mountains of Christmas', cursive;
+            font-size: 3rem;
+            color: var(--accent-green);
+            margin: 0;
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        h2 {
+            font-family: 'Mountains of Christmas', cursive;
+            color: var(--accent-red);
+            font-size: 2rem;
+            margin: 0;
+        }
+
+        p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        button {
+            background: var(--accent-green);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            border-radius: 12px;
+            cursor: pointer;
+            font-family: 'Mountains of Christmas', cursive;
+            font-weight: 700;
+            transition: all 0.2s;
+            margin-top: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            background: #4d7c0f;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        button.secondary {
+            background: #334155;
+        }
+
+        button.secondary:hover {
+            background: #475569;
+        }
+
+        /* HUD */
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            font-family: 'Mountains of Christmas', cursive;
+            font-size: 1.5rem;
+            color: var(--accent-gold);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .hud-item {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Level Select Grid */
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        .level-btn {
+            background: #334155;
+            padding: 0.8rem;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: bold;
+            font-size: 1rem;
+            margin: 0;
+            min-width: 0;
+        }
+
+        .level-btn.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #1e293b;
+        }
+
+        .level-btn.completed {
+            background: var(--accent-green);
+            color: #fff;
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+        <div id="hud">
+            <div class="hud-item">Level: <span id="level-display">1</span></div>
+            <div class="hud-item">presents: <span id="presents-display">0/5</span></div>
+        </div>
+
+        <div id="ui-layer">
+            <!-- Main Menu -->
+            <div id="menu-screen" class="screen active">
+                <h1>The Grinch</h1>
+                <p>Silent Night, Sneaky Night</p>
+                <button onclick="Game.startLevel(Game.maxLevel)">Continue (Lvl <span
+                        id="continue-lvl">1</span>)</button>
+                <button class="secondary" onclick="Game.showLevelSelect()">Select Level</button>
+            </div>
+
+            <!-- Level Select -->
+            <div id="level-select-screen" class="screen">
+                <h2>Select House</h2>
+                <div class="level-grid" id="level-grid">
+                    <!-- JS will populate this -->
+                </div>
+                <button class="secondary" onclick="Game.showMenu()">Back</button>
+            </div>
+
+            <!-- Game Over -->
+            <div id="game-over-screen" class="screen">
+                <h2 style="color: var(--accent-red)">Busted!</h2>
+                <p id="death-reason">You woke up the Whos!</p>
+                <button onclick="Game.retryLevel()">Try Again</button>
+                <button class="secondary" onclick="Game.showMenu()">Give Up</button>
+            </div>
+
+            <!-- Level Complete -->
+            <div id="level-complete-screen" class="screen">
+                <h2 style="color: var(--accent-gold)">Clean Sweep!</h2>
+                <p>You stole all the presents!</p>
+                <button onclick="Game.nextLevel()">Next House</button>
+            </div>
+            <!-- Victory Screen -->
+            <div id="victory-screen" class="screen">
+                <h1 style="color: var(--accent-gold)">Christmas Stolen!</h1>
+                <p>You've successfully ruined Christmas for everyone!</p>
+                <p>The Grinch's heart grew three sizes this day... <br>mostly from the cardio.</p>
+                <button onclick="Game.showMenu()">Back to Lair</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Game Engine & Logic ---
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Configuration
+        const TILE_SIZE = 50; // Increased for better detail
+        const VIEWPORT_WIDTH = 800;
+        const VIEWPORT_HEIGHT = 600;
+        const TOTAL_LEVELS = 16;
+        const PRESENTS_TO_WIN = 5;
+
+        // Assets
+        const IMAGES = {};
+        const ASSET_LIST = [
+            { key: 'player', src: 'assets/images/grinch/player.png' },
+            { key: 'present', src: 'assets/images/grinch/present.png' },
+            { key: 'cookie', src: 'assets/images/grinch/cookie.png' },
+            { key: 'floor', src: 'assets/images/grinch/floor.png' },
+            { key: 'wall', src: 'assets/images/grinch/wall_v2.png' },
+            { key: 'rug', src: 'assets/images/grinch/rug.png' },
+            { key: 'trapdoor', src: 'assets/images/grinch/trapdoor.png' },
+            { key: 'cindy', src: 'assets/images/grinch/cindy.png' }
+        ];
+
+        let assetsLoaded = 0;
+
+        // Seeded RNG
+        class SeededRandom {
+            constructor(seed) {
+                this.seed = seed;
+            }
+
+            // Simple Linear Congruential Generator
+            random() {
+                this.seed = (this.seed * 9301 + 49297) % 233280;
+                return this.seed / 233280;
+            }
+        }
+
+        const Game = {
+            state: 'LOADING', // MENU, PLAYING, GAMEOVER, WIN, LEVEL_COMPLETE
+            level: 1,
+            maxLevel: 1,
+            presentsCollected: 0,
+            grid: [],
+            width: 0,
+            height: 0,
+            player: { x: 0, y: 0, dir: 'down', frame: 0 },
+            entities: [],
+            camera: { x: 0, y: 0 },
+            lastMoveTime: 0,
+            enemyMoveInterval: 800, // ms between enemy moves
+
+            init() {
+                // Load Images
+                ASSET_LIST.forEach(asset => {
+                    const img = new Image();
+                    img.src = asset.src;
+                    img.onload = () => {
+                        assetsLoaded++;
+                        if (assetsLoaded === ASSET_LIST.length) {
+                            this.loadSave();
+                            this.showMenu();
+                        }
+                    };
+                    img.onerror = () => {
+                        console.error("Failed to load: " + asset.src);
+                        // Continue anyway
+                        assetsLoaded++;
+                        if (assetsLoaded === ASSET_LIST.length) {
+                            this.loadSave();
+                            this.showMenu();
+                        }
+                    }
+                    IMAGES[asset.key] = img;
+                });
+
+                // Input
+                window.addEventListener('keydown', (e) => this.handleInput(e));
+
+                // Start Loop
+                requestAnimationFrame(loop);
+            },
+
+            loadSave() {
+                const saved = localStorage.getItem('onion_grinch_save');
+                if (saved) {
+                    this.maxLevel = Math.min(parseInt(saved), TOTAL_LEVELS);
+                    document.getElementById('continue-lvl').textContent = this.maxLevel;
+                }
+            },
+
+            showMenu() {
+                this.switchState('MENU');
+            },
+
+            showLevelSelect() {
+                const grid = document.getElementById('level-grid');
+                grid.innerHTML = '';
+                for (let i = 1; i <= TOTAL_LEVELS; i++) {
+                    const btn = document.createElement('button');
+                    btn.className = `level-btn ${i <= this.maxLevel ? (i < this.maxLevel ? 'completed' : '') : 'locked'}`;
+                    btn.textContent = i;
+                    btn.onclick = () => {
+                        if (i <= this.maxLevel) this.startLevel(i);
+                    };
+                    grid.appendChild(btn);
+                }
+                this.switchScreen('level-select-screen');
+            },
+
+            startLevel(lvl) {
+                this.level = lvl;
+                this.presentsCollected = 0;
+                this.generateLevel(lvl);
+                this.updateHud();
+                this.switchState('PLAYING');
+            },
+
+            retryLevel() {
+                this.startLevel(this.level);
+            },
+
+            nextLevel() {
+                if (this.level >= TOTAL_LEVELS) {
+                    this.switchScreen('victory-screen');
+                } else {
+                    this.startLevel(this.level + 1);
+                }
+            },
+
+            exitLevel() {
+                this.showLevelSelect();
+            },
+
+            switchState(newState) {
+                this.state = newState;
+                // Hide all screens
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+
+                if (newState === 'MENU') {
+                    document.getElementById('menu-screen').classList.add('active');
+                } else if (newState === 'GAMEOVER') {
+                    document.getElementById('game-over-screen').classList.add('active');
+                } else if (newState === 'LEVEL_COMPLETE') {
+                    document.getElementById('level-complete-screen').classList.add('active');
+                }
+            },
+
+            switchScreen(screenId) {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                document.getElementById(screenId).classList.add('active');
+            },
+
+            updateHud() {
+                document.getElementById('level-display').textContent = this.level;
+                document.getElementById('presents-display').textContent = `${this.presentsCollected}/${PRESENTS_TO_WIN}`;
+            },
+
+            generateLevel(level) {
+                const rng = new SeededRandom(level * 54321 + 1337);
+
+                // Determine size based on level
+                const size = 10 + Math.floor(level * 1.5);
+                this.width = size;
+                this.height = size;
+                this.grid = new Array(size * size).fill(0); // 0: floor, 1: wall
+                this.entities = [];
+
+                // Simple Room Generator
+                // Fill with walls
+                for (let i = 0; i < this.grid.length; i++) this.grid[i] = 1;
+
+                // Carve rooms
+                const rooms = [];
+                const numRooms = 3 + Math.floor(level / 2);
+
+                for (let i = 0; i < numRooms; i++) {
+                    let x, y, w, h;
+
+                    if (i === 0) {
+                        // Force first room (Lobby) to be at bottom center
+                        w = 6;
+                        h = 6;
+                        x = Math.floor((this.width - w) / 2);
+                        y = this.height - h - 1;
+                    } else {
+                        w = 4 + Math.floor(rng.random() * 4);
+                        h = 4 + Math.floor(rng.random() * 4);
+                        // Ensure we don't overwrite the lobby too badly, but overlap is fine
+                        x = 1 + Math.floor(rng.random() * (this.width - w - 2));
+                        y = 1 + Math.floor(rng.random() * (this.height - h - 2));
+                    }
+
+                    rooms.push({ x, y, w, h });
+
+                    for (let ry = y; ry < y + h; ry++) {
+                        for (let rx = x; rx < x + w; rx++) {
+                            if (ry >= 0 && ry < this.height && rx >= 0 && rx < this.width) {
+                                this.grid[ry * this.width + rx] = 0;
+                            }
+                        }
+                    }
+
+                    // Add Rug Entity in center of big rooms (excluding lobby for clarity)
+                    if (i > 0 && w >= 5 && h >= 5) {
+                        this.entities.push({
+                            type: 'rug',
+                            x: x + Math.floor(w / 2) - 1,
+                            y: y + Math.floor(h / 2) - 1,
+                            w: 3, h: 2,
+                            layer: 'floor' // Rugs are always below entities
+                        });
+                    }
+
+                    // Connect to previous room
+                    if (i > 0) {
+                        const prev = rooms[i - 1];
+                        // Connect centers
+                        this.carveHallway(
+                            prev.x + Math.floor(prev.w / 2),
+                            prev.y + Math.floor(prev.h / 2),
+                            x + Math.floor(w / 2),
+                            y + Math.floor(h / 2)
+                        );
+                    }
+                }
+
+                // Create Logic Gap in bottom wall of lobby
+                const lobby = rooms[0];
+                const doorX = lobby.x + Math.floor(lobby.w / 2) - 1; // Centered-ish
+                const doorY = this.height - 2; // Bottom-most walkable row (y+h-1)
+
+                // Carve the WALL below the door position to act as exit
+                const exitWallY = doorY + 1;
+                if (exitWallY < this.height) {
+                    this.grid[exitWallY * this.width + doorX] = 0; // Make it floor
+                }
+
+                // Place Player just above exit
+                this.player.x = doorX;
+                this.player.y = doorY;
+
+                // Place Presents
+                let presentsPlaced = 0;
+                let attempts = 0;
+                while (presentsPlaced < PRESENTS_TO_WIN && attempts < 100) {
+                    const r = rooms[Math.floor(rng.random() * rooms.length)];
+                    // Don't place in lobby (i=0) to force exploration
+                    if (r === lobby && rng.random() > 0.1) continue;
+
+                    const x = r.x + Math.floor(rng.random() * r.w);
+                    const y = r.y + Math.floor(rng.random() * r.h);
+
+                    // Simple distance check from player
+                    const dist = Math.abs(x - this.player.x) + Math.abs(y - this.player.y);
+
+                    if (this.isEmpty(x, y) && dist > 5) {
+                        this.entities.push({ type: 'present', x, y });
+                        presentsPlaced++;
+                    }
+                    attempts++;
+                }
+
+                // Place Traps (Cookies)
+                const numCookies = 2 + Math.floor(level * 0.8);
+                for (let i = 0; i < numCookies; i++) {
+                    const r = rooms[Math.floor(rng.random() * rooms.length)];
+                    const x = r.x + Math.floor(rng.random() * r.w);
+                    const y = r.y + Math.floor(rng.random() * r.h);
+                    if (this.isEmpty(x, y)) {
+                        this.entities.push({ type: 'cookie', x, y });
+                    }
+                }
+
+                // Place Tripwires / Trapdoors
+                if (level > 3) {
+                    const numTraps = Math.floor((level - 2) * 0.5);
+                    for (let i = 0; i < numTraps; i++) {
+                        const r = rooms[Math.floor(rng.random() * rooms.length)];
+                        const x = r.x + Math.floor(rng.random() * r.w);
+                        const y = r.y + Math.floor(rng.random() * r.h);
+                        if (this.isEmpty(x, y)) {
+                            // Hidden trapdoors just look like floor
+                            this.entities.push({ type: 'trapdoor', x, y, state: 'hidden' });
+                        }
+                    }
+                }
+
+                // Place Cindy Lu Who (Level 5+)
+                if (level >= 5) {
+                    const numCindys = 1 + Math.floor((level - 5) / 3);
+                    for (let i = 0; i < numCindys; i++) {
+                        // Place far from player
+                        let placed = false;
+                        let attempts = 0;
+                        while (!placed && attempts < 50) {
+                            const r = rooms[Math.floor(rng.random() * rooms.length)];
+                            const x = r.x + Math.floor(rng.random() * r.w);
+                            const y = r.y + Math.floor(rng.random() * r.h);
+                            const dist = Math.abs(x - this.player.x) + Math.abs(y - this.player.y);
+                            if (this.isEmpty(x, y) && dist > 10) {
+                                this.entities.push({ type: 'cindy', x, y });
+                                placed = true;
+                            }
+                            attempts++;
+                        }
+                    }
+                }
+
+            },
+
+            carveHallway(x1, y1, x2, y2) {
+                let x = x1;
+                let y = y1;
+                while (x !== x2) {
+                    this.grid[y * this.width + x] = 0;
+                    x += (x < x2) ? 1 : -1;
+                }
+                while (y !== y2) {
+                    this.grid[y * this.width + x] = 0;
+                    y += (y < y2) ? 1 : -1;
+                }
+            },
+
+            isEmpty(x, y) {
+                if (x < 0 || y < 0 || x >= this.width || y >= this.height) return false;
+                if (this.grid[y * this.width + x] === 1) return false;
+                if (this.player.x === x && this.player.y === y) return false;
+                return !this.entities.some(e => e.x === x && e.y === y);
+            },
+
+            checkCollision(x, y) {
+                if (x < 0 || y < 0 || x >= this.width || y >= this.height) return 'wall';
+                if (this.grid[y * this.width + x] === 1) return 'wall';
+
+                const entityIndex = this.entities.findIndex(e => e.x === x && e.y === y && e.type !== 'rug'); // Rugs are walkthrough
+                if (entityIndex !== -1) {
+                    return this.entities[entityIndex];
+                }
+                return null;
+            },
+
+            checkEntityAt(x, y) {
+                return this.entities.some(e => e.x === x && e.y === y && (e.type === 'cindy' || e.type === 'present'));
+            },
+
+            handleInput(e) {
+                if (this.state !== 'PLAYING') return;
+
+                let dx = 0;
+                let dy = 0;
+
+                if (e.key === 'ArrowUp' || e.key === 'w') dy = -1;
+                if (e.key === 'ArrowDown' || e.key === 's') dy = 1;
+                if (e.key === 'ArrowLeft' || e.key === 'a') dx = -1;
+                if (e.key === 'ArrowRight' || e.key === 'd') dx = 1;
+
+                if (dx !== 0 || dy !== 0) {
+                    const newX = this.player.x + dx;
+                    const newY = this.player.y + dy;
+
+                    const collision = this.checkCollision(newX, newY);
+
+                    if (collision === 'wall') {
+                        // Wall hit
+                    } else if (typeof collision === 'object' && collision !== null) {
+                        this.handleEntityCollision(collision, newX, newY);
+                    } else {
+                        this.player.x = newX;
+                        this.player.y = newY;
+                    }
+
+                    // Exit Logic: If hit bottom edge
+                    if (this.player.y >= this.height - 1) {
+                        this.exitLevel();
+                    }
+
+                    if (dx > 0) this.player.dir = 'right';
+                    if (dx < 0) this.player.dir = 'left';
+                    if (dy > 0) this.player.dir = 'down';
+                    if (dy < 0) this.player.dir = 'up';
+
+                    // Simple "animation" frame
+                    this.player.frame = (this.player.frame + 1) % 4;
+
+                    // Check for Cindy kill after moving
+                    this.checkCindyCatch();
+                }
+            },
+
+            checkCindyCatch() {
+                const caught = this.entities.some(e => e.type === 'cindy' && e.x === this.player.x && e.y === this.player.y);
+                if (caught) {
+                    this.gameOver("Caught by Cindy Lu Who!");
+                }
+            },
+
+            handleEntityCollision(entity, x, y) {
+                if (entity.type === 'present') {
+                    // Collect
+                    this.entities = this.entities.filter(e => e !== entity);
+                    this.player.x = x;
+                    this.player.y = y;
+                    this.presentsCollected++;
+                    this.updateHud();
+                    if (this.presentsCollected >= PRESENTS_TO_WIN) {
+                        this.winLevel();
+                    }
+                } else if (entity.type === 'cookie') {
+                    // Trap!
+                    this.player.x = x;
+                    this.player.y = y;
+                    this.gameOver("You stepped on a crunchy cookie!");
+                } else if (entity.type === 'trapdoor') {
+                    // Trapdoor!
+                    entity.state = 'open'; // Reveal
+                    this.player.x = x;
+                    this.player.y = y;
+                    setTimeout(() => {
+                        this.gameOver("You fell through a trap door!");
+                    }, 200);
+                } else if (entity.type === 'cindy') {
+                    this.player.x = x;
+                    this.player.y = y;
+                    this.gameOver("Caught by Cindy Lu Who!");
+                }
+            },
+
+            winLevel() {
+                this.switchState('LEVEL_COMPLETE');
+                if (this.level === this.maxLevel) {
+                    this.maxLevel++;
+                    localStorage.setItem('onion_grinch_save', this.maxLevel);
+                }
+            },
+
+            gameOver(reason) {
+                document.getElementById('death-reason').textContent = reason;
+                this.switchState('GAMEOVER');
+            },
+
+            updateEnemies() {
+                let moved = false;
+                this.entities.forEach(e => {
+                    if (e.type === 'cindy') {
+                        // Simple random movement towards player or random walk
+                        const distToPlayer = Math.abs(e.x - this.player.x) + Math.abs(e.y - this.player.y);
+
+                        // Determine possible moves
+                        const possibleMoves = [];
+                        [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }, { dx: 1, dy: 0 }].forEach(move => {
+                            const tx = e.x + move.dx;
+                            const ty = e.y + move.dy;
+                            // Check bounds and walls and OTHER entities (don't walk on traps or presents for simplicity)
+                            if (tx >= 0 && ty >= 0 && tx < this.width && ty < this.height && this.grid[ty * this.width + tx] === 0) {
+                                // Don't walk onto another cindy?
+                                if (!this.entities.some(other => other !== e && other.type === 'cindy' && other.x === tx && other.y === ty)) {
+                                    possibleMoves.push({ x: tx, y: ty });
+                                }
+                            }
+                        });
+
+                        if (possibleMoves.length > 0) {
+                            // If close, move towards player
+                            let bestMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+
+                            if (distToPlayer < 8) {
+                                // Try to minimize distance
+                                let minD = 999;
+                                possibleMoves.forEach(m => {
+                                    const d = Math.abs(m.x - this.player.x) + Math.abs(m.y - this.player.y);
+                                    if (d < minD) {
+                                        minD = d;
+                                        bestMove = m;
+                                    }
+                                });
+                            }
+
+                            e.x = bestMove.x;
+                            e.y = bestMove.y;
+                            moved = true;
+                        }
+                    }
+                });
+                if (moved) {
+                    this.checkCindyCatch();
+                }
+            },
+
+            update() {
+                // Enemy Movement Tick
+                const now = Date.now();
+                if (this.state === 'PLAYING' && now - this.lastMoveTime > this.enemyMoveInterval) {
+                    this.updateEnemies();
+                    this.lastMoveTime = now;
+                }
+
+                // Camera follow
+                const targetCamX = this.player.x * TILE_SIZE - VIEWPORT_WIDTH / 2;
+                const targetCamY = this.player.y * TILE_SIZE - VIEWPORT_HEIGHT / 2;
+
+                // Lerp camera
+                this.camera.x += (targetCamX - this.camera.x) * 0.1;
+                this.camera.y += (targetCamY - this.camera.y) * 0.1;
+            },
+
+            draw() {
+                // Clear
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                if (this.state === 'LOADING') {
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '30px serif';
+                    ctx.fillText('Loading Assets...', 300, 300);
+                    return;
+                }
+
+                if (this.state !== 'PLAYING' && this.state !== 'GAMEOVER' && this.state !== 'LEVEL_COMPLETE') return;
+
+                ctx.save();
+                ctx.translate(-Math.floor(this.camera.x), -Math.floor(this.camera.y));
+
+                // Determine Visible range
+                const startCol = Math.floor(this.camera.x / TILE_SIZE) - 1;
+                const endCol = startCol + (VIEWPORT_WIDTH / TILE_SIZE) + 3;
+                const startRow = Math.floor(this.camera.y / TILE_SIZE) - 1;
+                const endRow = startRow + (VIEWPORT_HEIGHT / TILE_SIZE) + 3; // Extra rows for tall walls
+
+                // 1. Draw Floor Tiles first (Layer 0)
+                for (let y = startRow; y <= endRow; y++) {
+                    for (let x = startCol; x <= endCol; x++) {
+                        if (x < 0 || y < 0 || x >= this.width || y >= this.height) continue;
+
+                        const px = x * TILE_SIZE;
+                        const py = y * TILE_SIZE;
+
+                        // Always draw floor, even under walls (for cleaner edges)
+                        if (IMAGES.floor) {
+                            ctx.drawImage(IMAGES.floor, px, py, TILE_SIZE, TILE_SIZE);
+                        } else {
+                            ctx.fillStyle = '#334155';
+                            ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                        }
+                    }
+                }
+
+                // 2. Prepare Render List (Walls + Entities) by Y-sorting
+                // We want to sort by the 'base' Y coordinate.
+                const renderList = [];
+
+                // Add Walls
+                for (let y = startRow; y <= endRow; y++) {
+                    for (let x = startCol; x <= endCol; x++) {
+                        if (x < 0 || y < 0 || x >= this.width || y >= this.height) continue;
+                        if (this.grid[y * this.width + x] === 1) {
+                            renderList.push({
+                                type: 'wall',
+                                x: x,
+                                y: y,
+                                // Sort Index: Wall base is bottom of tile
+                                z: (y + 1) * TILE_SIZE
+                            });
+                        }
+                    }
+                }
+
+                // Add Entities
+                this.entities.forEach(e => {
+                    if (e.layer === 'floor') { // Rugs
+                        renderList.push({
+                            type: 'rug',
+                            entity: e,
+                            z: (e.y + e.h) * TILE_SIZE - 1000 // Always behind entities/walls
+                        });
+                    } else {
+                        renderList.push({
+                            type: 'entity',
+                            entity: e,
+                            z: (e.y + 1) * TILE_SIZE // Entity feet are approx bottom of tile
+                        });
+                    }
+                });
+
+                // Add Player
+                renderList.push({
+                    type: 'player',
+                    x: this.player.x,
+                    y: this.player.y,
+                    z: (this.player.y + 1) * TILE_SIZE
+                });
+
+                // Sort
+                renderList.sort((a, b) => a.z - b.z);
+
+                // 3. Render Sorted Items
+                renderList.forEach(item => {
+                    const px = item.type === 'entity' ? item.entity.x * TILE_SIZE : item.x * TILE_SIZE;
+                    const py = item.type === 'entity' ? item.entity.y * TILE_SIZE : item.y * TILE_SIZE; // Note: player uses item.y
+
+                    if (item.type === 'wall') {
+                        if (IMAGES.wall) {
+                            // Draw Wall: It should be taller.
+                            // Assume image is TILE_SIZE x TILE_SIZE for now, but drawing it shifted up to look tall?
+                            // Or just draw it normally. If texture has face & top, it fits in 50x50?
+                            // Let's assume standard square block for now.
+                            ctx.drawImage(IMAGES.wall, px, py, TILE_SIZE, TILE_SIZE);
+
+                            // To make it look "tall" we could draw it offset?
+                            // Zelda walls usually occupy 1 tile but stick up.
+                            // If we want it to pop, we draw it at py - offset.
+                        } else {
+                            // Fallback
+                            ctx.fillStyle = '#64748b'; // Side
+                            ctx.fillRect(px, py - 10, TILE_SIZE, TILE_SIZE + 10);
+                            ctx.fillStyle = '#94a3b8'; // Top
+                            ctx.fillRect(px, py - 10, TILE_SIZE, TILE_SIZE);
+                        }
+                    } else if (item.type === 'rug') {
+                        const e = item.entity;
+                        if (IMAGES.rug) {
+                            ctx.drawImage(IMAGES.rug, e.x * TILE_SIZE, e.y * TILE_SIZE, e.w * TILE_SIZE, e.h * TILE_SIZE);
+                        }
+                    } else if (item.type === 'entity') {
+                        const e = item.entity;
+                        if (e.type === 'present' && IMAGES.present) {
+                            ctx.drawImage(IMAGES.present, px + 5, py + 5, TILE_SIZE - 10, TILE_SIZE - 10);
+                        } else if (e.type === 'cookie' && IMAGES.cookie) {
+                            ctx.drawImage(IMAGES.cookie, px + 10, py + 10, TILE_SIZE - 20, TILE_SIZE - 20);
+                        } else if (e.type === 'trapdoor') {
+                            if (e.state === 'open' && IMAGES.trapdoor) {
+                                ctx.drawImage(IMAGES.trapdoor, px, py, TILE_SIZE, TILE_SIZE);
+                            }
+                        } else if (e.type === 'cindy' && IMAGES.cindy) {
+                            // Draw Cindy with offset to stand "on" the tile
+                            ctx.drawImage(IMAGES.cindy, px + 2, py - TILE_SIZE / 2, TILE_SIZE - 4, TILE_SIZE + TILE_SIZE / 2);
+                        }
+                    } else if (item.type === 'player') {
+                        // Draw Player
+                        if (IMAGES.player) {
+                            ctx.save();
+                            if (this.player.dir === 'left') {
+                                ctx.translate(px + TILE_SIZE, py);
+                                ctx.scale(-1, 1);
+                                ctx.drawImage(IMAGES.player, 0, -10, TILE_SIZE, TILE_SIZE + 10);
+                            } else {
+                                ctx.drawImage(IMAGES.player, px, py - 10, TILE_SIZE, TILE_SIZE + 10);
+                            }
+                            ctx.restore();
+                        } else {
+                            ctx.fillStyle = '#65a30d';
+                            ctx.fillRect(px + 10, py + 10, 30, 30);
+                        }
+                    }
+                });
+
+                ctx.restore();
+            }
+        };
+
+        function loop() {
+            Game.update();
+            Game.draw();
+            requestAnimationFrame(loop);
+        }
+
+        Game.init();
+
+    </script>
+</body>
+
+</html>

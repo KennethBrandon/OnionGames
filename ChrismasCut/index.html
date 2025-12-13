@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JV4DNLEE4R"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-JV4DNLEE4R');
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Christmas Star Drop</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #0F172A;
+            /* Dark snowy night */
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+            /* Prevent scrolling on mobile */
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .message {
+            color: #fff;
+            font-size: 3rem;
+            font-weight: bold;
+            text-shadow: 0 0 20px #FFD700, 0 0 10px #ff0000;
+            opacity: 0;
+            transition: opacity 0.5s;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+            transform: scale(0.8);
+        }
+
+        .message.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        #level-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.5rem;
+            font-weight: bold;
+            pointer-events: none;
+            text-shadow: 0 0 5px #000;
+        }
+
+        #reset-btn {
+            pointer-events: auto;
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s, background 0.2s;
+            display: none;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        #reset-btn:hover {
+            transform: scale(1.05);
+            background: #dc2626;
+        }
+
+        #reset-btn:active {
+            transform: scale(0.95);
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 1rem;
+            pointer-events: none;
+        }
+
+        #timer-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 5px;
+            background: #fff;
+            width: 0%;
+            box-shadow: 0 0 10px white;
+        }
+
+        #level-select-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            max-width: 600px;
+            padding: 20px;
+        }
+
+        .level-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .level-btn:hover:not(.locked) {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .level-btn.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #333;
+            color: #777;
+            border-color: #444;
+        }
+
+        .level-btn.completed {
+            border-color: #FFD700;
+            color: #FFD700;
+        }
+
+        #menu-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            pointer-events: auto;
+            font-size: 1rem;
+            z-index: 50;
+        }
+
+        #menu-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="game-container">
+        <canvas id="world"></canvas>
+        <div id="ui-layer">
+            <button id="menu-btn">Menu</button>
+            <div id="level-indicator">Level 1</div>
+            <div id="win-message" class="message">Merry Christmas!</div>
+            <button id="reset-btn">Play Again</button>
+        </div>
+
+        <div id="level-select-overlay" style="display: none;">
+            <h1
+                style="color: #FFD700; font-size: 3rem; margin-bottom: 30px; text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);">
+                Select Level</h1>
+            <div class="level-grid" id="level-grid">
+                <!-- Buttons generated by JS -->
+            </div>
+        </div>
+        <div class="hint">Hurry! The snow is rising!</div>
+    </div>
+
+    <script>
+        // Module aliases
+        const Engine = Matter.Engine,
+            Render = Matter.Render,
+            Runner = Matter.Runner,
+            Composites = Matter.Composites,
+            Common = Matter.Common,
+            MouseConstraint = Matter.MouseConstraint,
+            Mouse = Matter.Mouse,
+            Composite = Matter.Composite,
+            Bodies = Matter.Bodies,
+            Body = Matter.Body,
+            Constraint = Matter.Constraint,
+            Vector = Matter.Vector,
+            Events = Matter.Events,
+            World = Matter.World;
+
+        // Game State
+        const canvas = document.getElementById('world');
+        const ctx = canvas.getContext('2d');
+        const uiMessage = document.getElementById('win-message');
+        const resetBtn = document.getElementById('reset-btn');
+
+        let engine, world, runner;
+        let width, height;
+        let ropes = [];
+        let starBody;
+        let treeBody;
+        let winZone;
+        let isGameOver = false;
+        let snowParticles = [];
+        let slashTrace = [];
+        let lastMousePos = null;
+        let cutParticles = [];
+        let starTrail = []; // New: Visual trail for star
+
+        // Level State
+        let currentLevel = 1;
+        const totalLevels = 16;
+        let reachedLevel = parseInt(localStorage.getItem('onion_christmas_reachedLevel')) || 1;
+        let isLevelComplete = false;
+        let winAnimationTime = 0;
+
+        // Snow Accumulation State
+        let snowLevel = 0;
+        const TIME_LIMIT_SECONDS = 40;
+        let snowRiseRate = 0; // calculated based on tree height
+
+        // Configuration
+        const CONFIG = {
+            ropeColor: '#1a472a',
+            starColor: '#FFD700',
+            starGlow: '#FFFACD',
+            lightColors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'],
+            gravity: 1,
+            particleCount: 150
+        };
+
+        function init() {
+            resizeCanvas();
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                loadLevel(currentLevel); // Reload current level on resize
+            });
+
+            engine = Engine.create();
+            world = engine.world;
+
+            setupInput();
+            initSnow();
+            setupInput();
+            initSnow();
+
+            showLevelSelect();
+
+            runner = Runner.create();
+            Runner.run(runner, engine);
+
+            requestAnimationFrame(renderLoop);
+        }
+
+        function resizeCanvas() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+
+        function initSnow() {
+            snowParticles = [];
+            for (let i = 0; i < CONFIG.particleCount; i++) {
+                snowParticles.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    radius: Math.random() * 2 + 1,
+                    speedY: Math.random() * 1 + 0.5,
+                    speedX: Math.random() * 1 - 0.5,
+                    opacity: Math.random() * 0.5 + 0.3
+                });
+            }
+        }
+
+        function updateSnow() {
+            snowParticles.forEach(p => {
+                p.y += p.speedY;
+                p.x += p.speedX;
+                if (p.y > height) {
+                    p.y = -10;
+                    p.x = Math.random() * width;
+                }
+            });
+        }
+
+        function createRope(x, y, segments, length, attachBody) {
+            const group = Body.nextGroup(true);
+
+            const rope = Composites.stack(x, y, segments, 1, 10, 10, function (x, y) {
+                return Bodies.rectangle(x, y, 10, 5, {
+                    collisionFilter: {
+                        group: group,
+                        category: 0x0004 // Category for rope segments
+                    },
+                    render: { visible: false },
+                    density: 0.001, // Lowered density for lighter rope
+                    frictionAir: 0.005 // Lowered friction for better swinging
+                });
+            });
+
+            Composites.chain(rope, 0.5, 0, -0.5, 0, {
+                stiffness: 0.9,
+                length: length,
+                render: { visible: false }
+            });
+
+            const anchor = Constraint.create({
+                bodyB: rope.bodies[0],
+                pointB: { x: -5, y: 0 },
+                pointA: { x: x, y: y },
+                stiffness: 0.9
+            });
+
+            Composite.add(rope, anchor);
+
+            if (attachBody) {
+                const lastBody = rope.bodies[rope.bodies.length - 1];
+                const connection = Constraint.create({
+                    bodyA: lastBody,
+                    bodyB: attachBody,
+                    pointA: { x: 5, y: 0 },
+                    pointB: { x: 0, y: -20 },
+                    stiffness: 0.9,
+                    length: 5
+                });
+                Composite.add(rope, connection);
+            }
+
+            Composite.allConstraints(rope).forEach(c => c.label = "rope");
+
+            rope.bodies.forEach((b, i) => {
+                b.lightColor = CONFIG.lightColors[i % CONFIG.lightColors.length];
+                b.lightPhase = Math.random() * Math.PI * 2;
+            });
+
+            World.add(world, rope);
+            ropes.push(rope);
+        }
+
+        function createStar(x, y) {
+            const star = Bodies.polygon(x, y, 5, 25, {
+                density: 0.02, // Increased density (was 0.005) to give it momentum
+                frictionAir: 0.005, // Lowered friction
+                restitution: 0.2,
+                label: "star",
+                collisionFilter: {
+                    category: 0x0002,
+                    mask: 0x0001 // Collide with default (walls, ground, tree), but NOT ropes (0x0004)
+                }
+            });
+            Body.setAngle(star, -Math.PI / 10);
+            World.add(world, star);
+            return star;
+        }
+
+        function createTree(x, y) {
+            const treeWidth = 160;
+            const treeHeight = 220; // Slightly taller
+
+            // Physics Body (Trapezoid)
+            const treeBase = Bodies.trapezoid(x, y - 20, treeWidth, treeHeight, 0.3, {
+                isStatic: true,
+                render: { visible: false },
+                friction: 1,
+                label: "tree"
+            });
+
+            // Win Zone (Sensor) - Increased size for better detection
+            winZone = Bodies.circle(x, y - treeHeight / 2 - 10, 30, {
+                isStatic: true,
+                isSensor: true,
+                label: "winZone",
+                render: {
+                    visible: false,
+                    fillStyle: "rgba(255, 215, 0, 0.3)" // Optional debug visualization 
+                }
+            });
+
+            World.add(world, [treeBase, winZone]);
+            treeBody = treeBase;
+            return treeHeight;
+        }
+
+        function loadLevel(level) {
+            currentLevel = level || currentLevel;
+            document.getElementById('level-indicator').innerText = `Level ${currentLevel}`;
+
+            Composite.clear(world);
+            Engine.clear(engine);
+            ropes = [];
+            cutParticles = [];
+            starTrail = []; // Clear trail
+            isGameOver = false;
+            isLevelComplete = false;
+            winAnimationTime = 0;
+
+            // Reset Snow
+            snowLevel = 0;
+
+            uiMessage.classList.remove('visible');
+            resetBtn.style.display = 'none';
+            document.getElementById('level-select-overlay').style.display = 'none';
+
+            // Update: Added 'label: ground' to the floor
+            const ground = Bodies.rectangle(width / 2, height + 50, width, 100, { isStatic: true, label: 'ground' });
+            const leftWall = Bodies.rectangle(-50, height / 2, 100, height, { isStatic: true });
+            const rightWall = Bodies.rectangle(width + 50, height / 2, 100, height, { isStatic: true });
+            World.add(world, [ground, leftWall, rightWall]);
+
+            // Create Tree
+            const tHeight = createTree(width / 2, height - 100);
+
+            // Calculate snow rise rate to cover tree in 20 seconds (at 60fps)
+            const distanceToCover = tHeight + 50;
+            snowRiseRate = distanceToCover / (TIME_LIMIT_SECONDS * 60);
+
+            // Level Layouts
+            setupLevelLayout(currentLevel);
+
+            Events.on(engine, 'collisionStart', (event) => {
+                const pairs = event.pairs;
+                for (let i = 0; i < pairs.length; i++) {
+                    const bodyA = pairs[i].bodyA;
+                    const bodyB = pairs[i].bodyB;
+
+                    // Win Condition
+                    if ((bodyA.label === 'star' && bodyB.label === 'winZone') ||
+                        (bodyB.label === 'star' && bodyA.label === 'winZone')) {
+                        handleWin();
+                    }
+
+                    // Update: Loss Condition (Hit Ground)
+                    if ((bodyA.label === 'star' && bodyB.label === 'ground') ||
+                        (bodyB.label === 'star' && bodyA.label === 'ground')) {
+                        handleLoss("Dropped it!");
+                    }
+                }
+            });
+        }
+
+        function setupLevelLayout(level) {
+            starBody = createStar(width / 2, height / 6); // Default start position, overridden if needed
+
+            if (level === 1) {
+                // Level 1: Classic Symetric
+                Body.setPosition(starBody, { x: width / 2, y: height / 4 });
+                createRope(width / 2, 50, 10, 15, starBody);
+            } else if (level === 2) {
+                // Level 2: The Swing
+                // Star starts far left, held by one long rope from center-right
+                Body.setPosition(starBody, { x: width * 0.2, y: height / 3 });
+                createRope(width * 0.7, 50, 12, 20, starBody);
+                // A small stabilizer rope to keep it up initially
+                createRope(width * 0.2, 50, 5, 10, starBody);
+            } else if (level === 3) {
+                // Level 3: The Spider Web
+                // Held by 4 ropes
+                Body.setPosition(starBody, { x: width / 2, y: height / 3 });
+                createRope(width * 0.1, 100, 12, 15, starBody);
+                createRope(width * 0.9, 100, 12, 15, starBody);
+                createRope(width * 0.3, 50, 8, 15, starBody);
+                createRope(width * 0.7, 50, 8, 15, starBody);
+            } else {
+                // Procedural Generation for Levels 4-16
+                // Seed random based on level number to keep it consistent per level
+                const seed = level * 12345;
+                const random = () => {
+                    const x = Math.sin(seed + Math.random() * 100) * 10000;
+                    return x - Math.floor(x);
+                };
+
+                // Varies horizontally
+                const startX = width * (0.2 + (random() * 0.6));
+                Body.setPosition(starBody, { x: startX, y: height / 4 });
+
+                // Number of ropes increases with level
+                const numRopes = 2 + Math.floor((level - 4) / 3);
+
+                for (let i = 0; i < numRopes; i++) {
+                    const attachX = width * (0.1 + (random() * 0.8));
+                    const segs = 5 + Math.floor(random() * 10);
+                    createRope(attachX, 50, segs, 15, starBody);
+                }
+            }
+        }
+
+        function handleWin() {
+            if (isGameOver) return;
+            isGameOver = true;
+            isLevelComplete = true;
+
+            const snap = Constraint.create({
+                bodyA: starBody,
+                bodyB: winZone,
+                stiffness: 0.1,
+                damping: 0.1,
+                length: 0
+            });
+            World.add(world, snap);
+
+            if (currentLevel < totalLevels) {
+                // Unlock next level
+                if (currentLevel >= reachedLevel) {
+                    reachedLevel = currentLevel + 1;
+                    localStorage.setItem('onion_christmas_reachedLevel', reachedLevel);
+                }
+
+                uiMessage.innerText = "Nice! Next Level";
+                resetBtn.innerText = "Next Level >>";
+                resetBtn.onclick = () => loadLevel(currentLevel + 1);
+            } else {
+                uiMessage.innerText = "Merry Christmas! You Win!";
+                resetBtn.innerText = "Play Again";
+                resetBtn.onclick = () => {
+                    reachedLevel = 1;
+                    showLevelSelect();
+                    // Or loadLevel(1) if they want to replay from start instantly
+                };
+            }
+
+            // Create or update "Retry Level" button for Win Screen
+            // User requested: "Next Level" and "Retry"
+
+            // Clean up old dynamic buttons first (if any)
+            const oldRetry = document.getElementById('win-retry-btn');
+            if (oldRetry) oldRetry.remove();
+
+            const retryBtn = document.createElement('button');
+            retryBtn.id = "win-retry-btn";
+            retryBtn.innerText = "Replay Level";
+            retryBtn.style.cssText = `
+                margin-top: 10px;
+                padding: 10px 20px;
+                background: transparent;
+                border: 1px solid white;
+                color: white;
+                border-radius: 20px;
+                cursor: pointer;
+                font-size: 1rem;
+            `;
+            retryBtn.onclick = () => loadLevel(currentLevel);
+
+            // Wrap buttons
+            let btnContainer = document.getElementById('btn-container');
+            if (!btnContainer) {
+                btnContainer = document.createElement('div');
+                btnContainer.id = 'btn-container';
+                btnContainer.style.display = 'flex';
+                btnContainer.style.flexDirection = 'column';
+                btnContainer.style.alignItems = 'center';
+                btnContainer.style.gap = '10px';
+                resetBtn.parentNode.insertBefore(btnContainer, resetBtn);
+                btnContainer.appendChild(resetBtn);
+            }
+
+            btnContainer.appendChild(retryBtn);
+
+            uiMessage.style.color = "#FFD700";
+            uiMessage.classList.add('visible');
+            resetBtn.style.display = 'block';
+        }
+
+        function handleLoss(reason = "Oops! Try Again") {
+            if (isGameOver) return;
+            isGameOver = true;
+            uiMessage.innerText = reason;
+
+            // Clean up old dynamic buttons (like Retry from win screen)
+            const oldRetry = document.getElementById('win-retry-btn');
+            if (oldRetry) oldRetry.remove();
+
+            // "Try Again" Button
+            resetBtn.innerText = "Try Again";
+            resetBtn.onclick = () => loadLevel(currentLevel);
+
+            // Ensure container exists if not already present (though unlikely to switch from win to loss)
+            let btnContainer = document.getElementById('btn-container');
+            if (!btnContainer) {
+                btnContainer = document.createElement('div');
+                btnContainer.id = 'btn-container';
+                btnContainer.style.display = 'flex';
+                btnContainer.style.flexDirection = 'column';
+                btnContainer.style.alignItems = 'center';
+                btnContainer.style.gap = '10px';
+                resetBtn.parentNode.insertBefore(btnContainer, resetBtn);
+                btnContainer.appendChild(resetBtn);
+            }
+
+            uiMessage.style.color = "#fff";
+            uiMessage.classList.add('visible');
+            resetBtn.style.display = 'block';
+        }
+
+        // Input Handling
+        function setupInput() {
+            let isDrawing = false;
+
+            const startDraw = (e) => {
+                isDrawing = true;
+                slashTrace = [];
+                const pos = getMousePos(e);
+                lastMousePos = pos;
+                slashTrace.push(pos);
+                checkCut(pos, pos); // Check instant tap
+            };
+
+            const moveDraw = (e) => {
+                if (!isDrawing) return;
+                const pos = getMousePos(e);
+                slashTrace.push(pos);
+                if (slashTrace.length > 5) slashTrace.shift();
+
+                checkCut(lastMousePos, pos);
+                lastMousePos = pos;
+            };
+
+            const endDraw = () => {
+                isDrawing = false;
+                slashTrace = [];
+                lastMousePos = null;
+            };
+
+            canvas.addEventListener('mousedown', startDraw);
+            canvas.addEventListener('mousemove', moveDraw);
+            canvas.addEventListener('mouseup', endDraw);
+
+            canvas.addEventListener('touchstart', (e) => startDraw(e.touches[0]));
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                moveDraw(e.touches[0]);
+            }, { passive: false });
+            canvas.addEventListener('touchend', endDraw);
+
+            resetBtn.onclick = () => loadLevel(currentLevel); // Default logic (overridden in handleWin)
+            document.getElementById('menu-btn').addEventListener('click', showLevelSelect);
+        }
+
+        function showLevelSelect() {
+            const overlay = document.getElementById('level-select-overlay');
+            const grid = document.getElementById('level-grid');
+            grid.innerHTML = '';
+
+            // Cleanup UI modifications
+            const btnContainer = document.getElementById('btn-container');
+            if (btnContainer) {
+                const reset = document.getElementById('reset-btn');
+                if (btnContainer.contains(reset)) {
+                    // Move reset back out to original spot (approx) or just leave it since we rebuild container
+                    document.getElementById('ui-layer').appendChild(reset);
+                }
+                btnContainer.remove();
+            }
+            const oldRetry = document.getElementById('win-retry-btn');
+            if (oldRetry) oldRetry.remove();
+
+            uiMessage.classList.remove('visible');
+            resetBtn.style.display = 'none';
+
+            for (let i = 1; i <= totalLevels; i++) {
+                const btn = document.createElement('div');
+                btn.className = 'level-btn';
+                btn.textContent = i;
+
+                if (i > reachedLevel) {
+                    btn.classList.add('locked');
+                    btn.innerHTML += '<div style="font-size:0.8rem">🔒</div>';
+                } else {
+                    btn.onclick = () => loadLevel(i);
+                    if (i < reachedLevel) {
+                        btn.classList.add('completed');
+                    }
+                }
+
+                grid.appendChild(btn);
+            }
+
+            overlay.style.display = 'flex';
+        }
+
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        // UPDATED CUTTING LOGIC: Removes entire strand
+        function checkCut(p1, p2) {
+            if (!p1 || !p2) return;
+
+            // Iterate backwards through ropes to allow safe removal from array
+            for (let i = ropes.length - 1; i >= 0; i--) {
+                const rope = ropes[i];
+                const constraints = Composite.allConstraints(rope);
+                let cutFound = false;
+                let cutPos = null;
+
+                for (let constraint of constraints) {
+                    if (constraint.label !== 'rope') continue;
+
+                    const bodyA = constraint.bodyA;
+                    const bodyB = constraint.bodyB;
+
+                    // Calculate exact world start/end for the rope segment
+                    const start = bodyA
+                        ? Vector.add(bodyA.position, Vector.rotate(constraint.pointA, bodyA.angle))
+                        : constraint.pointA;
+
+                    const end = bodyB
+                        ? Vector.add(bodyB.position, Vector.rotate(constraint.pointB, bodyB.angle))
+                        : constraint.pointB;
+
+                    // 1. Raycast Intersection (Fast slashes)
+                    const intersected = lineIntersect(p1, p2, start, end);
+
+                    // 2. Proximity Check (Slow drags / touches)
+                    const distSq = distToSegmentSquared(p2, start, end);
+                    const isClose = distSq < 400; // 20*20
+
+                    if (intersected || isClose) {
+                        cutFound = true;
+                        cutPos = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+                        break; // Found a cut in this rope, no need to check other segments
+                    }
+                }
+
+                if (cutFound) {
+                    // Remove the ENTIRE rope composite from the world
+                    World.remove(world, rope);
+
+                    // Remove from our ropes array
+                    ropes.splice(i, 1);
+
+                    // Spawn particles at the cut location
+                    if (cutPos) spawnCutParticles(cutPos.x, cutPos.y);
+                }
+            }
+        }
+
+        function distToSegmentSquared(p, v, w) {
+            const l2 = Vector.magnitudeSquared(Vector.sub(v, w));
+            if (l2 === 0) return Vector.magnitudeSquared(Vector.sub(p, v));
+            let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            const projection = Vector.add(v, Vector.mult(Vector.sub(w, v), t));
+            return Vector.magnitudeSquared(Vector.sub(p, projection));
+        }
+
+        function lineIntersect(p0, p1, p2, p3) {
+            const s1_x = p1.x - p0.x;
+            const s1_y = p1.y - p0.y;
+            const s2_x = p3.x - p2.x;
+            const s2_y = p3.y - p2.y;
+            const s = (-s1_y * (p0.x - p2.x) + s1_x * (p0.y - p2.y)) / (-s2_x * s1_y + s1_x * s2_y);
+            const t = (s2_x * (p0.y - p2.y) - s2_y * (p0.x - p2.x)) / (-s2_x * s1_y + s1_x * s2_y);
+            return (s >= 0 && s <= 1 && t >= 0 && t <= 1);
+        }
+
+        function spawnCutParticles(x, y) {
+            for (let i = 0; i < 8; i++) { // More particles for disappearing rope
+                cutParticles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    life: 1.0,
+                    color: '#fff'
+                });
+            }
+        }
+
+        // --- Rendering ---
+
+        function renderLoop() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Logic Updates
+            if (!isGameOver && treeBody) {
+                snowLevel += snowRiseRate;
+                // Check Loss by Snow
+                const treeTopY = treeBody.bounds.min.y;
+                const snowY = height - snowLevel;
+
+                if (snowY < treeTopY + 50) {
+                    handleLoss("Buried in Snow!");
+                }
+            } else if (isLevelComplete) {
+                winAnimationTime += 1; // Increment animation timer
+            }
+
+            // Backup Win Check (in case collision event missed or for "resting" logic)
+            if (!isGameOver && starBody && winZone) {
+                const dist = Vector.magnitude(Vector.sub(starBody.position, winZone.position));
+                // If close enough and relatively slow
+                if (dist < 40 && starBody.speed < 5) {
+                    handleWin();
+                }
+            }
+
+            // 1. Background Snow
+            updateSnow();
+            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            snowParticles.forEach(p => {
+                ctx.globalAlpha = p.opacity;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+
+            // 2. Draw Ropes (Wires)
+            const allConstraints = Composite.allConstraints(world);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = CONFIG.ropeColor;
+
+            for (let c of allConstraints) {
+                if (c.label !== 'rope') continue;
+
+                const bodyA = c.bodyA;
+                const bodyB = c.bodyB;
+                const start = bodyA ? Vector.add(bodyA.position, Vector.rotate(c.pointA, bodyA.angle)) : c.pointA;
+                const end = bodyB ? Vector.add(bodyB.position, Vector.rotate(c.pointB, bodyB.angle)) : c.pointB;
+
+                ctx.beginPath();
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(end.x, end.y);
+                ctx.stroke();
+            }
+
+            // 2b. Draw Lights (Bodies) - Decoupled from constraints so they persist after cut
+            const allBodies = Composite.allBodies(world);
+            for (let b of allBodies) {
+                if (b.lightColor) {
+                    const time = Date.now() * 0.005;
+                    const blink = Math.sin(time + b.lightPhase) > 0;
+
+                    ctx.shadowBlur = blink ? 10 : 0;
+                    ctx.shadowColor = b.lightColor;
+                    ctx.fillStyle = blink ? b.lightColor : '#444';
+
+                    ctx.beginPath();
+                    ctx.arc(b.position.x, b.position.y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            }
+
+            // 3. Draw Tree (Better)
+            if (treeBody) {
+                drawTree(treeBody.position.x, treeBody.position.y);
+            }
+
+            // 4. Draw Star & Trail
+            if (starBody) {
+                // Update Trail
+                if (!starBody.isStatic && !isGameOver) {
+                    starTrail.push({ x: starBody.position.x, y: starBody.position.y });
+                    if (starTrail.length > 20) starTrail.shift();
+                }
+
+                // Draw Trail
+                if (starTrail.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(starTrail[0].x, starTrail[0].y);
+                    for (let i = 1; i < starTrail.length; i++) {
+                        ctx.lineTo(starTrail[i].x, starTrail[i].y);
+                    }
+                    // create gradient for trail
+                    const gradient = ctx.createLinearGradient(
+                        starTrail[0].x, starTrail[0].y,
+                        starTrail[starTrail.length - 1].x, starTrail[starTrail.length - 1].y
+                    );
+                    gradient.addColorStop(0, "rgba(255, 215, 0, 0)");
+                    gradient.addColorStop(1, "rgba(255, 215, 0, 0.6)");
+
+                    ctx.lineCap = "round";
+                    ctx.lineWidth = 10;
+                    ctx.strokeStyle = gradient;
+                    ctx.stroke();
+
+                    // Reset
+                    ctx.lineWidth = 1;
+                    ctx.lineCap = "butt";
+                }
+
+                drawStar(starBody);
+                // This is still here for cases where it falls infinitely (if ground removed)
+                if (starBody.position.y > height + 50 && !isGameOver) {
+                    handleLoss();
+                }
+            }
+
+            // 5. Rising Snow Ground
+            if (snowLevel > 0) {
+                ctx.fillStyle = "#e2e8f0"; // Snow color
+                ctx.beginPath();
+                // Draw a slightly wavy top for the snow
+                ctx.moveTo(0, height);
+                ctx.lineTo(0, height - snowLevel);
+                // Simple curve
+                ctx.bezierCurveTo(width / 3, height - snowLevel - 10, 2 * width / 3, height - snowLevel + 10, width, height - snowLevel);
+                ctx.lineTo(width, height);
+                ctx.fill();
+            }
+
+            // 6. Cut Particles
+            ctx.fillStyle = 'white';
+            for (let i = cutParticles.length - 1; i >= 0; i--) {
+                let p = cutParticles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.05;
+                if (p.life <= 0) {
+                    cutParticles.splice(i, 1);
+                    continue;
+                }
+                ctx.globalAlpha = p.life;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            // 7. Slash Trace
+            if (slashTrace.length > 1) {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(slashTrace[0].x, slashTrace[0].y);
+                for (let i = 1; i < slashTrace.length; i++) {
+                    ctx.lineTo(slashTrace[i].x, slashTrace[i].y);
+                }
+                ctx.stroke();
+            }
+
+            requestAnimationFrame(renderLoop);
+        }
+
+        function drawStar(body) {
+            const pos = body.position;
+            const angle = body.angle;
+
+            ctx.translate(pos.x, pos.y);
+            ctx.rotate(angle);
+
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = CONFIG.starColor;
+            ctx.fillStyle = CONFIG.starColor;
+
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                ctx.lineTo(Math.cos((18 + i * 72) * Math.PI / 180) * 25,
+                    -Math.sin((18 + i * 72) * Math.PI / 180) * 25);
+                ctx.lineTo(Math.cos((54 + i * 72) * Math.PI / 180) * 10,
+                    -Math.sin((54 + i * 72) * Math.PI / 180) * 10);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = CONFIG.starGlow;
+            ctx.beginPath();
+            ctx.arc(0, 0, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+            ctx.rotate(-angle);
+            ctx.translate(-pos.x, -pos.y);
+        }
+
+        function drawTree(x, y) {
+            // y is center of trapezoid body.
+            // Tree dimensions: 160w x 220h
+            const bottomY = y + 110;
+
+            // Stump
+            ctx.fillStyle = "#5D4037";
+            ctx.fillRect(x - 15, bottomY - 30, 30, 30);
+
+            // Layers
+            const drawLayer = (yBase, w, h, color) => {
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(x, yBase - h);
+                ctx.lineTo(x - w / 2, yBase);
+                // Slight curve at bottom of layer
+                ctx.quadraticCurveTo(x, yBase + 10, x + w / 2, yBase);
+                ctx.closePath();
+                ctx.fill();
+            };
+
+            // Draw 3 layers with gradients
+            const gradient1 = ctx.createLinearGradient(x, bottomY - 40, x, bottomY - 120);
+            gradient1.addColorStop(0, '#14532d'); gradient1.addColorStop(1, '#166534');
+
+            const gradient2 = ctx.createLinearGradient(x, bottomY - 100, x, bottomY - 180);
+            gradient2.addColorStop(0, '#166534'); gradient2.addColorStop(1, '#15803d');
+
+            const gradient3 = ctx.createLinearGradient(x, bottomY - 160, x, bottomY - 220);
+            gradient3.addColorStop(0, '#15803d'); gradient3.addColorStop(1, '#22c55e');
+
+            drawLayer(bottomY - 20, 160, 90, gradient1);
+            drawLayer(bottomY - 80, 120, 80, gradient2);
+            drawLayer(bottomY - 140, 80, 70, gradient3);
+
+            // Tinsel (Gold curves)
+            ctx.beginPath();
+            ctx.strokeStyle = "rgba(255, 215, 0, 0.6)";
+            ctx.lineWidth = 3;
+            ctx.moveTo(x - 50, bottomY - 60);
+            ctx.quadraticCurveTo(x, bottomY - 40, x + 50, bottomY - 50);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(x - 30, bottomY - 120);
+            ctx.quadraticCurveTo(x, bottomY - 100, x + 30, bottomY - 110);
+            ctx.stroke();
+
+            // Ornaments & Lights
+            const ornaments = [
+                { x: -40, y: 50, c: '#ef4444' }, { x: 40, y: 60, c: '#3b82f6' },
+                { x: -20, y: 110, c: '#eab308' }, { x: 20, y: 120, c: '#a855f7' },
+                { x: 0, y: 160, c: '#ec4899' }, { x: -30, y: 130, c: '#f97316' },
+                { x: 30, y: 80, c: '#06b6d4' }
+            ];
+
+            ornaments.forEach((o, i) => {
+                let color = o.c;
+                // If level complete, flash lights
+                if (isLevelComplete) {
+                    const speed = 0.01; // Blink speed
+                    // Phase based on index + time
+                    const brightness = Math.sin(winAnimationTime * 0.2 + i);
+                    if (brightness > 0.5) {
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = color;
+                    } else {
+                        ctx.shadowBlur = 0;
+                        // Dim color slightly
+                        color = adjustColorBrightness(color, -50);
+                    }
+                }
+
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(x + o.x, bottomY - o.y, 6, 0, Math.PI * 2);
+                ctx.fill();
+                // Shine
+                if (!isLevelComplete || Math.random() > 0.5) {
+                    ctx.fillStyle = 'white';
+                    ctx.beginPath();
+                    ctx.arc(x + o.x - 2, bottomY - o.y - 2, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.shadowBlur = 0;
+            });
+        }
+
+        function adjustColorBrightness(hex, percent) {
+            // Simple helper to dim colors for off-state (optional, or just use css logic equivalent)
+            // For brevity, we can just return a darker hex or same.
+            // Actually, let's just return the same color but rely on shadowBlur for the "light on" effect.
+            return hex;
+        }
+
+        init();
+
+    </script>
+</body>
+
+</html>
