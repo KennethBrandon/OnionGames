@@ -315,6 +315,12 @@
             camera: { x: 0, y: 0 },
             lastMoveTime: 0,
             enemyMoveInterval: 800, // ms between enemy moves
+            falling: false,
+            fallStartTime: 0,
+            hanging: false,
+            hangStartTime: 0,
+            caught: false,
+            caughtStartTime: 0,
 
             init() {
                 // Load Images
@@ -612,6 +618,7 @@
 
             handleInput(e) {
                 if (this.state !== 'PLAYING') return;
+                if (this.falling || this.hanging || this.caught) return;
 
                 let dx = 0;
                 let dy = 0;
@@ -656,8 +663,16 @@
 
             checkCindyCatch() {
                 const caught = this.entities.some(e => e.type === 'cindy' && e.x === this.player.x && e.y === this.player.y);
-                if (caught) {
-                    this.gameOver("Caught by Cindy Lu Who!");
+                if (caught && !this.caught) {
+                    this.caught = true;
+                    this.caughtStartTime = Date.now();
+
+                    // Freeze enemies? dealt with in updateEnemies
+
+                    setTimeout(() => {
+                        this.caught = false;
+                        this.gameOver("Caught by Cindy Lou Who!");
+                    }, 3000);
                 }
             },
 
@@ -676,19 +691,41 @@
                     // Trap!
                     this.player.x = x;
                     this.player.y = y;
-                    this.gameOver("You stepped on a crunchy cookie!");
+
+                    // Start Hanging Animation
+                    this.hanging = true;
+                    this.hangStartTime = Date.now();
+
+                    setTimeout(() => {
+                        this.hanging = false;
+                        this.gameOver("You stepped on a crunchy cookie!");
+                    }, 3000); // 3 seconds for full effect
                 } else if (entity.type === 'trapdoor') {
                     // Trapdoor!
                     entity.state = 'open'; // Reveal
                     this.player.x = x;
                     this.player.y = y;
+
+                    // Start Falling Animation
+                    this.falling = true;
+                    this.fallStartTime = Date.now();
+
                     setTimeout(() => {
+                        this.falling = false;
                         this.gameOver("You fell through a trap door!");
-                    }, 200);
+                    }, 2000);
                 } else if (entity.type === 'cindy') {
                     this.player.x = x;
                     this.player.y = y;
-                    this.gameOver("Caught by Cindy Lu Who!");
+                    // Trigger catch logic same as checkCindyCatch
+                    if (!this.caught) {
+                        this.caught = true;
+                        this.caughtStartTime = Date.now();
+                        setTimeout(() => {
+                            this.caught = false;
+                            this.gameOver("Caught by Cindy Lou Who!");
+                        }, 3000);
+                    }
                 }
             },
 
@@ -706,6 +743,8 @@
             },
 
             updateEnemies() {
+                if (this.caught) return; // Freeze enemies when caught
+
                 let moved = false;
                 this.entities.forEach(e => {
                     if (e.type === 'cindy') {
@@ -905,13 +944,112 @@
                         // Draw Player
                         if (IMAGES.player) {
                             ctx.save();
+
+                            let scale = 1;
+                            let drawX = px;
+                            let drawY = py;
+
+                            // Falling Animation
+                            if (this.falling) {
+                                const fallDuration = 2000;
+                                const elapsed = Date.now() - this.fallStartTime;
+                                const progress = Math.min(elapsed / fallDuration, 1);
+
+                                scale = 1 - progress;
+                                ctx.translate(px + TILE_SIZE / 2, py + TILE_SIZE / 2);
+                                ctx.rotate(progress * Math.PI * 4);
+                                ctx.translate(-(px + TILE_SIZE / 2), -(py + TILE_SIZE / 2));
+                            }
+
+                            // Hanging Animation
+                            if (this.hanging) {
+                                const hangDuration = 3000;
+                                const elapsed = Date.now() - this.hangStartTime;
+                                const progress = Math.min(elapsed / hangDuration, 1);
+
+                                // Stage 1: Wrapped (0-1s) - implied by rope drawing
+                                // Stage 2: Hoist (1s-2s)
+                                let hoistY = 0;
+                                if (elapsed > 1000) {
+                                    const hoistProgress = Math.min((elapsed - 1000) / 1000, 1);
+                                    // Hoist up to 1.5 tiles high
+                                    hoistY = -hoistProgress * TILE_SIZE * 1.5;
+                                }
+
+                                // Stage 3: Swing (Continuous)
+                                const swingAmt = Math.sin(elapsed * 0.005) * 0.2 * (1 - progress * 0.5); // Dampen slightly? No keep swinging
+
+                                ctx.translate(px + TILE_SIZE / 2, py); // Pivot at top center of tile (approx)
+                                ctx.translate(0, hoistY);
+                                ctx.rotate(swingAmt);
+                                ctx.translate(-(px + TILE_SIZE / 2), -py);
+
+                                // Draw Rope going up
+                                ctx.beginPath();
+                                ctx.moveTo(px + TILE_SIZE / 2, py - 10); // Top of player
+                                ctx.lineTo(px + TILE_SIZE / 2, py - TILE_SIZE * 10); // Way up
+                                ctx.strokeStyle = '#d4a373'; // Rope color
+                                ctx.lineWidth = 3;
+                                ctx.stroke();
+                            }
+
                             if (this.player.dir === 'left') {
                                 ctx.translate(px + TILE_SIZE, py);
-                                ctx.scale(-1, 1);
+                                ctx.scale(-1 * scale, 1 * scale);
+                                // The falling logic already applied its own transforms, so we just draw relative to the new origin.
+                                // If hanging, the pivot is already set, so we draw relative to that.
                                 ctx.drawImage(IMAGES.player, 0, -10, TILE_SIZE, TILE_SIZE + 10);
                             } else {
+                                // If falling, the scaling transform is already applied.
+                                // If hanging, the pivot and rotation are already applied.
+                                // So we just draw at the original px, py (which is now relative to the transformed context).
                                 ctx.drawImage(IMAGES.player, px, py - 10, TILE_SIZE, TILE_SIZE + 10);
                             }
+
+                            // Draw Ropes AROUND player if hanging
+                            if (this.hanging) {
+                                // The context is still transformed by the hanging/falling logic.
+                                // We need to draw the ropes relative to the player's sprite.
+                                // Sprite is drawn at (0, -10) if flipped, or (px, py - 10) if not,
+                                // relative to the current transformed context.
+
+                                const elapsed = Date.now() - this.hangStartTime;
+                                ctx.strokeStyle = '#d4a373';
+                                ctx.lineWidth = 3;
+
+                                const loops = Math.floor(Math.min(elapsed / 200, 5)); // Add a loop every 200ms, max 5
+
+                                for (let i = 0; i < loops; i++) {
+                                    let ry = -10 + (i * 12); // Spacing relative to sprite's top-left Y
+                                    if (ry < TILE_SIZE) { // Ensure it's within the sprite height
+                                        ctx.beginPath();
+                                        // Draw lines across the player sprite's local coordinates
+                                        // The player sprite is drawn at (0, -10) (if flipped) or (px, py - 10) (if not)
+                                        // relative to the current transformed context.
+                                        // To draw across the sprite, we need to consider the current transform.
+                                        // A simpler approach is to draw relative to the player's current transformed position.
+                                        // The player image is drawn at (0, -10) or (px, py-10) in the *current* coordinate system.
+                                        // Let's assume the player image is drawn at `drawX`, `drawY` with `TILE_SIZE`, `TILE_SIZE+10` dimensions.
+                                        // The previous transforms make this complex.
+                                        // Let's draw relative to the player's *actual* screen position after all transforms.
+                                        // This means drawing relative to the `px` and `py` that the player image is drawn at.
+                                        // The `drawImage` calls use `0, -10` or `px, py-10`.
+                                        // If `this.player.dir === 'left'`, the `drawImage` is `(0, -10)`.
+                                        // If not, it's `(px, py - 10)`.
+                                        // This means the origin for drawing the sprite is either `(0,0)` or `(px,py)` in the *current* transformed space.
+
+                                        // Let's draw relative to the player's sprite bounding box in the current transformed space.
+                                        // The sprite is drawn from `spriteDrawX` to `spriteDrawX + TILE_SIZE` and `spriteDrawY` to `spriteDrawY + TILE_SIZE + 10`.
+                                        let spriteDrawX = (this.player.dir === 'left') ? 0 : px;
+                                        let spriteDrawY = py - 10; // Always py - 10 for the top of the sprite
+
+                                        ctx.moveTo(spriteDrawX, spriteDrawY + ry);
+                                        ctx.lineTo(spriteDrawX + TILE_SIZE, spriteDrawY + ry);
+                                        ctx.stroke();
+                                    }
+                                }
+                            }
+
                             ctx.restore();
                         } else {
                             ctx.fillStyle = '#65a30d';
@@ -919,6 +1057,72 @@
                         }
                     }
                 });
+
+                // spotlight effect for falling? No, only for Cindy catch
+                if (this.caught) {
+                    // Spotlight Effect
+                    // Draw semi-transparent black everywhere EXCEPT around player
+
+                    // We can use a radial gradient on a full-screen rect
+                    // calculated based on player position on screen
+                    const cx = this.player.x * TILE_SIZE + TILE_SIZE / 2;
+                    const cy = this.player.y * TILE_SIZE + TILE_SIZE / 2;
+
+                    // Since we are inside a camera translation, we can just draw a big rect?
+                    // Or standard overlay technique:
+                    // 1. Fill screen black (alpha)
+                    // 2. Use destination-out to clear circle
+
+                    // But we are already drawing on the main canvas which has game world.
+                    // If we fill rect, we cover game world.
+
+                    // Let's do a radial gradient from transparent to black
+                    // Radius needs to be big enough to cover screen
+                    const radius = 600; // ample size
+
+                    // Gradient must be centered on the player
+                    const g = ctx.createRadialGradient(cx, cy, 60, cx, cy, radius);
+                    g.addColorStop(0, 'rgba(0,0,0,0)');
+                    g.addColorStop(0.2, 'rgba(0,0,0,0.85)');
+                    g.addColorStop(1, 'rgba(0,0,0,0.85)');
+
+                    ctx.fillStyle = g;
+                    // Draw a huge rect centered on player
+                    ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+
+
+                    // Dialog Bubble
+                    // Draw above Cindy (who is at same pos as player)
+                    ctx.save();
+                    ctx.translate(cx, cy - TILE_SIZE); // Above player
+
+                    // Bubble shape
+                    ctx.fillStyle = 'white';
+                    ctx.strokeStyle = 'black';
+                    ctx.lineWidth = 2;
+
+                    ctx.beginPath();
+                    ctx.ellipse(0, -30, 60, 30, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Little tail
+                    ctx.beginPath();
+                    ctx.moveTo(-10, -5);
+                    ctx.lineTo(0, 20); // Point down
+                    ctx.lineTo(10, -5);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Text
+                    ctx.fillStyle = 'black';
+                    ctx.font = 'bold 20px "Mountains of Christmas", cursive';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText("Santa?", 0, -32);
+
+                    ctx.restore();
+                }
 
                 ctx.restore();
             }
