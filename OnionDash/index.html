@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JV4DNLEE4R"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-JV4DNLEE4R');
+    </script>
+
+    <title>Onion Dash</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0b021a; /* Dark violet background */
+            touch-action: none;
+            font-family: 'Press Start 2P', cursive;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            background: linear-gradient(to bottom, #110526, #2d0b59);
+            box-shadow: 0 0 50px rgba(139, 92, 246, 0.3);
+        }
+
+        #uiLayer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #00ffcc;
+            animation: glow 1.5s infinite alternate;
+        }
+
+        p {
+            font-size: 1.2rem;
+            line-height: 1.5;
+            margin-bottom: 30px;
+        }
+
+        button {
+            pointer-events: auto;
+            background: linear-gradient(to bottom, #8b5cf6, #6d28d9);
+            border: 4px solid #fff;
+            color: #fff;
+            padding: 15px 30px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: transform 0.1s;
+            text-transform: uppercase;
+        }
+
+        button:active {
+            transform: scale(0.95);
+            background: linear-gradient(to bottom, #6d28d9, #4c1d95);
+        }
+
+        #scoreBoard {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 1.5rem;
+            color: #00ffcc;
+            text-shadow: 2px 2px 0px #000;
+        }
+        
+        #levelDisplay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 1.5rem;
+            color: #ff00ff;
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc; transform: scale(1); }
+            to { text-shadow: 0 0 20px #00ffcc, 0 0 30px #00ffcc; transform: scale(1.05); }
+        }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 2rem; }
+            p { font-size: 0.8rem; padding: 0 20px; }
+            button { padding: 10px 20px; font-size: 1rem; }
+            #scoreBoard, #levelDisplay { font-size: 1rem; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div id="uiLayer">
+            <div id="startScreen">
+                <h1>ONION DASH</h1>
+                <p>Tap or Space to Jump!<br>Avoid the spikes!</p>
+                <button id="startBtn">Play</button>
+            </div>
+            <div id="gameOverScreen" class="hidden">
+                <h1 style="color: #ff0055;">CRASHED!</h1>
+                <p id="finalScore">Score: 0</p>
+                <button id="restartBtn">Try Again</button>
+            </div>
+            <div id="levelCompleteScreen" class="hidden">
+                <h1 style="color: #00ffcc;">LEVEL CLEARED!</h1>
+                <p>Get ready for the next run!</p>
+                <button id="nextLevelBtn">Next Level</button>
+            </div>
+        </div>
+        <div id="scoreBoard" class="hidden">0%</div>
+        <div id="levelDisplay" class="hidden">Lv 1</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const uiLayer = document.getElementById('uiLayer');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const levelCompleteScreen = document.getElementById('levelCompleteScreen');
+        
+        const startBtn = document.getElementById('startBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const nextLevelBtn = document.getElementById('nextLevelBtn');
+        
+        const scoreBoard = document.getElementById('scoreBoard');
+        const levelDisplay = document.getElementById('levelDisplay');
+        const finalScoreEl = document.getElementById('finalScore');
+
+        let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER, LEVEL_COMPLETE
+        let animationId;
+        let lastTime = 0;
+
+        // Load Player Sprite
+        const playerImage = new Image();
+        playerImage.src = 'player.png';
+        let playerImageLoaded = false;
+        playerImage.onload = () => { playerImageLoaded = true; };
+
+        // Game Config
+        const gravity = 0.8;
+        const jumpForce = -12;
+        const baseScrollSpeed = 6;
+        let scrollSpeed = baseScrollSpeed;
+        
+        const groundHeight = 100;
+        let distance = 0;
+        let levelLength = 3000;
+        let currentLevel = 1;
+
+        // Player
+        const player = {
+            x: 100,
+            y: 0,
+            width: 40,
+            height: 40,
+            vy: 0,
+            rotation: 0,
+            isGrounded: false
+        };
+
+        // Obstacles
+        let obstacles = [];
+        let particles = [];
+
+        // Levels Design
+        // 0 = empty, 1 = spike, 2 = block
+        const levels = [
+            [0,0,1,0,0,1,1,0,0,0,2,2,0,0,1,0,0,2,0,1,0,0,0,1,1,1,0,0,2,2,2,0,0,1],
+            [0,1,0,2,1,0,0,1,1,0,2,2,1,0,0,1,2,0,1,0,2,2,1,0,1,1,0,2,2,2,1,0,0,1,1],
+            [2,0,1,0,2,2,0,1,1,2,0,0,1,1,1,2,2,2,0,1,1,2,0,1,2,2,0,1,1,1,2,2,1,0,1,1]
+        ];
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            if (gameState === 'MENU') {
+                player.y = canvas.height - groundHeight - player.height;
+                drawBackground();
+            }
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function createParticles(x, y, color) {
+            for(let i=0; i<15; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 1) * 10,
+                    size: Math.random() * 5 + 2,
+                    color: color,
+                    life: 1.0
+                });
+            }
+        }
+
+        function buildLevel() {
+            obstacles = [];
+            const layout = levels[(currentLevel - 1) % levels.length];
+            let currentX = canvas.width;
+            const spacing = 300; // base spacing
+            
+            levelLength = layout.length * spacing;
+
+            layout.forEach((type, index) => {
+                if (type === 1) {
+                    // Spike
+                    obstacles.push({
+                        type: 'spike',
+                        x: currentX + (index * spacing),
+                        y: canvas.height - groundHeight - 30,
+                        width: 30,
+                        height: 30
+                    });
+                } else if (type === 2) {
+                    // Block
+                    obstacles.push({
+                        type: 'block',
+                        x: currentX + (index * spacing),
+                        y: canvas.height - groundHeight - 40,
+                        width: 40,
+                        height: 40
+                    });
+                }
+            });
+        }
+
+        function resetGame() {
+            player.y = canvas.height - groundHeight - player.height;
+            player.vy = 0;
+            player.rotation = 0;
+            distance = 0;
+            scrollSpeed = baseScrollSpeed + (currentLevel * 0.5);
+            particles = [];
+            buildLevel();
+            
+            scoreBoard.innerText = "0%";
+            levelDisplay.innerText = "Lv " + currentLevel;
+            scoreBoard.classList.remove('hidden');
+            levelDisplay.classList.remove('hidden');
+        }
+
+        function jump() {
+            if (gameState !== 'PLAYING') return;
+            if (player.isGrounded) {
+                player.vy = jumpForce;
+                player.isGrounded = false;
+                createParticles(player.x + player.width/2, player.y + player.height, '#00ffcc');
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                jump();
+            }
+        });
+        window.addEventListener('touchstart', jump, {passive: false});
+        window.addEventListener('mousedown', jump);
+
+        startBtn.addEventListener('click', () => {
+            currentLevel = 1;
+            startGame();
+        });
+        
+        restartBtn.addEventListener('click', startGame);
+        
+        nextLevelBtn.addEventListener('click', () => {
+            currentLevel++;
+            startGame();
+        });
+
+        function startGame() {
+            gameState = 'PLAYING';
+            startScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            levelCompleteScreen.classList.add('hidden');
+            resetGame();
+            
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'game_start', { 'game_name': 'Onion Dash' });
+            }
+            
+            lastTime = performance.now();
+            cancelAnimationFrame(animationId);
+            gameLoop(lastTime);
+        }
+
+        function drawBackground() {
+            // Grid lines
+            ctx.strokeStyle = 'rgba(139, 92, 246, 0.2)';
+            ctx.lineWidth = 2;
+            
+            const gridSize = 50;
+            const offsetX = -(distance * 0.5) % gridSize;
+            
+            ctx.beginPath();
+            for (let x = offsetX; x < canvas.width; x += gridSize) {
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+            }
+            for (let y = 0; y < canvas.height; y += gridSize) {
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+            }
+            ctx.stroke();
+
+            // Ground
+            ctx.fillStyle = '#0b021a';
+            ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
+            
+            ctx.strokeStyle = '#00ffcc';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height - groundHeight);
+            ctx.lineTo(canvas.width, canvas.height - groundHeight);
+            ctx.stroke();
+            
+            // Ground grid movement
+            const gOffsetX = -distance % gridSize;
+            ctx.strokeStyle = 'rgba(0, 255, 204, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let x = gOffsetX; x < canvas.width; x += gridSize) {
+                ctx.moveTo(x, canvas.height - groundHeight);
+                ctx.lineTo(x - 50, canvas.height); // slight angle
+            }
+            ctx.stroke();
+        }
+
+        function checkCollision(r1, r2) {
+            // Shrink hitboxes slightly for fairer gameplay
+            const hitboxShrink = 6;
+            return !(r1.x + hitboxShrink > r2.x + r2.width - hitboxShrink || 
+                     r1.x + r1.width - hitboxShrink < r2.x + hitboxShrink || 
+                     r1.y + hitboxShrink > r2.y + r2.height - hitboxShrink ||
+                     r1.y + r1.height - hitboxShrink < r2.y + hitboxShrink);
+        }
+
+        function gameOver() {
+            gameState = 'GAMEOVER';
+            createParticles(player.x + player.width/2, player.y + player.height/2, '#ff0055');
+            createParticles(player.x + player.width/2, player.y + player.height/2, '#ffffff');
+            
+            setTimeout(() => {
+                scoreBoard.classList.add('hidden');
+                levelDisplay.classList.add('hidden');
+                let pct = Math.floor((distance / levelLength) * 100);
+                finalScoreEl.innerText = `Progress: ${pct}%`;
+                gameOverScreen.classList.remove('hidden');
+            }, 500);
+            
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'game_over', { 'game_name': 'Onion Dash' });
+            }
+        }
+
+        function levelComplete() {
+            gameState = 'LEVEL_COMPLETE';
+            scoreBoard.classList.add('hidden');
+            levelDisplay.classList.add('hidden');
+            levelCompleteScreen.classList.remove('hidden');
+        }
+
+        function gameLoop(timestamp) {
+            if (gameState === 'MENU') {
+                drawBackground();
+                animationId = requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            const dt = (timestamp - lastTime) / 16.67; // Normalize to 60fps
+            lastTime = timestamp;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackground();
+
+            if (gameState === 'PLAYING') {
+                // Update Distance
+                distance += scrollSpeed * dt;
+                let pct = Math.min(100, Math.floor((distance / levelLength) * 100));
+                scoreBoard.innerText = `${pct}%`;
+
+                if (distance > levelLength + canvas.width) {
+                    levelComplete();
+                }
+
+                // Update Player
+                player.vy += gravity * dt;
+                player.y += player.vy * dt;
+
+                // Floor collision
+                if (player.y + player.height >= canvas.height - groundHeight) {
+                    player.y = canvas.height - groundHeight - player.height;
+                    player.vy = 0;
+                    if (!player.isGrounded) {
+                        // Just landed
+                        player.rotation = Math.round(player.rotation / (Math.PI/2)) * (Math.PI/2);
+                    }
+                    player.isGrounded = true;
+                } else {
+                    player.isGrounded = false;
+                    player.rotation += 0.1 * dt;
+                }
+
+                // Update Obstacles
+                for (let i = 0; i < obstacles.length; i++) {
+                    let obs = obstacles[i];
+                    obs.x -= scrollSpeed * dt;
+
+                    // Platform collision for blocks
+                    if (obs.type === 'block') {
+                        // Check if landing on top
+                        if (player.vy > 0 && 
+                            player.y + player.height - player.vy <= obs.y && 
+                            player.x + player.width > obs.x + 5 && 
+                            player.x < obs.x + obs.width - 5) {
+                            
+                            if (player.y + player.height >= obs.y) {
+                                player.y = obs.y - player.height;
+                                player.vy = 0;
+                                player.isGrounded = true;
+                                player.rotation = Math.round(player.rotation / (Math.PI/2)) * (Math.PI/2);
+                            }
+                        }
+                    }
+
+                    if (checkCollision(player, obs)) {
+                        if (obs.type === 'spike') {
+                            gameOver();
+                        } else if (obs.type === 'block' && !player.isGrounded) {
+                            // Side crash
+                            gameOver();
+                        }
+                    }
+                }
+            }
+
+            // Draw Obstacles
+            obstacles.forEach(obs => {
+                if (obs.x + obs.width < 0 || obs.x > canvas.width) return;
+
+                if (obs.type === 'spike') {
+                    ctx.fillStyle = '#ff0055';
+                    ctx.beginPath();
+                    ctx.moveTo(obs.x + obs.width/2, obs.y);
+                    ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
+                    ctx.lineTo(obs.x, obs.y + obs.height);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Neon outline
+                    ctx.strokeStyle = '#ffb3cc';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                } else if (obs.type === 'block') {
+                    ctx.fillStyle = '#6d28d9';
+                    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                    
+                    // Neon outline
+                    ctx.strokeStyle = '#00ffcc';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+                }
+            });
+
+            // Draw Particles
+            for(let i=particles.length-1; i>=0; i--) {
+                let p = particles[i];
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.life -= 0.05 * dt;
+                if(p.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+
+            // Draw Player
+            if (gameState !== 'GAMEOVER') {
+                ctx.save();
+                ctx.translate(player.x + player.width/2, player.y + player.height/2);
+                ctx.rotate(player.rotation);
+                if (playerImageLoaded) {
+                    ctx.drawImage(playerImage, -player.width/2, -player.height/2, player.width, player.height);
+                } else {
+                    ctx.fillStyle = '#00ffcc';
+                    ctx.fillRect(-player.width/2, -player.height/2, player.width, player.height);
+                }
+                ctx.restore();
+            }
+
+            animationId = requestAnimationFrame(gameLoop);
+        }
+        
+        // Initial draw
+        drawBackground();
+        animationId = requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
