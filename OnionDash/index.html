@@ -121,11 +121,54 @@
             to { text-shadow: 0 0 20px #00ffcc, 0 0 30px #00ffcc; transform: scale(1.05); }
         }
 
+        #debugPanel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(11, 2, 26, 0.9);
+            border: 2px solid #00ffcc;
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            z-index: 1000;
+            font-size: 0.8rem;
+            color: #fff;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.5);
+            pointer-events: auto;
+        }
+
+        #debugPanel button, #debugPanel select {
+            background: #2d0b59;
+            color: #fff;
+            border: 1px solid #00ffcc;
+            padding: 5px 10px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.7rem;
+            cursor: pointer;
+            text-transform: none;
+        }
+
+        #debugPanel label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        #debugPanel input[type="range"] {
+            width: 150px;
+            cursor: pointer;
+        }
+
         @media (max-width: 600px) {
             h1 { font-size: 2rem; }
             p { font-size: 0.8rem; padding: 0 20px; }
             button { padding: 10px 20px; font-size: 1rem; }
             #scoreBoard, #levelDisplay { font-size: 1rem; }
+            #debugPanel { flex-wrap: wrap; justify-content: center; bottom: 5px; font-size: 0.6rem; }
         }
     </style>
 </head>
@@ -153,6 +196,17 @@
         </div>
         <div id="scoreBoard" class="hidden">0%</div>
         <div id="levelDisplay" class="hidden">Lv 1</div>
+        
+        <div id="debugPanel" class="hidden">
+            <select id="debugLevelSelect"></select>
+            <label draggable="true" data-type="0"><input type="radio" name="obstacleType" value="0" checked> Empty</label>
+            <label draggable="true" data-type="1"><input type="radio" name="obstacleType" value="1"> Spike</label>
+            <label draggable="true" data-type="2"><input type="radio" name="obstacleType" value="2"> Block</label>
+            <label draggable="true" data-type="3"><input type="radio" name="obstacleType" value="3"> Down Spike</label>
+            <button id="debugPauseBtn">Pause</button>
+            <input type="range" id="debugScroll" min="0" max="3000" value="0">
+            <button id="debugSaveBtn">Export JSON</button>
+        </div>
     </div>
 
     <script>
@@ -172,7 +226,17 @@
         const levelDisplay = document.getElementById('levelDisplay');
         const finalScoreEl = document.getElementById('finalScore');
 
-        let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER, LEVEL_COMPLETE
+        const urlParams = new URLSearchParams(window.location.search);
+        const isDebug = urlParams.get('debug') === 'true';
+
+        const debugPanel = document.getElementById('debugPanel');
+        const debugLevelSelect = document.getElementById('debugLevelSelect');
+        const debugPauseBtn = document.getElementById('debugPauseBtn');
+        const debugScroll = document.getElementById('debugScroll');
+        const debugSaveBtn = document.getElementById('debugSaveBtn');
+        let debugSelectedObstacle = 0;
+
+        let gameState = 'MENU'; // MENU, PLAYING, PAUSED, GAMEOVER, LEVEL_COMPLETE
         let animationId;
         let lastTime = 0;
 
@@ -209,12 +273,160 @@
         let particles = [];
 
         // Levels Design
-        // 0 = empty, 1 = spike, 2 = block
-        const levels = [
-            [0,0,1,0,0,1,1,0,0,0,2,2,0,0,1,0,0,2,0,1,0,0,0,1,1,1,0,0,2,2,2,0,0,1],
-            [0,1,0,2,1,0,0,1,1,0,2,2,1,0,0,1,2,0,1,0,2,2,1,0,1,1,0,2,2,2,1,0,0,1,1],
-            [2,0,1,0,2,2,0,1,1,2,0,0,1,1,1,2,2,2,0,1,1,2,0,1,2,2,0,1,1,1,2,2,1,0,1,1]
-        ];
+        // 0 = empty, 1 = spike, 2 = block, 3 = down-spike
+        // Below is the 2D array representation [Level][Row][Column]
+        let levels = [];
+        (function() {
+            // Level 1 (custom user-provided 2D array design)
+            levels.push([[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,2,2,0,0,0,0,2,2,2,1,2,2,0,0,0,0,0,0,2,2,2,0,0,0,0,0,0,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,0,0,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,0,0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,1,2,1,1,2,1,2,2,1,2,1,2,2,2,2,2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]]);
+
+            // Generate levels 2 and 3 dynamically from legacy raw format
+            const rawLevels = [
+                [0,1,0,2,1,0,0,1,1,0,2,2,1,0,0,1,2,0,1,0,2,2,1,0,1,1,0,2,2,2,1,0,0,1,1],
+                [2,0,1,0,2,2,0,1,1,2,0,0,1,1,1,2,2,2,0,1,1,2,0,1,2,2,0,1,1,1,2,2,1,0,1,1]
+            ];
+            rawLevels.forEach(raw => {
+                const row4 = [];
+                raw.forEach((item, idx) => {
+                    row4.push(item);
+                    if (idx < raw.length - 1) {
+                        for(let k=0; k<7; k++) row4.push(0);
+                    }
+                });
+                const emptyRow = new Array(row4.length).fill(0);
+                levels.push([
+                    [...emptyRow],
+                    [...emptyRow],
+                    [...emptyRow],
+                    [...emptyRow],
+                    row4
+                ]);
+            });
+        })();
+
+        if (isDebug) {
+            debugPanel.classList.remove('hidden');
+            levels.forEach((lvl, i) => {
+                const opt = document.createElement('option');
+                opt.value = i + 1;
+                opt.innerText = `Level ${i + 1}`;
+                debugLevelSelect.appendChild(opt);
+            });
+            
+            debugLevelSelect.addEventListener('change', (e) => {
+                currentLevel = parseInt(e.target.value);
+                resetGame();
+                if (gameState === 'PAUSED') {
+                    buildLevel();
+                }
+            });
+
+            document.querySelectorAll('input[name="obstacleType"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    debugSelectedObstacle = parseInt(e.target.value);
+                });
+            });
+
+            document.querySelectorAll('#debugPanel label[draggable]').forEach(label => {
+                label.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', label.getAttribute('data-type'));
+                });
+            });
+
+            debugPauseBtn.addEventListener('click', () => {
+                if (gameState === 'PLAYING') {
+                    gameState = 'PAUSED';
+                    debugPauseBtn.innerText = 'Play';
+                    debugScroll.max = levelLength + 500;
+                    debugScroll.value = distance;
+                } else if (gameState === 'PAUSED') {
+                    gameState = 'PLAYING';
+                    debugPauseBtn.innerText = 'Pause';
+                }
+            });
+
+            debugScroll.addEventListener('input', (e) => {
+                if (gameState === 'PAUSED') {
+                    distance = parseInt(e.target.value);
+                    buildLevel();
+                }
+            });
+
+            debugSaveBtn.addEventListener('click', () => {
+                const lvlData = JSON.stringify(levels[currentLevel - 1]);
+                navigator.clipboard.writeText(lvlData).then(() => {
+                    const originalText = debugSaveBtn.innerText;
+                    debugSaveBtn.innerText = 'Copied!';
+                    setTimeout(() => { debugSaveBtn.innerText = originalText; }, 2000);
+                }).catch(err => {
+                    alert('Failed to copy to clipboard. ' + err);
+                });
+            });
+
+            canvas.addEventListener('mousedown', (e) => {
+                if (gameState !== 'PAUSED' && gameState !== 'PLAYING') return;
+                
+                const rect = canvas.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+                
+                const spacing = 40;
+                let colFloor = Math.floor((clickX - canvas.width + distance) / spacing);
+                
+                let yFromGround = canvas.height - groundHeight - clickY;
+                let rFromBottom = Math.floor(yFromGround / 40);
+                let row = 4 - rFromBottom;
+                
+                if (colFloor >= 0 && row >= 0 && row <= 4) {
+                    const layout = levels[currentLevel - 1];
+                    for (let i = 0; i < 5; i++) {
+                        while (layout[i].length <= colFloor) {
+                            layout[i].push(0);
+                        }
+                    }
+                    layout[row][colFloor] = debugSelectedObstacle;
+                    
+                    buildLevel();
+                    debugScroll.max = levelLength + 500;
+                }
+            });
+
+            canvas.addEventListener('dragover', (e) => {
+                if (gameState !== 'PAUSED' && gameState !== 'PLAYING') return;
+                e.preventDefault();
+            });
+
+            canvas.addEventListener('drop', (e) => {
+                if (gameState !== 'PAUSED' && gameState !== 'PLAYING') return;
+                e.preventDefault();
+                const type = parseInt(e.dataTransfer.getData('text/plain'));
+                if (!isNaN(type)) {
+                    const rect = canvas.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const clickY = e.clientY - rect.top;
+                    
+                    const spacing = 40;
+                    let colFloor = Math.floor((clickX - canvas.width + distance) / spacing);
+                    
+                    let yFromGround = canvas.height - groundHeight - clickY;
+                    let rFromBottom = Math.floor(yFromGround / 40);
+                    let row = 4 - rFromBottom;
+                    
+                    if (colFloor >= 0 && row >= 0 && row <= 4) {
+                        const layout = levels[currentLevel - 1];
+                        for (let i = 0; i < 5; i++) {
+                            while (layout[i].length <= colFloor) {
+                                layout[i].push(0);
+                            }
+                        }
+                        layout[row][colFloor] = type;
+                        
+                        buildLevel();
+                        debugScroll.max = levelLength + 500;
+                    }
+                }
+            });
+        }
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -244,31 +456,45 @@
             obstacles = [];
             const layout = levels[(currentLevel - 1) % levels.length];
             let currentX = canvas.width;
-            const spacing = 300; // base spacing
+            const spacing = 40; // Dense spacing for 2D grid
             
-            levelLength = layout.length * spacing;
+            levelLength = layout[0].length * spacing;
 
-            layout.forEach((type, index) => {
-                if (type === 1) {
-                    // Spike
-                    obstacles.push({
-                        type: 'spike',
-                        x: currentX + (index * spacing),
-                        y: canvas.height - groundHeight - 30,
-                        width: 30,
-                        height: 30
-                    });
-                } else if (type === 2) {
-                    // Block
-                    obstacles.push({
-                        type: 'block',
-                        x: currentX + (index * spacing),
-                        y: canvas.height - groundHeight - 40,
-                        width: 40,
-                        height: 40
-                    });
-                }
-            });
+            for (let r = 0; r < 5; r++) {
+                const rowArray = layout[r];
+                rowArray.forEach((type, col) => {
+                    let base_x = currentX + (col * spacing) - distance;
+                    let base_y = canvas.height - groundHeight - ((5 - r) * 40);
+                    if (type === 1) {
+                        // Spike rests on the floor of the cell
+                        obstacles.push({
+                            type: 'spike',
+                            x: base_x + 5,
+                            y: base_y + 10,
+                            width: 30,
+                            height: 30
+                        });
+                    } else if (type === 2) {
+                        // Block takes up full 40x40
+                        obstacles.push({
+                            type: 'block',
+                            x: base_x,
+                            y: base_y,
+                            width: 40,
+                            height: 40
+                        });
+                    } else if (type === 3) {
+                        // Down Spike hangs from the ceiling of the cell
+                        obstacles.push({
+                            type: 'spike-down',
+                            x: base_x + 5,
+                            y: base_y,
+                            width: 30,
+                            height: 30
+                        });
+                    }
+                });
+            }
         }
 
         function resetGame() {
@@ -299,9 +525,27 @@
             if (e.code === 'Space' || e.code === 'ArrowUp') {
                 jump();
             }
+            if (isDebug && gameState === 'PAUSED') {
+                if (e.code === 'ArrowRight') {
+                    distance += 50;
+                    debugScroll.value = distance;
+                    buildLevel();
+                } else if (e.code === 'ArrowLeft') {
+                    distance -= 50;
+                    if (distance < 0) distance = 0;
+                    debugScroll.value = distance;
+                    buildLevel();
+                }
+            }
         });
         window.addEventListener('touchstart', jump, {passive: false});
-        window.addEventListener('mousedown', jump);
+        // We only jump on document mousedown if we aren't clicking the debug UI or paused
+        window.addEventListener('mousedown', (e) => {
+            if (isDebug && (gameState === 'PAUSED' || e.target.closest('#debugPanel'))) {
+                return;
+            }
+            jump();
+        });
 
         startBtn.addEventListener('click', () => {
             currentLevel = 1;
@@ -456,10 +700,11 @@
                     // Platform collision for blocks
                     if (obs.type === 'block') {
                         // Check if landing on top
-                        if (player.vy > 0 && 
-                            player.y + player.height - player.vy <= obs.y && 
-                            player.x + player.width > obs.x + 5 && 
-                            player.x < obs.x + obs.width - 5) {
+                        let prevBottom = player.y + player.height - (player.vy * dt);
+                        if (player.vy >= 0 && 
+                            prevBottom <= obs.y + 10 && 
+                            player.x + player.width > obs.x + 2 && 
+                            player.x < obs.x + obs.width - 2) {
                             
                             if (player.y + player.height >= obs.y) {
                                 player.y = obs.y - player.height;
@@ -471,11 +716,42 @@
                     }
 
                     if (checkCollision(player, obs)) {
-                        if (obs.type === 'spike') {
+                        if (obs.type === 'spike' || obs.type === 'spike-down') {
                             gameOver();
                         } else if (obs.type === 'block') {
                             // Side or bottom crash
                             gameOver();
+                        }
+                    }
+                }
+            }
+
+            if (isDebug && gameState === 'PAUSED') {
+                const spacing = 40;
+                const layout = levels[currentLevel - 1];
+                let maxIndex = Math.max(layout[0].length + 5, Math.ceil((distance + canvas.width) / spacing));
+                
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.lineWidth = 1;
+                
+                for (let col = 0; col <= maxIndex; col++) {
+                    let slotX = canvas.width + (col * spacing) - distance;
+                    if (slotX > -50 && slotX < canvas.width + 50) {
+                        for (let row = 0; row < 5; row++) {
+                            let slotY = canvas.height - groundHeight - ((5 - row) * 40);
+                            ctx.strokeRect(slotX, slotY, 40, 40);
+                        }
+                    }
+                }
+                
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.font = '8px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                for (let col = 0; col <= maxIndex; col++) {
+                    let slotX = canvas.width + (col * spacing) - distance;
+                    if (slotX > -50 && slotX < canvas.width + 50) {
+                        if (col % 5 === 0) { 
+                            ctx.fillText(col, slotX + 20, canvas.height - groundHeight + 15);
                         }
                     }
                 }
@@ -491,6 +767,19 @@
                     ctx.moveTo(obs.x + obs.width/2, obs.y);
                     ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
                     ctx.lineTo(obs.x, obs.y + obs.height);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Neon outline
+                    ctx.strokeStyle = '#ffb3cc';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                } else if (obs.type === 'spike-down') {
+                    ctx.fillStyle = '#ff0055';
+                    ctx.beginPath();
+                    ctx.moveTo(obs.x + obs.width/2, obs.y + obs.height);
+                    ctx.lineTo(obs.x + obs.width, obs.y);
+                    ctx.lineTo(obs.x, obs.y);
                     ctx.closePath();
                     ctx.fill();
                     
