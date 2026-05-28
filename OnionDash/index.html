@@ -473,8 +473,8 @@
                     if (checkCollision(player, obs)) {
                         if (obs.type === 'spike') {
                             gameOver();
-                        } else if (obs.type === 'block' && !player.isGrounded) {
-                            // Side crash
+                        } else if (obs.type === 'block') {
+                            // Side or bottom crash
                             gameOver();
                         }
                     }
