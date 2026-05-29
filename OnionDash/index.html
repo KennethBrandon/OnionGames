@@ -18,13 +18,15 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-        body, html {
+        body,
+        html {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #0b021a; /* Dark violet background */
+            background-color: #0b021a;
+            /* Dark violet background */
             touch-action: none;
             font-family: 'Press Start 2P', cursive;
             display: flex;
@@ -106,7 +108,7 @@
             color: #00ffcc;
             text-shadow: 2px 2px 0px #000;
         }
-        
+
         #levelDisplay {
             position: absolute;
             top: 20px;
@@ -117,8 +119,15 @@
         }
 
         @keyframes glow {
-            from { text-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc; transform: scale(1); }
-            to { text-shadow: 0 0 20px #00ffcc, 0 0 30px #00ffcc; transform: scale(1.05); }
+            from {
+                text-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc;
+                transform: scale(1);
+            }
+
+            to {
+                text-shadow: 0 0 20px #00ffcc, 0 0 30px #00ffcc;
+                transform: scale(1.05);
+            }
         }
 
         #debugPanel {
@@ -140,7 +149,8 @@
             pointer-events: auto;
         }
 
-        #debugPanel button, #debugPanel select {
+        #debugPanel button,
+        #debugPanel select {
             background: #2d0b59;
             color: #fff;
             border: 1px solid #00ffcc;
@@ -164,11 +174,31 @@
         }
 
         @media (max-width: 600px) {
-            h1 { font-size: 2rem; }
-            p { font-size: 0.8rem; padding: 0 20px; }
-            button { padding: 10px 20px; font-size: 1rem; }
-            #scoreBoard, #levelDisplay { font-size: 1rem; }
-            #debugPanel { flex-wrap: wrap; justify-content: center; bottom: 5px; font-size: 0.6rem; }
+            h1 {
+                font-size: 2rem;
+            }
+
+            p {
+                font-size: 0.8rem;
+                padding: 0 20px;
+            }
+
+            button {
+                padding: 10px 20px;
+                font-size: 1rem;
+            }
+
+            #scoreBoard,
+            #levelDisplay {
+                font-size: 1rem;
+            }
+
+            #debugPanel {
+                flex-wrap: wrap;
+                justify-content: center;
+                bottom: 5px;
+                font-size: 0.6rem;
+            }
         }
     </style>
 </head>
@@ -196,10 +226,11 @@
         </div>
         <div id="scoreBoard" class="hidden">0%</div>
         <div id="levelDisplay" class="hidden">Lv 1</div>
-        
+
         <div id="debugPanel" class="hidden">
             <select id="debugLevelSelect"></select>
-            <label draggable="true" data-type="0"><input type="radio" name="obstacleType" value="0" checked> Empty</label>
+            <label draggable="true" data-type="0"><input type="radio" name="obstacleType" value="0" checked>
+                Empty</label>
             <label draggable="true" data-type="1"><input type="radio" name="obstacleType" value="1"> Spike</label>
             <label draggable="true" data-type="2"><input type="radio" name="obstacleType" value="2"> Block</label>
             <label draggable="true" data-type="3"><input type="radio" name="obstacleType" value="3"> Down Spike</label>
@@ -217,11 +248,11 @@
         const startScreen = document.getElementById('startScreen');
         const gameOverScreen = document.getElementById('gameOverScreen');
         const levelCompleteScreen = document.getElementById('levelCompleteScreen');
-        
+
         const startBtn = document.getElementById('startBtn');
         const restartBtn = document.getElementById('restartBtn');
         const nextLevelBtn = document.getElementById('nextLevelBtn');
-        
+
         const scoreBoard = document.getElementById('scoreBoard');
         const levelDisplay = document.getElementById('levelDisplay');
         const finalScoreEl = document.getElementById('finalScore');
@@ -251,7 +282,7 @@
         const jumpForce = -12;
         const baseScrollSpeed = 6;
         let scrollSpeed = baseScrollSpeed;
-        
+
         const groundHeight = 100;
         let distance = 0;
         let levelLength = 3000;
@@ -276,23 +307,22 @@
         // 0 = empty, 1 = spike, 2 = block, 3 = down-spike
         // Below is the 2D array representation [Level][Row][Column]
         let levels = [];
-        (function() {
+        (function () {
             // Level 1 (custom user-provided 2D array design)
-            levels.push([[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,2,2,0,0,0,0,2,2,2,1,2,2,0,0,0,0,0,0,0,2,2,0,0,0,0,0,0,2,2,2,2,2,2,0,0,0,2,2,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,0,0,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,0,0,0,0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,1,1,1,1,2,1,2,2,1,2,1,2,2,2,2,2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]]);
+            levels.push([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 2, 2, 2, 1, 2, 2, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [1, 0, 0, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 2, 1, 2, 2, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]]);
 
             // Level 2 (custom user-provided 2D array design)
-            levels.push([[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,1,1,2,2,2,2,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1]]);
-
+            levels.push([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 0, 0, 0, 0, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1]]);
             // Generate level 3 dynamically from legacy raw format
             const rawLevels = [
-                [2,0,1,0,2,2,0,1,1,2,0,0,1,1,1,2,2,2,0,1,1,2,0,1,2,2,0,1,1,1,2,2,1,0,1,1]
+                [2, 0, 1, 0, 2, 2, 0, 1, 1, 2, 0, 0, 1, 1, 1, 2, 2, 2, 0, 1, 1, 2, 0, 1, 2, 2, 0, 1, 1, 1, 2, 2, 1, 0, 1, 1]
             ];
             rawLevels.forEach(raw => {
                 const row4 = [];
                 raw.forEach((item, idx) => {
                     row4.push(item);
                     if (idx < raw.length - 1) {
-                        for(let k=0; k<7; k++) row4.push(0);
+                        for (let k = 0; k < 7; k++) row4.push(0);
                     }
                 });
                 const emptyRow = new Array(row4.length).fill(0);
@@ -314,7 +344,7 @@
                 opt.innerText = `Level ${i + 1}`;
                 debugLevelSelect.appendChild(opt);
             });
-            
+
             debugLevelSelect.addEventListener('change', (e) => {
                 currentLevel = parseInt(e.target.value);
                 resetGame();
@@ -367,18 +397,18 @@
 
             canvas.addEventListener('mousedown', (e) => {
                 if (gameState !== 'PAUSED' && gameState !== 'PLAYING') return;
-                
+
                 const rect = canvas.getBoundingClientRect();
                 const clickX = e.clientX - rect.left;
                 const clickY = e.clientY - rect.top;
-                
+
                 const spacing = 40;
                 let colFloor = Math.floor((clickX - canvas.width + distance) / spacing);
-                
+
                 let yFromGround = canvas.height - groundHeight - clickY;
                 let rFromBottom = Math.floor(yFromGround / 40);
                 let row = 4 - rFromBottom;
-                
+
                 if (colFloor >= 0 && row >= 0 && row <= 4) {
                     const layout = levels[currentLevel - 1];
                     for (let i = 0; i < 5; i++) {
@@ -387,7 +417,7 @@
                         }
                     }
                     layout[row][colFloor] = debugSelectedObstacle;
-                    
+
                     buildLevel();
                     debugScroll.max = levelLength + 500;
                 }
@@ -406,14 +436,14 @@
                     const rect = canvas.getBoundingClientRect();
                     const clickX = e.clientX - rect.left;
                     const clickY = e.clientY - rect.top;
-                    
+
                     const spacing = 40;
                     let colFloor = Math.floor((clickX - canvas.width + distance) / spacing);
-                    
+
                     let yFromGround = canvas.height - groundHeight - clickY;
                     let rFromBottom = Math.floor(yFromGround / 40);
                     let row = 4 - rFromBottom;
-                    
+
                     if (colFloor >= 0 && row >= 0 && row <= 4) {
                         const layout = levels[currentLevel - 1];
                         for (let i = 0; i < 5; i++) {
@@ -422,7 +452,7 @@
                             }
                         }
                         layout[row][colFloor] = type;
-                        
+
                         buildLevel();
                         debugScroll.max = levelLength + 500;
                     }
@@ -442,7 +472,7 @@
         resize();
 
         function createParticles(x, y, color) {
-            for(let i=0; i<15; i++) {
+            for (let i = 0; i < 15; i++) {
                 particles.push({
                     x: x, y: y,
                     vx: (Math.random() - 0.5) * 10,
@@ -459,7 +489,7 @@
             const layout = levels[(currentLevel - 1) % levels.length];
             let currentX = canvas.width;
             const spacing = 40; // Dense spacing for 2D grid
-            
+
             levelLength = layout[0].length * spacing;
 
             for (let r = 0; r < 5; r++) {
@@ -507,7 +537,7 @@
             scrollSpeed = baseScrollSpeed + (currentLevel * 0.5);
             particles = [];
             buildLevel();
-            
+
             scoreBoard.innerText = "0%";
             levelDisplay.innerText = "Lv " + currentLevel;
             scoreBoard.classList.remove('hidden');
@@ -519,7 +549,7 @@
             if (player.isGrounded) {
                 player.vy = jumpForce;
                 player.isGrounded = false;
-                createParticles(player.x + player.width/2, player.y + player.height, '#00ffcc');
+                createParticles(player.x + player.width / 2, player.y + player.height, '#00ffcc');
             }
         }
 
@@ -540,7 +570,7 @@
                 }
             }
         });
-        window.addEventListener('touchstart', jump, {passive: false});
+        window.addEventListener('touchstart', jump, { passive: false });
         // We only jump on document mousedown if we aren't clicking the debug UI or paused
         window.addEventListener('mousedown', (e) => {
             if (isDebug && (gameState === 'PAUSED' || e.target.closest('#debugPanel'))) {
@@ -553,9 +583,9 @@
             currentLevel = 1;
             startGame();
         });
-        
+
         restartBtn.addEventListener('click', startGame);
-        
+
         nextLevelBtn.addEventListener('click', () => {
             currentLevel++;
             startGame();
@@ -567,11 +597,11 @@
             gameOverScreen.classList.add('hidden');
             levelCompleteScreen.classList.add('hidden');
             resetGame();
-            
+
             if (typeof gtag !== 'undefined') {
                 gtag('event', 'game_start', { 'game_name': 'Onion Dash' });
             }
-            
+
             lastTime = performance.now();
             cancelAnimationFrame(animationId);
             gameLoop(lastTime);
@@ -581,10 +611,10 @@
             // Grid lines
             ctx.strokeStyle = 'rgba(139, 92, 246, 0.2)';
             ctx.lineWidth = 2;
-            
+
             const gridSize = 50;
             const offsetX = -(distance * 0.5) % gridSize;
-            
+
             ctx.beginPath();
             for (let x = offsetX; x < canvas.width; x += gridSize) {
                 ctx.moveTo(x, 0);
@@ -599,14 +629,14 @@
             // Ground
             ctx.fillStyle = '#0b021a';
             ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
-            
+
             ctx.strokeStyle = '#00ffcc';
             ctx.lineWidth = 4;
             ctx.beginPath();
             ctx.moveTo(0, canvas.height - groundHeight);
             ctx.lineTo(canvas.width, canvas.height - groundHeight);
             ctx.stroke();
-            
+
             // Ground grid movement
             const gOffsetX = -distance % gridSize;
             ctx.strokeStyle = 'rgba(0, 255, 204, 0.3)';
@@ -622,17 +652,17 @@
         function checkCollision(r1, r2) {
             // Shrink hitboxes slightly for fairer gameplay
             const hitboxShrink = 6;
-            return !(r1.x + hitboxShrink > r2.x + r2.width - hitboxShrink || 
-                     r1.x + r1.width - hitboxShrink < r2.x + hitboxShrink || 
-                     r1.y + hitboxShrink > r2.y + r2.height - hitboxShrink ||
-                     r1.y + r1.height - hitboxShrink < r2.y + hitboxShrink);
+            return !(r1.x + hitboxShrink > r2.x + r2.width - hitboxShrink ||
+                r1.x + r1.width - hitboxShrink < r2.x + hitboxShrink ||
+                r1.y + hitboxShrink > r2.y + r2.height - hitboxShrink ||
+                r1.y + r1.height - hitboxShrink < r2.y + hitboxShrink);
         }
 
         function gameOver() {
             gameState = 'GAMEOVER';
-            createParticles(player.x + player.width/2, player.y + player.height/2, '#ff0055');
-            createParticles(player.x + player.width/2, player.y + player.height/2, '#ffffff');
-            
+            createParticles(player.x + player.width / 2, player.y + player.height / 2, '#ff0055');
+            createParticles(player.x + player.width / 2, player.y + player.height / 2, '#ffffff');
+
             setTimeout(() => {
                 scoreBoard.classList.add('hidden');
                 levelDisplay.classList.add('hidden');
@@ -640,7 +670,7 @@
                 finalScoreEl.innerText = `Progress: ${pct}%`;
                 gameOverScreen.classList.remove('hidden');
             }, 500);
-            
+
             if (typeof gtag !== 'undefined') {
                 gtag('event', 'game_over', { 'game_name': 'Onion Dash' });
             }
@@ -686,7 +716,7 @@
                     player.vy = 0;
                     if (!player.isGrounded) {
                         // Just landed
-                        player.rotation = Math.round(player.rotation / (Math.PI/2)) * (Math.PI/2);
+                        player.rotation = Math.round(player.rotation / (Math.PI / 2)) * (Math.PI / 2);
                     }
                     player.isGrounded = true;
                 } else {
@@ -703,16 +733,16 @@
                     if (obs.type === 'block') {
                         // Check if landing on top
                         let prevBottom = player.y + player.height - (player.vy * dt);
-                        if (player.vy >= 0 && 
-                            prevBottom <= obs.y + 10 && 
-                            player.x + player.width > obs.x + 2 && 
+                        if (player.vy >= 0 &&
+                            prevBottom <= obs.y + 10 &&
+                            player.x + player.width > obs.x + 2 &&
                             player.x < obs.x + obs.width - 2) {
-                            
+
                             if (player.y + player.height >= obs.y) {
                                 player.y = obs.y - player.height;
                                 player.vy = 0;
                                 player.isGrounded = true;
-                                player.rotation = Math.round(player.rotation / (Math.PI/2)) * (Math.PI/2);
+                                player.rotation = Math.round(player.rotation / (Math.PI / 2)) * (Math.PI / 2);
                             }
                         }
                     }
@@ -732,10 +762,10 @@
                 const spacing = 40;
                 const layout = levels[currentLevel - 1];
                 let maxIndex = Math.max(layout[0].length + 5, Math.ceil((distance + canvas.width) / spacing));
-                
+
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
                 ctx.lineWidth = 1;
-                
+
                 for (let col = 0; col <= maxIndex; col++) {
                     let slotX = canvas.width + (col * spacing) - distance;
                     if (slotX > -50 && slotX < canvas.width + 50) {
@@ -745,14 +775,14 @@
                         }
                     }
                 }
-                
+
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
                 ctx.font = '8px "Press Start 2P"';
                 ctx.textAlign = 'center';
                 for (let col = 0; col <= maxIndex; col++) {
                     let slotX = canvas.width + (col * spacing) - distance;
                     if (slotX > -50 && slotX < canvas.width + 50) {
-                        if (col % 5 === 0) { 
+                        if (col % 5 === 0) {
                             ctx.fillText(col, slotX + 20, canvas.height - groundHeight + 15);
                         }
                     }
@@ -766,12 +796,12 @@
                 if (obs.type === 'spike') {
                     ctx.fillStyle = '#ff0055';
                     ctx.beginPath();
-                    ctx.moveTo(obs.x + obs.width/2, obs.y);
+                    ctx.moveTo(obs.x + obs.width / 2, obs.y);
                     ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
                     ctx.lineTo(obs.x, obs.y + obs.height);
                     ctx.closePath();
                     ctx.fill();
-                    
+
                     // Neon outline
                     ctx.strokeStyle = '#ffb3cc';
                     ctx.lineWidth = 2;
@@ -779,12 +809,12 @@
                 } else if (obs.type === 'spike-down') {
                     ctx.fillStyle = '#ff0055';
                     ctx.beginPath();
-                    ctx.moveTo(obs.x + obs.width/2, obs.y + obs.height);
+                    ctx.moveTo(obs.x + obs.width / 2, obs.y + obs.height);
                     ctx.lineTo(obs.x + obs.width, obs.y);
                     ctx.lineTo(obs.x, obs.y);
                     ctx.closePath();
                     ctx.fill();
-                    
+
                     // Neon outline
                     ctx.strokeStyle = '#ffb3cc';
                     ctx.lineWidth = 2;
@@ -792,7 +822,7 @@
                 } else if (obs.type === 'block') {
                     ctx.fillStyle = '#6d28d9';
                     ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-                    
+
                     // Neon outline
                     ctx.strokeStyle = '#00ffcc';
                     ctx.lineWidth = 2;
@@ -801,19 +831,19 @@
             });
 
             // Draw Particles
-            for(let i=particles.length-1; i>=0; i--) {
+            for (let i = particles.length - 1; i >= 0; i--) {
                 let p = particles[i];
                 p.x += p.vx * dt;
                 p.y += p.vy * dt;
                 p.life -= 0.05 * dt;
-                if(p.life <= 0) {
+                if (p.life <= 0) {
                     particles.splice(i, 1);
                     continue;
                 }
                 ctx.fillStyle = p.color;
                 ctx.globalAlpha = p.life;
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.globalAlpha = 1.0;
             }
@@ -821,23 +851,24 @@
             // Draw Player
             if (gameState !== 'GAMEOVER') {
                 ctx.save();
-                ctx.translate(player.x + player.width/2, player.y + player.height/2);
+                ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
                 ctx.rotate(player.rotation);
                 if (playerImageLoaded) {
-                    ctx.drawImage(playerImage, -player.width/2, -player.height/2, player.width, player.height);
+                    ctx.drawImage(playerImage, -player.width / 2, -player.height / 2, player.width, player.height);
                 } else {
                     ctx.fillStyle = '#00ffcc';
-                    ctx.fillRect(-player.width/2, -player.height/2, player.width, player.height);
+                    ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height);
                 }
                 ctx.restore();
             }
 
             animationId = requestAnimationFrame(gameLoop);
         }
-        
+
         // Initial draw
         drawBackground();
         animationId = requestAnimationFrame(gameLoop);
     </script>
 </body>
+
 </html>
