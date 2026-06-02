@@ -258,7 +258,7 @@
         const finalScoreEl = document.getElementById('finalScore');
 
         const urlParams = new URLSearchParams(window.location.search);
-        const isDebug = urlParams.get('debug') === 'true';
+        const isDebug = urlParams.get('debug') === 'true' || urlParams.get('Debug') === 'true';
 
         const debugPanel = document.getElementById('debugPanel');
         const debugLevelSelect = document.getElementById('debugLevelSelect');
