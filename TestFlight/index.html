@@ -615,8 +615,11 @@
         const KEY_ORDER = 'ABCDEFGHIJKLMNOQRSTUVWXYZ123456789'.split('');
         const G = 9.8;
         const THRUST = 55;          // newtons per booster
-        const WING_CL = 0.10;       // lift = CL * forwardSpeed^2 (per wing)
-        const DRAG_Q = 0.06;        // quadratic air drag
+        const WING_K = 0.18;        // wing force factor (per wing: K * speed² * CL)
+        const WING_CL_SLOPE = 5.0;  // lift coefficient per radian of angle of attack
+        const WING_CL0 = 0.3;       // built-in camber: a level wing still lifts a little
+        const WING_STALL = 0.30;    // past ~17° angle of attack the wing stalls
+        const DRAG_Q = 0.02;        // parasitic drag (low, so diving trades altitude for real speed)
         const CRASH_BODY_V = 6.0;   // body hits ground faster than this = crash
         const CRASH_WHEEL_V = 10.0; // wheels are tougher
         const PART_MASS = { booster: 0.25, wheel: 0.35, wingL: 0.5, wingR: 0.5, aileron: 0.3, tail: 0.4 };
@@ -2114,6 +2117,7 @@
 
         // ----- physics -----
         const tmpV1 = new THREE.Vector3(), tmpV2 = new THREE.Vector3(), tmpV3 = new THREE.Vector3();
+        const tmpQ = new THREE.Quaternion();
 
         function substep(h) {
             const F = tmpV1.set(0, -G * phys.m, 0);
@@ -2122,28 +2126,50 @@
             const up = WORLD_UP.clone().applyQuaternion(phys.quat);
 
             if (!flight.broken) {
+                // wing aerodynamics: lift depends on angle of attack, acts perpendicular
+                // to the flight path, and costs drag — so diving builds speed and
+                // climbing spends it, like a real plane.
+                let wingAero = null;
+                if (craft.wingCount > 0) {
+                    const vLocal = phys.vel.clone().applyQuaternion(tmpQ.copy(phys.quat).invert());
+                    const fAir = -vLocal.z, wAir = vLocal.y;
+                    if (fAir > 0.5) {
+                        const alpha = Math.atan2(-wAir, fAir);
+                        let cl = WING_CL_SLOPE * alpha + WING_CL0;
+                        cl = clamp(cl, -1.2, 1.5);
+                        if (Math.abs(alpha) > WING_STALL) cl *= 0.45;   // stalled: the wing mushes
+                        const s2 = fAir * fAir + wAir * wAir;
+                        const vHat = phys.vel.clone().normalize();
+                        const rightW = new THREE.Vector3(1, 0, 0).applyQuaternion(phys.quat);
+                        const liftDir = new THREE.Vector3().crossVectors(rightW, vHat);
+                        if (liftDir.lengthSq() > 1e-4) {
+                            liftDir.normalize();
+                            const Lmag = clamp(WING_K * s2 * cl, -2.2 * phys.m * G, 2.2 * phys.m * G);
+                            const Dmag = WING_K * s2 * (0.015 + 0.1 * cl * cl);
+                            wingAero = { liftDir, Lmag, Dmag, vHat };
+                        }
+                    }
+                }
                 for (const e of craft.partEntries) {
                     if (e.data.type === 'booster' && activeKeys.has(e.key)) {
                         const f = e.thrustDirLocal.clone().applyQuaternion(phys.quat).multiplyScalar(THRUST);
                         F.add(f);
                         const r = e.posLocal.clone().sub(craft.comLocal).applyQuaternion(phys.quat);
                         T.add(tmpV3.copy(r).cross(f));
-                    } else if (e.data.type === 'wingL' || e.data.type === 'wingR') {
-                        const vF = phys.vel.dot(fwd);
-                        if (vF > 0.5) {
-                            const L = Math.min(WING_CL * vF * vF, 0.75 * phys.m * G);
-                            const f = up.clone().multiplyScalar(L);
-                            F.add(f);
-                            const r = e.posLocal.clone().sub(craft.comLocal).applyQuaternion(phys.quat);
-                            T.add(tmpV3.copy(r).cross(f));
-                            F.addScaledVector(fwd, -0.015 * vF * vF);   // wing drag
-                        }
+                    } else if ((e.data.type === 'wingL' || e.data.type === 'wingR') && wingAero) {
+                        const f = wingAero.liftDir.clone().multiplyScalar(wingAero.Lmag);
+                        F.add(f);
+                        const r = e.posLocal.clone().sub(craft.comLocal).applyQuaternion(phys.quat);
+                        T.add(tmpV3.copy(r).cross(f));
+                        F.addScaledVector(wingAero.vHat, -wingAero.Dmag);   // induced + profile drag
                     }
                 }
                 const ctrl = getControls();
                 const steering = ctrl.roll !== 0 || ctrl.pitch !== 0;
                 if (craft.wingCount > 0) {   // wings gently keep you level (unless the pilot is steering)
-                    const axis = new THREE.Vector3().crossVectors(up, WORLD_UP);
+                    let axis = new THREE.Vector3().crossVectors(up, WORLD_UP);
+                    // with a tail, the tail owns pitch — auto-level only rights the roll
+                    if (craft.tailCount > 0) axis = fwd.clone().multiplyScalar(axis.dot(fwd));
                     const speedFactor = clamp(phys.vel.length() / 12, 0, 1);
                     T.addScaledVector(axis, phys.m * 5 * Math.min(craft.wingCount, 2) / 2 * speedFactor * (steering ? 0.12 : 1));
                 }
@@ -2154,16 +2180,15 @@
                 }
                 if (craft.tailCount > 0 && ctrl.pitch !== 0) {
                     const rightAxis = new THREE.Vector3(1, 0, 0).applyQuaternion(phys.quat);
-                    T.addScaledVector(rightAxis, 2.4 * phys.I * airFactor * Math.min(craft.tailCount, 2) * ctrl.pitch);
+                    T.addScaledVector(rightAxis, 3.2 * phys.I * airFactor * Math.min(craft.tailCount, 2) * ctrl.pitch);
                 }
-                if (craft.tailCount > 0) {   // vertical stabilizer: nose weathervanes toward the flight path
-                    const velH = new THREE.Vector3(phys.vel.x, 0, phys.vel.z);
-                    const fwdH = new THREE.Vector3(fwd.x, 0, fwd.z);
-                    if (velH.lengthSq() > 4 && fwdH.lengthSq() > 0.04) {
-                        velH.normalize();
-                        fwdH.normalize();
-                        T.addScaledVector(new THREE.Vector3().crossVectors(fwdH, velH), 0.9 * phys.I * airFactor);
-                    }
+                if (craft.tailCount > 0 && phys.vel.lengthSq() > 9) {
+                    // the tail weathervanes the nose toward the flight path (pitch AND yaw),
+                    // so a dive points you downhill and picks up speed naturally —
+                    // but it yields while the pilot is pulling, so dive recoveries work
+                    const vHat = phys.vel.clone().normalize();
+                    T.addScaledVector(new THREE.Vector3().crossVectors(fwd, vHat),
+                        1.1 * phys.I * airFactor * (ctrl.pitch !== 0 ? 0.35 : 1));
                 }
             }
 
@@ -2441,7 +2466,7 @@
             hudTimer = 0.1;
             const alt = Math.max(0, Math.round(flight.lowY));
             const spd = Math.round(phys.vel.length());
-            hudEl.innerHTML = `⬆ ${alt} m &nbsp;&nbsp; 💨 ${spd}`;
+            hudEl.innerHTML = `⬆ ${alt} m &nbsp;&nbsp; 💨 ${spd} m/s`;
         }
 
         // ----- flight buttons -----
