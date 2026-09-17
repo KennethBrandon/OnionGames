@@ -1,0 +1,2456 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Play Test Flight on Onion Games! Build a flying machine out of a bathtub, piano, or rubber duck — glue on boosters, wheels and wings, then take off and land it!">
+    <meta name="keywords" content="Test Flight, Onion Games, free browser games, HTML5 games, mini-games, flying game, building game">
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="Onion Games">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://onion.redkb.com/TestFlight/">
+    <meta property="og:title" content="Test Flight">
+    <meta property="og:description" content="Build a flying machine out of a bathtub, piano, or rubber duck — glue on boosters, wheels and wings, then take off and land it!">
+    <meta property="og:image" content="https://onion.redkb.com/assets/images/favicon.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://onion.redkb.com/TestFlight/">
+    <meta property="twitter:title" content="Test Flight">
+    <meta property="twitter:description" content="Build a flying machine out of a bathtub, piano, or rubber duck — glue on boosters, wheels and wings, then take off and land it!">
+    <meta property="twitter:image" content="https://onion.redkb.com/assets/images/favicon.png">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "VideoGame",
+      "name": "Test Flight",
+      "description": "Build a flying machine out of a bathtub, piano, or rubber duck — glue on boosters, wheels and wings, then take off and land it!",
+      "url": "https://onion.redkb.com/TestFlight/",
+      "image": "https://onion.redkb.com/assets/images/favicon.png",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Onion Games",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://onion.redkb.com/assets/images/favicon.png"
+        }
+      }
+    }
+    </script>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JV4DNLEE4R"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-JV4DNLEE4R');
+    </script>
+
+    <title>Test Flight</title>
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive, sans-serif;
+            background: #f7f5ee;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #scene-container { position: fixed; inset: 0; }
+        #scene-container canvas { display: block; }
+
+        /* ---------- hand-drawn sketch look ---------- */
+        .sketch {
+            background: #fffefb;
+            border: 3px solid #2b2b2b;
+            border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+            box-shadow: 2px 3px 0 rgba(43, 43, 43, 0.18);
+            color: #2b2b2b;
+        }
+        .sketch-b { border-radius: 15px 225px 15px 255px / 255px 15px 225px 15px; }
+
+        button.sketch {
+            font-family: inherit;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+        button.sketch:hover { transform: rotate(-1.5deg) scale(1.04); }
+        button.sketch:active { transform: scale(0.95); }
+
+        .hidden { display: none !important; }
+
+        /* ---------- editor UI ---------- */
+        #editor-ui { position: fixed; inset: 0; pointer-events: none; }
+        #editor-ui > * { pointer-events: auto; }
+
+        #editor-title {
+            position: absolute;
+            top: 12px;
+            left: 14px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        #editor-title h1 {
+            margin: 0 6px 0 0;
+            font-size: 26px;
+            color: #2b2b2b;
+            text-shadow: 1px 1px 0 #fff;
+        }
+        .small-btn {
+            font-size: 15px;
+            padding: 6px 14px;
+        }
+
+        #start-btn {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            font-size: 34px;
+            font-weight: bold;
+            padding: 12px 34px;
+            background: #d1f7c4;
+        }
+        #mute-btn {
+            position: absolute;
+            top: 92px;
+            right: 16px;
+            font-size: 18px;
+            padding: 6px 10px;
+        }
+
+        #tray {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 12px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            padding: 0 16px;
+            gap: 8px;
+        }
+        .tray-group { display: flex; gap: 8px; align-items: flex-end; }
+        .tile {
+            padding: 8px 12px;
+            text-align: center;
+            min-width: 68px;
+            cursor: grab;
+        }
+        .tile .icon { font-size: 34px; line-height: 1.1; display: block; }
+        .tile .label { font-size: 15px; font-weight: bold; display: block; }
+        .tile .sub { font-size: 11px; color: #777; display: block; }
+        .tile:hover { transform: rotate(-2deg) scale(1.05); }
+        .tile:active { cursor: grabbing; }
+        #tile-bodies { min-width: 120px; }
+        #tile-wingR { min-width: 120px; }
+        .tile svg { display: block; margin: 4px auto; }
+
+        #editor-hint {
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 20px;
+            font-size: 16px;
+            max-width: 80vw;
+            text-align: center;
+        }
+
+        /* ---------- flight UI ---------- */
+        #flight-ui { position: fixed; inset: 0; pointer-events: none; }
+        #flight-ui > * { pointer-events: auto; }
+
+        #flight-topleft {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            display: flex;
+            gap: 8px;
+        }
+        #hud {
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 19px;
+            font-weight: bold;
+            padding: 6px 22px;
+            white-space: nowrap;
+        }
+        #flight-mute {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            font-size: 18px;
+            padding: 6px 10px;
+        }
+        #flight-hint {
+            position: absolute;
+            bottom: 108px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 20px;
+            font-size: 17px;
+            text-align: center;
+            max-width: 84vw;
+            transition: opacity 1s ease;
+        }
+
+        #booster-btns {
+            position: absolute;
+            bottom: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 92vw;
+        }
+        .bbtn {
+            width: 54px;
+            height: 54px;
+            font-size: 24px;
+            font-weight: bold;
+            font-family: inherit;
+            background: #fffefb;
+            border: 3px solid #2b2b2b;
+            border-radius: 50% 44% 52% 46% / 46% 52% 44% 50%;
+            box-shadow: 2px 3px 0 rgba(43, 43, 43, 0.18);
+            color: #2b2b2b;
+            cursor: pointer;
+        }
+        .bbtn.pressed {
+            background: #ffb347;
+            transform: scale(0.92);
+            box-shadow: 0 0 12px #ffb347;
+        }
+
+        /* ---------- arrow pad (ailerons + elevator) ---------- */
+        #arrow-pad {
+            position: absolute;
+            bottom: 14px;
+            right: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+        #arrow-pad .arow { display: flex; gap: 6px; }
+        .abtn {
+            width: 50px;
+            height: 50px;
+            font-size: 20px;
+        }
+        .abtn.pressed {
+            background: #8fd3ff;
+            transform: scale(0.92);
+            box-shadow: 0 0 12px #8fd3ff;
+        }
+
+        /* ---------- big overlay (crash / success) ---------- */
+        #big-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(30, 30, 30, 0.25);
+            z-index: 40;
+            pointer-events: none;
+        }
+        #big-card {
+            padding: 28px 44px;
+            text-align: center;
+            max-width: 86vw;
+            pointer-events: auto;
+        }
+        #big-card h1 { margin: 0 0 8px 0; font-size: 42px; }
+        #big-card p { margin: 4px 0 18px 0; font-size: 19px; color: #555; }
+        #big-card .row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+        #big-card button { font-size: 20px; padding: 10px 22px; }
+
+        #flash {
+            position: fixed;
+            inset: 0;
+            background: #ff5544;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 35;
+            transition: opacity 0.6s ease;
+        }
+
+        /* ---------- hangar page ---------- */
+        #hangar {
+            position: fixed;
+            inset: 0;
+            background: #f7f5ee;
+            z-index: 50;
+            overflow-y: auto;
+            touch-action: pan-y;
+        }
+        #hangar-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px 4px 20px;
+            position: sticky;
+            top: 0;
+            background: #f7f5ee;
+            z-index: 2;
+        }
+        #hangar-top h1 { margin: 0; font-size: 30px; color: #2b2b2b; }
+        #hangar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 18px;
+            padding: 18px 20px 40px 20px;
+        }
+        .hangar-card { padding: 14px; text-align: center; }
+        .hangar-card img {
+            width: 100%;
+            aspect-ratio: 1/1;
+            object-fit: contain;
+        }
+        .hangar-card .hname {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 2px 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .hangar-card .hmeta { font-size: 14px; color: #777; margin-bottom: 10px; }
+        .hangar-card .row { display: flex; gap: 8px; justify-content: center; }
+        .hangar-card button { font-size: 15px; padding: 6px 12px; }
+        .hangar-card button.danger { background: #ffd6d0; }
+        #hangar-empty {
+            text-align: center;
+            font-size: 20px;
+            color: #777;
+            padding: 60px 20px;
+        }
+
+        /* ---------- body picker ---------- */
+        #body-picker {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(30, 30, 30, 0.25);
+            z-index: 55;
+        }
+        #body-picker-card {
+            padding: 16px 20px 20px 20px;
+            width: min(92vw, 760px);
+            max-height: 84vh;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+        #body-picker-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        #body-picker-top h2 { margin: 0; font-size: 26px; }
+        #body-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+            gap: 12px;
+            overflow-y: auto;
+            touch-action: pan-y;
+            padding: 4px;
+        }
+        .body-option {
+            padding: 8px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .body-option:hover { transform: rotate(-1.5deg) scale(1.04); }
+        .body-option img { width: 100%; aspect-ratio: 1/1; object-fit: contain; }
+        .body-option .bname { font-size: 15px; font-weight: bold; }
+        .body-option .bmass { font-size: 12px; color: #777; }
+        .body-option.current {
+            background: #d1f7c4;
+            box-shadow: 0 0 0 3px #7ed957, 2px 3px 0 rgba(43, 43, 43, 0.18);
+        }
+
+        /* ---------- save dialog ---------- */
+        #save-dialog {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(30, 30, 30, 0.25);
+            z-index: 60;
+        }
+        #save-card { padding: 24px 34px; text-align: center; max-width: 86vw; }
+        #save-card h2 { margin: 0 0 14px 0; font-size: 26px; }
+        #save-name {
+            font-family: inherit;
+            font-size: 20px;
+            padding: 8px 12px;
+            border: 3px solid #2b2b2b;
+            border-radius: 12px;
+            width: 260px;
+            max-width: 70vw;
+            text-align: center;
+            background: #fff;
+            color: #2b2b2b;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+        #save-card .row { display: flex; gap: 12px; justify-content: center; margin-top: 16px; }
+        #save-card button { font-size: 18px; padding: 8px 18px; }
+
+        /* ---------- toast ---------- */
+        #toast {
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 22px;
+            font-size: 17px;
+            z-index: 70;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            text-align: center;
+            max-width: 84vw;
+        }
+
+        /* ---------- confetti ---------- */
+        .confetti {
+            position: fixed;
+            top: -20px;
+            width: 12px;
+            height: 12px;
+            z-index: 45;
+            pointer-events: none;
+            animation: confetti-fall linear forwards;
+        }
+        @keyframes confetti-fall {
+            to { transform: translateY(110vh) rotate(720deg); }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="scene-container"></div>
+
+    <!-- ============ EDITOR UI ============ -->
+    <div id="editor-ui">
+        <div id="editor-title">
+            <h1>✏️ Test Flight</h1>
+            <button id="save-btn" class="sketch small-btn">💾 Save</button>
+            <button id="hangar-btn" class="sketch-b sketch small-btn">🛖 Hangar</button>
+        </div>
+
+        <button id="start-btn" class="sketch">Start!</button>
+        <button id="mute-btn" class="sketch sketch-b">🔊</button>
+
+        <div id="editor-hint" class="sketch">
+            1️⃣ Tap <b>Bodies</b> to pick a body &nbsp; 2️⃣ Drag on 🚀 🛞 and wings &nbsp; 3️⃣ Press <b>Start!</b><br>
+            <span style="font-size:13px;color:#777">(Tap a glued part to take it off. Drag empty space to spin the view.)</span>
+        </div>
+
+        <div id="tray">
+            <div class="tray-group">
+                <div id="tile-bodies" class="tile sketch">
+                    <span class="icon" id="body-emoji">🛁</span>
+                    <span class="label">Bodies</span>
+                    <span class="sub" id="body-name">Bathtub — tap to change!</span>
+                </div>
+            </div>
+            <div class="tray-group">
+                <div id="tile-booster" class="tile sketch sketch-b" data-type="booster">
+                    <span class="icon">🚀</span>
+                    <span class="label">Boosters</span>
+                    <span class="sub">drag me on!</span>
+                </div>
+                <div id="tile-wheel" class="tile sketch" data-type="wheel">
+                    <span class="icon">🛞</span>
+                    <span class="label">Wheels</span>
+                    <span class="sub">drag me on!</span>
+                </div>
+                <div id="tile-wingL" class="tile sketch sketch-b" data-type="wingL">
+                    <svg width="52" height="26" viewBox="0 0 52 26">
+                        <path d="M50 4 L14 8 L2 20 L48 22 Z" fill="#eee" stroke="#2b2b2b" stroke-width="2.5" stroke-linejoin="round" />
+                    </svg>
+                    <span class="label">Left Wing</span>
+                </div>
+                <div id="tile-aileron" class="tile sketch" data-type="aileron">
+                    <svg width="52" height="26" viewBox="0 0 52 26">
+                        <path d="M3 10 L21 14 L21 20 L3 16 Z" fill="#eee" stroke="#2b2b2b" stroke-width="2.5" stroke-linejoin="round" />
+                        <path d="M31 14 L49 10 L49 16 L31 20 Z" fill="#eee" stroke="#2b2b2b" stroke-width="2.5" stroke-linejoin="round" />
+                        <path d="M23 6 L29 6 M26 3 L26 9" stroke="#2b2b2b" stroke-width="2" />
+                    </svg>
+                    <span class="label">Ailerons</span>
+                    <span class="sub">⬅➡ to roll!</span>
+                </div>
+            </div>
+            <div class="tray-group">
+                <div id="tile-tail" class="tile sketch sketch-b" data-type="tail">
+                    <svg width="52" height="28" viewBox="0 0 52 28">
+                        <path d="M20 22 L30 4 L38 22 Z" fill="#eee" stroke="#2b2b2b" stroke-width="2.5" stroke-linejoin="round" />
+                        <path d="M4 22 L48 22" stroke="#2b2b2b" stroke-width="2.5" stroke-linecap="round" />
+                    </svg>
+                    <span class="label">Tail</span>
+                    <span class="sub">⬇ pulls up!</span>
+                </div>
+                <div id="tile-wingR" class="tile sketch" data-type="wingR">
+                    <svg width="70" height="30" viewBox="0 0 70 30">
+                        <path d="M4 5 L52 9 L68 24 L6 25 Z" fill="#eee" stroke="#2b2b2b" stroke-width="2.5" stroke-linejoin="round" />
+                    </svg>
+                    <span class="label">Right Wing</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ FLIGHT UI ============ -->
+    <div id="flight-ui" class="hidden">
+        <div id="flight-topleft">
+            <button id="editor-btn" class="sketch small-btn">✏️ Editor</button>
+            <button id="retry-btn" class="sketch sketch-b small-btn">🔄 Retry</button>
+        </div>
+        <div id="hud" class="sketch">⬆ 0 m &nbsp; 💨 0</div>
+        <button id="flight-mute" class="sketch sketch-b">🔊</button>
+        <div id="flight-hint" class="sketch">Hold your booster keys to blast off! 🚀</div>
+        <div id="booster-btns"></div>
+        <div id="arrow-pad" class="hidden">
+            <button id="ab-up" class="bbtn abtn" data-arrow="ArrowUp">▲</button>
+            <div class="arow">
+                <button id="ab-left" class="bbtn abtn" data-arrow="ArrowLeft">◀</button>
+                <button id="ab-down" class="bbtn abtn" data-arrow="ArrowDown">▼</button>
+                <button id="ab-right" class="bbtn abtn" data-arrow="ArrowRight">▶</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ BIG OVERLAY ============ -->
+    <div id="big-overlay" class="hidden">
+        <div id="big-card" class="sketch">
+            <h1 id="big-title">💥 CRASH!</h1>
+            <p id="big-sub">Back to the drawing board!</p>
+            <div class="row">
+                <button id="big-retry" class="sketch">🔄 Fly Again</button>
+                <button id="big-editor" class="sketch sketch-b">✏️ Build More</button>
+            </div>
+        </div>
+    </div>
+    <div id="flash"></div>
+
+    <!-- ============ HANGAR ============ -->
+    <div id="hangar" class="hidden">
+        <div id="hangar-top">
+            <h1>🛖 My Aircraft</h1>
+            <button id="hangar-close" class="sketch small-btn">✖ Close</button>
+        </div>
+        <div id="hangar-grid"></div>
+        <div id="hangar-empty" class="hidden">
+            Nothing in your hangar yet!<br>
+            Build an aircraft and press <b>💾 Save</b>.
+        </div>
+    </div>
+
+    <!-- ============ BODY PICKER ============ -->
+    <div id="body-picker" class="hidden">
+        <div id="body-picker-card" class="sketch">
+            <div id="body-picker-top">
+                <h2>Pick a body!</h2>
+                <button id="body-picker-close" class="sketch small-btn">✖</button>
+            </div>
+            <div id="body-grid"></div>
+        </div>
+    </div>
+
+    <!-- ============ SAVE DIALOG ============ -->
+    <div id="save-dialog" class="hidden">
+        <div id="save-card" class="sketch">
+            <h2>Name your aircraft!</h2>
+            <input id="save-name" maxlength="24" autocomplete="off">
+            <div class="row">
+                <button id="save-ok" class="sketch">💾 Save it!</button>
+                <button id="save-cancel" class="sketch sketch-b">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="sketch"></div>
+
+    <script type="importmap">
+        { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // ================= CONSTANTS =================
+        // Booster keys in the official Test Flight order (P is not invited).
+        const KEY_ORDER = 'ABCDEFGHIJKLMNOQRSTUVWXYZ123456789'.split('');
+        const G = 9.8;
+        const THRUST = 55;          // newtons per booster
+        const WING_CL = 0.10;       // lift = CL * forwardSpeed^2 (per wing)
+        const DRAG_Q = 0.06;        // quadratic air drag
+        const CRASH_BODY_V = 6.0;   // body hits ground faster than this = crash
+        const CRASH_WHEEL_V = 10.0; // wheels are tougher
+        const PART_MASS = { booster: 0.25, wheel: 0.35, wingL: 0.5, wingR: 0.5, aileron: 0.3, tail: 0.4 };
+        const LAKE = { x: 260, z: -320, r: 68 };
+        const WORLD_UP = new THREE.Vector3(0, 1, 0);
+        const AXIS_FWD = new THREE.Vector3(0, 0, -1);
+
+        const LS_DESIGN = 'tf-design-v1';
+        const LS_HANGAR = 'tf-hangar-v1';
+        const LS_MUTED = 'tf-muted';
+        const LS_HINT = 'tf-hint-seen';
+
+        // ================= DOM =================
+        const $ = (id) => document.getElementById(id);
+        const container = $('scene-container');
+        const editorUI = $('editor-ui'), flightUI = $('flight-ui');
+        const hudEl = $('hud'), boosterBtnsEl = $('booster-btns'), flightHintEl = $('flight-hint');
+        const bigOverlay = $('big-overlay'), bigTitle = $('big-title'), bigSub = $('big-sub');
+        const toastEl = $('toast');
+
+        // ================= THREE SETUP =================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf7f5ee);
+
+        const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.3, 3000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(innerWidth, innerHeight);
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x998877, 1.05);
+        scene.add(hemiLight);
+        const sunLight = new THREE.DirectionalLight(0xfff4e0, 1.7);
+        sunLight.position.set(6, 12, 8);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.set(1024, 1024);
+        sunLight.shadow.camera.near = 0.5;
+        sunLight.shadow.camera.far = 80;
+        setShadowBox(8);
+        scene.add(sunLight);
+        scene.add(sunLight.target);
+
+        function setShadowBox(r) {
+            const c = sunLight.shadow.camera;
+            c.left = -r; c.right = r; c.top = r; c.bottom = -r;
+            c.updateProjectionMatrix();
+        }
+
+        addEventListener('resize', () => {
+            camera.aspect = innerWidth / innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+        });
+
+        // ================= SMALL HELPERS =================
+        const rand = (a, b) => a + Math.random() * (b - a);
+        const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+        function mat(color, opts = {}) {
+            return new THREE.MeshStandardMaterial({ color, roughness: 0.82, metalness: 0.05, ...opts });
+        }
+        function box(g, w, h, d, color, x, y, z, opts = {}) {
+            const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, opts));
+            m.position.set(x, y, z);
+            m.castShadow = true;
+            g.add(m);
+            return m;
+        }
+        function cyl(g, rt, rb, h, color, x, y, z, seg = 16) {
+            const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat(color));
+            m.position.set(x, y, z);
+            m.castShadow = true;
+            g.add(m);
+            return m;
+        }
+        function sph(g, r, color, x, y, z, sx = 1, sy = 1, sz = 1) {
+            const m = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 14), mat(color));
+            m.position.set(x, y, z);
+            m.scale.set(sx, sy, sz);
+            m.castShadow = true;
+            g.add(m);
+            return m;
+        }
+        function disposeObject(root) {
+            root.traverse((o) => {
+                if (o.geometry) o.geometry.dispose();
+                if (o.material) {
+                    const mats = Array.isArray(o.material) ? o.material : [o.material];
+                    mats.forEach((mm) => { if (mm.map) mm.map.dispose(); mm.dispose(); });
+                }
+            });
+        }
+
+        // ================= BODIES =================
+        // Every body is built facing -Z (that's "forward"), resting on y=0.
+        const BODIES = [
+            {
+                name: 'Bathtub', emoji: '🛁', mass: 4,
+                build() {
+                    const g = new THREE.Group();
+                    box(g, 2.2, 0.16, 1.1, 0xf4f4f0, 0, 0.33, 0);                 // floor
+                    box(g, 2.2, 0.6, 0.14, 0xf4f4f0, 0, 0.7, -0.48);              // walls
+                    box(g, 2.2, 0.6, 0.14, 0xf4f4f0, 0, 0.7, 0.48);
+                    box(g, 0.14, 0.6, 1.1, 0xf4f4f0, -1.03, 0.7, 0);
+                    box(g, 0.14, 0.6, 1.1, 0xf4f4f0, 1.03, 0.7, 0);
+                    box(g, 1.85, 0.3, 0.78, 0x7ec8e3, 0, 0.6, 0);                 // water
+                    cyl(g, 0.06, 0.06, 0.28, 0xcccccc, -0.95, 0.14, -0.42, 10);   // feet
+                    cyl(g, 0.06, 0.06, 0.28, 0xcccccc, 0.95, 0.14, -0.42, 10);
+                    cyl(g, 0.06, 0.06, 0.28, 0xcccccc, -0.95, 0.14, 0.42, 10);
+                    cyl(g, 0.06, 0.06, 0.28, 0xcccccc, 0.95, 0.14, 0.42, 10);
+                    cyl(g, 0.05, 0.05, 0.4, 0xb8b8c0, 1.0, 1.15, 0, 10);          // faucet
+                    return g;
+                }
+            },
+            {
+                name: 'Chair', emoji: '🪑', mass: 2.5,
+                build() {
+                    const g = new THREE.Group();
+                    const wood = 0xb5651d, dark = 0x8d5524;
+                    box(g, 0.07, 0.55, 0.07, dark, -0.42, 0.28, -0.42);
+                    box(g, 0.07, 0.55, 0.07, dark, 0.42, 0.28, -0.42);
+                    box(g, 0.07, 0.55, 0.07, dark, -0.42, 0.28, 0.42);
+                    box(g, 0.07, 0.55, 0.07, dark, 0.42, 0.28, 0.42);
+                    box(g, 1.0, 0.1, 1.0, wood, 0, 0.6, 0);
+                    box(g, 1.0, 0.95, 0.1, wood, 0, 1.1, 0.45);
+                    return g;
+                }
+            },
+            {
+                name: 'Lawn Mower', emoji: '🌿', mass: 3,
+                // its painted-on wheels really roll
+                wheelContacts: [[-0.45, 0, -0.32], [0.45, 0, -0.32], [-0.45, 0, 0.32], [0.45, 0, 0.32]],
+                bottomClearance: 0.12,
+                build() {
+                    const g = new THREE.Group();
+                    box(g, 1.1, 0.28, 0.8, 0x37a334, 0, 0.42, 0);                 // deck
+                    box(g, 0.5, 0.26, 0.42, 0x666a70, 0, 0.7, -0.05);             // engine
+                    cyl(g, 0.07, 0.07, 0.1, 0x333333, 0, 0.88, -0.05, 10);        // cap
+                    for (const [x, z] of [[-0.45, -0.32], [0.45, -0.32], [-0.45, 0.32], [0.45, 0.32]]) {
+                        const w = cyl(g, 0.17, 0.17, 0.1, 0x222222, x, 0.17, z, 14);
+                        w.rotation.z = Math.PI / 2;
+                    }
+                    const h1 = cyl(g, 0.035, 0.035, 1.05, 0x444444, -0.3, 0.9, 0.72, 8);
+                    h1.rotation.x = 0.85;
+                    const h2 = cyl(g, 0.035, 0.035, 1.05, 0x444444, 0.3, 0.9, 0.72, 8);
+                    h2.rotation.x = 0.85;
+                    const bar = cyl(g, 0.04, 0.04, 0.66, 0xd03a2c, 0, 1.28, 1.1, 8);
+                    bar.rotation.z = Math.PI / 2;
+                    return g;
+                }
+            },
+            {
+                name: 'Human', emoji: '🧍', mass: 3,
+                build() {
+                    const g = new THREE.Group();
+                    const skin = 0xf0c090, shirt = 0xd03a2c, pants = 0x3a6ad0;
+                    box(g, 0.18, 0.75, 0.2, pants, -0.13, 0.375, 0);
+                    box(g, 0.18, 0.75, 0.2, pants, 0.13, 0.375, 0);
+                    box(g, 0.52, 0.62, 0.28, shirt, 0, 1.06, 0);
+                    const armL = box(g, 0.13, 0.55, 0.13, shirt, -0.38, 1.12, 0);
+                    armL.rotation.z = 0.55;
+                    const armR = box(g, 0.13, 0.55, 0.13, shirt, 0.38, 1.12, 0);
+                    armR.rotation.z = -0.55;
+                    sph(g, 0.2, skin, 0, 1.58, 0);
+                    box(g, 0.42, 0.1, 0.42, 0x704214, 0, 1.74, 0);                // hair
+                    return g;
+                }
+            },
+            {
+                name: 'Toilet', emoji: '🚽', mass: 3.5,
+                build() {
+                    const g = new THREE.Group();
+                    box(g, 0.5, 0.4, 0.55, 0xf4f4f0, 0, 0.2, 0.05);               // base
+                    cyl(g, 0.34, 0.26, 0.3, 0xf4f4f0, 0, 0.52, -0.12, 18);        // bowl
+                    cyl(g, 0.36, 0.36, 0.07, 0xf4f4f0, 0, 0.7, -0.12, 18);        // seat
+                    box(g, 0.6, 0.62, 0.24, 0xf4f4f0, 0, 0.72, 0.33);             // tank
+                    box(g, 0.12, 0.04, 0.08, 0xc0c0c8, -0.2, 1.05, 0.33);         // flusher
+                    return g;
+                }
+            },
+            {
+                name: 'Couch', emoji: '🛋️', mass: 5,
+                build() {
+                    const g = new THREE.Group();
+                    const main = 0xe07a5f, cush = 0xf2cc8f;
+                    box(g, 2.0, 0.42, 0.95, main, 0, 0.33, 0);
+                    box(g, 2.0, 0.62, 0.24, main, 0, 0.85, 0.36);                 // back
+                    box(g, 0.24, 0.55, 0.95, main, -0.88, 0.7, 0);                // arms
+                    box(g, 0.24, 0.55, 0.95, main, 0.88, 0.7, 0);
+                    box(g, 0.72, 0.16, 0.62, cush, -0.38, 0.62, -0.06);
+                    box(g, 0.72, 0.16, 0.62, cush, 0.38, 0.62, -0.06);
+                    for (const x of [-0.85, 0.85]) for (const z of [-0.38, 0.38])
+                        cyl(g, 0.05, 0.05, 0.24, 0x6b4a2b, x, 0.06, z, 8);
+                    return g;
+                }
+            },
+            {
+                name: 'Fridge', emoji: '🧊', mass: 7,
+                build() {
+                    const g = new THREE.Group();
+                    box(g, 0.9, 1.9, 0.85, 0xe8e8ec, 0, 0.95, 0);
+                    box(g, 0.92, 0.03, 0.87, 0xb8b8c0, 0, 1.25, 0);               // door split
+                    box(g, 0.05, 0.45, 0.06, 0xb8b8c0, -0.32, 1.6, -0.46);        // handles
+                    box(g, 0.05, 0.6, 0.06, 0xb8b8c0, -0.32, 0.75, -0.46);
+                    return g;
+                }
+            },
+            {
+                name: 'Piano', emoji: '🎹', mass: 8,
+                build() {
+                    const g = new THREE.Group();
+                    box(g, 1.5, 1.1, 0.62, 0x1c1c22, 0, 0.75, 0.05);              // body
+                    box(g, 1.34, 0.07, 0.3, 0xf4f4f0, 0, 0.78, -0.32);            // keys
+                    box(g, 1.34, 0.075, 0.14, 0x1c1c22, 0, 0.785, -0.38);         // black keys
+                    box(g, 0.1, 0.42, 0.1, 0x1c1c22, -0.65, 0.21, -0.32);         // legs
+                    box(g, 0.1, 0.42, 0.1, 0x1c1c22, 0.65, 0.21, -0.32);
+                    box(g, 1.5, 0.2, 0.62, 0x1c1c22, 0, 0.1, 0.05);
+                    box(g, 0.5, 0.05, 0.15, 0xd4af37, 0, 0.06, -0.34);            // pedals
+                    return g;
+                }
+            },
+            {
+                name: 'Rubber Duck', emoji: '🦆', mass: 1.5,
+                build() {
+                    const g = new THREE.Group();
+                    const yellow = 0xffd21f;
+                    sph(g, 0.55, yellow, 0, 0.55, 0.1, 1.1, 0.95, 1.3);           // body
+                    sph(g, 0.34, yellow, 0, 1.15, -0.42);                          // head
+                    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.3, 12), mat(0xf28c28));
+                    beak.rotation.x = -Math.PI / 2;
+                    beak.position.set(0, 1.1, -0.86);
+                    beak.castShadow = true;
+                    g.add(beak);
+                    sph(g, 0.045, 0x222222, -0.14, 1.26, -0.66);                   // eyes
+                    sph(g, 0.045, 0x222222, 0.14, 1.26, -0.66);
+                    sph(g, 0.2, yellow, 0, 0.75, 0.75, 1, 0.8, 1);                 // tail
+                    return g;
+                }
+            },
+            {
+                name: 'Giant Hot Dog', emoji: '🌭', mass: 4,
+                build() {
+                    const g = new THREE.Group();
+                    const bun = 0xe8b774;
+                    sph(g, 0.5, bun, -0.3, 0.4, 0, 0.62, 0.76, 2.5);              // bun halves
+                    sph(g, 0.5, bun, 0.3, 0.4, 0, 0.62, 0.76, 2.5);
+                    const sausage = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 2.3, 6, 14), mat(0xc0503a));
+                    sausage.rotation.x = Math.PI / 2;
+                    sausage.position.set(0, 0.64, 0);
+                    sausage.castShadow = true;
+                    g.add(sausage);
+                    for (let i = 0; i < 7; i++) {                                 // mustard zigzag
+                        const m = box(g, 0.1, 0.05, 0.34, 0xf2c11e, i % 2 ? 0.09 : -0.09, 0.93, -0.96 + i * 0.32);
+                        m.rotation.y = i % 2 ? -0.5 : 0.5;
+                        m.castShadow = false;
+                    }
+                    return g;
+                }
+            },
+            {
+                name: 'Race Car', emoji: '🏎️', mass: 4.5,
+                // built-in wheels that actually work as landing gear
+                wheelContacts: [[-0.55, 0, -0.75], [0.55, 0, -0.75], [-0.55, 0, 0.75], [0.55, 0, 0.75]],
+                bottomClearance: 0.16,
+                build() {
+                    const g = new THREE.Group();
+                    const red = 0xd0202a;
+                    box(g, 0.95, 0.28, 2.1, red, 0, 0.34, 0.05);                  // chassis
+                    box(g, 0.6, 0.16, 0.55, red, 0, 0.3, -1.25);                  // nose
+                    box(g, 1.1, 0.06, 0.28, 0x2b2b2b, 0, 0.18, -1.45);            // front wing
+                    box(g, 0.18, 0.05, 2.0, 0xf4f4f0, 0, 0.485, 0.05);            // stripe
+                    box(g, 0.5, 0.24, 0.62, 0x2b2b2b, 0, 0.58, 0.18);             // cockpit
+                    box(g, 0.2, 0.2, 0.22, red, 0, 0.68, 0.5);                    // headrest
+                    box(g, 0.07, 0.28, 0.07, 0x2b2b2b, -0.35, 0.62, 0.92);        // spoiler posts
+                    box(g, 0.07, 0.28, 0.07, 0x2b2b2b, 0.35, 0.62, 0.92);
+                    box(g, 1.1, 0.07, 0.32, red, 0, 0.78, 0.95);                  // spoiler
+                    for (const [x, z] of [[-0.55, -0.75], [0.55, -0.75], [-0.55, 0.75], [0.55, 0.75]]) {
+                        const tire = cyl(g, 0.24, 0.24, 0.2, 0x1c1c22, x, 0.24, z, 16);
+                        tire.rotation.z = Math.PI / 2;
+                        const hub = cyl(g, 0.1, 0.1, 0.22, 0xd8d8e0, x, 0.24, z, 10);
+                        hub.rotation.z = Math.PI / 2;
+                    }
+                    return g;
+                }
+            }
+        ];
+
+        // ================= PART BUILDERS =================
+        function makeKeySprite(key) {
+            const c = document.createElement('canvas');
+            c.width = c.height = 128;
+            const ctx = c.getContext('2d');
+            ctx.beginPath();
+            ctx.arc(64, 64, 56, 0, Math.PI * 2);
+            ctx.fillStyle = '#fffefb';
+            ctx.fill();
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#2b2b2b';
+            ctx.stroke();
+            ctx.fillStyle = '#2b2b2b';
+            ctx.font = 'bold 74px "Comic Sans MS", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(key, 64, 70);
+            const tex = new THREE.CanvasTexture(c);
+            const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
+            sp.scale.set(0.42, 0.42, 1);
+            sp.renderOrder = 10;
+            return sp;
+        }
+
+        // Booster: built along +Y (attach point at y=0 on the surface, flame shoots out at +Y).
+        function buildBooster(key) {
+            const g = new THREE.Group();
+            cyl(g, 0.15, 0.17, 0.45, 0xd8d8e0, 0, 0.24, 0, 14);                  // engine can
+            const band = cyl(g, 0.155, 0.155, 0.1, 0xd03a2c, 0, 0.3, 0, 14);     // red band
+            band.castShadow = false;
+            const noz = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.12, 0.22, 14, 1, true), mat(0x55565e, { side: THREE.DoubleSide }));
+            noz.position.y = 0.56;
+            noz.castShadow = true;
+            g.add(noz);
+
+            const flame = new THREE.Group();
+            const f1 = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.8, 10),
+                new THREE.MeshBasicMaterial({ color: 0xff8c1a, transparent: true, opacity: 0.85 }));
+            f1.rotation.x = Math.PI;   // cone tip points +Y (away from craft)
+            f1.position.y = 0.45;
+            const f2 = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.5, 10),
+                new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.95 }));
+            f2.rotation.x = Math.PI;
+            f2.position.y = 0.32;
+            flame.add(f1, f2);
+            flame.position.y = 0.62;
+            flame.visible = false;
+            g.add(flame);
+            g.userData.flame = flame;
+
+            if (key) {
+                const sp = makeKeySprite(key);
+                sp.position.set(0, 0.3, 0);
+                g.add(sp);
+            }
+            return g;
+        }
+
+        function buildWheel() {
+            const g = new THREE.Group();
+            cyl(g, 0.05, 0.05, 0.34, 0x8a8a92, 0, -0.17, 0, 10);                 // strut
+            const tire = cyl(g, 0.22, 0.22, 0.14, 0x24242a, 0, -0.38, 0, 18);
+            tire.rotation.z = Math.PI / 2;
+            const hub = cyl(g, 0.09, 0.09, 0.16, 0xd8d8e0, 0, -0.38, 0, 12);
+            hub.rotation.z = Math.PI / 2;
+            return g;
+        }
+
+        // Wings: root at x=0; right wing extends +X, left extends -X. Forward is -Z.
+        function buildWing(side) {
+            const g = new THREE.Group();
+            const s = new THREE.Shape();
+            if (side === 'R') {
+                s.moveTo(0, -0.45); s.lineTo(1.35, -0.15); s.lineTo(1.35, 0.28); s.lineTo(0, 0.5);
+            } else {
+                s.moveTo(0, -0.45); s.lineTo(0, 0.5); s.lineTo(-1.35, 0.28); s.lineTo(-1.35, -0.15);
+            }
+            const geo = new THREE.ExtrudeGeometry(s, { depth: 0.09, bevelEnabled: false });
+            const wing = new THREE.Mesh(geo, mat(0xf2f2ee));
+            wing.rotation.x = -Math.PI / 2;   // shape +Y becomes forward (-Z), thickness up
+            wing.position.y = -0.045;
+            wing.castShadow = true;
+            g.add(wing);
+            const tipX = side === 'R' ? 1.28 : -1.28;
+            box(g, 0.14, 0.11, 0.46, 0xd03a2c, tipX, 0, -0.02);                  // red wingtip
+            return g;
+        }
+
+        // Ailerons come as a mirrored pair: this group sits at the RIGHT side attach
+        // point; the left flap lives in `leftWrap`, offset to the mirrored x.
+        function buildAileron() {
+            const g = new THREE.Group();
+            const makeFlap = (dir) => {
+                const geo = new THREE.BoxGeometry(0.58, 0.06, 0.4);
+                geo.translate(0, 0, 0.17);                                       // hinge at front edge
+                const flap = new THREE.Mesh(geo, mat(0xf2f2ee));
+                flap.castShadow = true;
+                const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.58, 8), mat(0xd03a2c));
+                hinge.rotation.z = Math.PI / 2;
+                const grp = new THREE.Group();
+                grp.add(hinge);
+                grp.add(flap);
+                grp.position.x = dir * 0.32;
+                return { grp, flap };
+            };
+            const r = makeFlap(1);
+            g.add(r.grp);
+            const leftWrap = new THREE.Group();
+            const l = makeFlap(-1);
+            leftWrap.add(l.grp);
+            g.add(leftWrap);
+            g.userData.flapR = r.flap;
+            g.userData.flapL = l.flap;
+            g.userData.leftWrap = leftWrap;
+            return g;
+        }
+
+        // Tail = vertical stabilizer + horizontal stabilizer with a moving elevator.
+        function buildTail() {
+            const g = new THREE.Group();
+            box(g, 1.0, 0.05, 0.34, 0xf2f2ee, 0, 0.06, 0.08);                    // horizontal stabilizer
+            const elevGeo = new THREE.BoxGeometry(0.98, 0.045, 0.22);
+            elevGeo.translate(0, 0, 0.11);                                       // hinge at front edge
+            const elev = new THREE.Mesh(elevGeo, mat(0xe86a5e));
+            elev.position.set(0, 0.06, 0.25);
+            elev.castShadow = true;
+            g.add(elev);
+            const fin = box(g, 0.06, 0.62, 0.44, 0xf2f2ee, 0, 0.36, 0.16);       // vertical stabilizer
+            fin.rotation.x = 0.22;
+            const finTip = box(g, 0.09, 0.13, 0.34, 0xd03a2c, 0, 0.64, 0.23);
+            finTip.rotation.x = 0.22;
+            g.userData.elev = elev;
+            return g;
+        }
+
+        function buildPart(data) {
+            let g;
+            if (data.type === 'booster') g = buildBooster(data.key);
+            else if (data.type === 'wheel') g = buildWheel();
+            else if (data.type === 'aileron') g = buildAileron();
+            else if (data.type === 'tail') g = buildTail();
+            else g = buildWing(data.type === 'wingL' ? 'L' : 'R');
+            g.position.fromArray(data.pos);
+            if (data.type === 'booster') {
+                const n = new THREE.Vector3().fromArray(data.normal).normalize();
+                g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+            } else if (data.type === 'aileron') {
+                g.userData.leftWrap.position.x = -2 * data.pos[0];
+            }
+            return g;
+        }
+
+        // ================= CRAFT =================
+        function buildCraft(design) {
+            const group = new THREE.Group();
+            const bodyDef = BODIES[design.bodyIndex];
+            const bodyGroup = bodyDef.build();
+            group.add(bodyGroup);
+
+            const bbox = new THREE.Box3().setFromObject(bodyGroup);
+            const size = bbox.getSize(new THREE.Vector3());
+            const center = bbox.getCenter(new THREE.Vector3());
+
+            // invisible helper for wheel/wing drops
+            const bboxMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(size.x, size.y, size.z),
+                new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+            bboxMesh.position.copy(center);
+            bboxMesh.name = 'bboxHelper';
+            group.add(bboxMesh);
+
+            const bodyMeshes = [];
+            bodyGroup.traverse((o) => { if (o.isMesh) bodyMeshes.push(o); });
+
+            const partEntries = [];
+            const wingMeshes = [];
+            design.parts.forEach((data, i) => {
+                const pg = buildPart(data);
+                pg.userData.partIndex = i;
+                group.add(pg);
+                if (data.type === 'wingL' || data.type === 'wingR')
+                    pg.traverse((o) => { if (o.isMesh) wingMeshes.push(o); });
+                const entry = {
+                    data, group: pg, key: data.key,
+                    posLocal: new THREE.Vector3().fromArray(data.pos)
+                };
+                if (data.type === 'booster') {
+                    entry.thrustDirLocal = new THREE.Vector3().fromArray(data.normal).normalize().negate();
+                }
+                partEntries.push(entry);
+            });
+
+            const wingCount = design.parts.filter(p => p.type === 'wingL' || p.type === 'wingR').length;
+            const aileronCount = design.parts.filter(p => p.type === 'aileron').length;
+            const tailCount = design.parts.filter(p => p.type === 'tail').length;
+            const wheels = partEntries.filter(e => e.data.type === 'wheel');
+
+            // mass + center of mass
+            let m = bodyDef.mass;
+            const com = center.clone().multiplyScalar(bodyDef.mass);
+            for (const e of partEntries) {
+                const pm = PART_MASS[e.data.type];
+                m += pm;
+                com.addScaledVector(e.posLocal, pm);
+            }
+            com.divideScalar(m);
+
+            const full = new THREE.Box3().setFromObject(group);
+            const fs = full.getSize(new THREE.Vector3());
+            const inertia = Math.max(0.6, m * (fs.x * fs.x + fs.y * fs.y + fs.z * fs.z) / 9);
+
+            return { group, bodyGroup, bodyMeshes, bboxMesh, wingMeshes, bbox, size, center, partEntries, wingCount, aileronCount, tailCount, wheels, mass: m, comLocal: com, inertia, bodyDef };
+        }
+
+        // contact points in craft-local space
+        function buildContacts(craft, includeParts = true) {
+            const pts = [];
+            const b = craft.bbox;
+            // bodies with built-in wheels rest on them, so their box corners sit a bit higher
+            const yBottom = b.min.y + (craft.bodyDef.bottomClearance || 0);
+            for (const x of [b.min.x, b.max.x]) for (const y of [yBottom, b.max.y]) for (const z of [b.min.z, b.max.z])
+                pts.push({ p: new THREE.Vector3(x, y, z), wheel: false });
+            if (craft.bodyDef.wheelContacts) {
+                for (const w of craft.bodyDef.wheelContacts)
+                    pts.push({ p: new THREE.Vector3(w[0], w[1], w[2]), wheel: true });
+            }
+            if (includeParts) {
+                for (const e of craft.partEntries) {
+                    if (e.data.type === 'wheel') pts.push({ p: e.posLocal.clone().add(new THREE.Vector3(0, -0.6, 0)), wheel: true });
+                    else if (e.data.type === 'wingL') pts.push({ p: e.posLocal.clone().add(new THREE.Vector3(-1.3, 0, 0)), wheel: false });
+                    else if (e.data.type === 'wingR') pts.push({ p: e.posLocal.clone().add(new THREE.Vector3(1.3, 0, 0)), wheel: false });
+                    else if (e.data.type === 'aileron') {
+                        pts.push({ p: e.posLocal.clone().add(new THREE.Vector3(0.62, 0, 0)), wheel: false });
+                        pts.push({ p: new THREE.Vector3(-e.posLocal.x - 0.62, e.posLocal.y, e.posLocal.z), wheel: false });
+                    }
+                    else if (e.data.type === 'tail') pts.push({ p: e.posLocal.clone().add(new THREE.Vector3(0, 0.05, 0.35)), wheel: false });
+                    else if (e.data.type === 'booster') pts.push({ p: e.posLocal.clone().addScaledVector(new THREE.Vector3().fromArray(e.data.normal).normalize(), 0.7), wheel: false });
+                }
+            }
+            return pts;
+        }
+
+        // ================= ENVIRONMENTS =================
+        const editorEnv = new THREE.Group();
+        {
+            const grid = new THREE.GridHelper(24, 24, 0xd8d5c8, 0xe9e6dc);
+            editorEnv.add(grid);
+            const shadowCatcher = new THREE.Mesh(new THREE.PlaneGeometry(40, 40),
+                new THREE.ShadowMaterial({ opacity: 0.13 }));
+            shadowCatcher.rotation.x = -Math.PI / 2;
+            shadowCatcher.receiveShadow = true;
+            editorEnv.add(shadowCatcher);
+        }
+        scene.add(editorEnv);
+
+        let flightEnv = null;
+        const clouds = [];
+        function makeGroundTexture() {
+            const c = document.createElement('canvas');
+            c.width = c.height = 1024;
+            const x = c.getContext('2d');
+            x.fillStyle = '#7fb35c';
+            x.fillRect(0, 0, 1024, 1024);
+            const fieldColors = ['#8cbf62', '#a5c95c', '#c9c05f', '#77aa55', '#b8d078', '#d9c982', '#9fbf6a', '#86b96e'];
+            for (let i = 0; i < 60; i++) {
+                x.fillStyle = fieldColors[(Math.random() * fieldColors.length) | 0];
+                x.globalAlpha = rand(0.5, 0.95);
+                x.fillRect(rand(0, 950), rand(0, 950), rand(50, 210), rand(50, 210));
+            }
+            x.globalAlpha = 0.5;
+            for (let i = 0; i < 14; i++) {                                       // forests
+                x.fillStyle = '#557f3f';
+                x.beginPath();
+                x.arc(rand(0, 1024), rand(0, 1024), rand(28, 80), 0, Math.PI * 2);
+                x.fill();
+            }
+            x.globalAlpha = 0.8;
+            x.strokeStyle = '#b0aca2';
+            for (let i = 0; i < 7; i++) {                                        // roads
+                x.lineWidth = rand(3, 5);
+                x.beginPath();
+                if (Math.random() < 0.5) { x.moveTo(0, rand(0, 1024)); x.lineTo(1024, rand(0, 1024)); }
+                else { x.moveTo(rand(0, 1024), 0); x.lineTo(rand(0, 1024), 1024); }
+                x.stroke();
+            }
+            x.globalAlpha = 1;
+            const tex = new THREE.CanvasTexture(c);
+            tex.wrapS = tex.wrapT = THREE.MirroredRepeatWrapping;
+            tex.repeat.set(3, 3);
+            tex.anisotropy = 4;
+            return tex;
+        }
+
+        function buildFlightEnv() {
+            const env = new THREE.Group();
+
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(3200, 3200),
+                new THREE.MeshLambertMaterial({ map: makeGroundTexture() }));
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            env.add(ground);
+
+            // runway (takeoff toward -Z)
+            const runway = new THREE.Mesh(new THREE.PlaneGeometry(14, 120),
+                new THREE.MeshLambertMaterial({ color: 0x3c3f44 }));
+            runway.rotation.x = -Math.PI / 2;
+            runway.position.y = 0.02;
+            runway.receiveShadow = true;
+            env.add(runway);
+            for (let z = -52; z <= 52; z += 10) {
+                const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 3.4),
+                    new THREE.MeshLambertMaterial({ color: 0xf0f0e8 }));
+                dash.rotation.x = -Math.PI / 2;
+                dash.position.set(0, 0.04, z);
+                env.add(dash);
+            }
+
+            // lake
+            const lake = new THREE.Mesh(new THREE.CircleGeometry(LAKE.r, 28),
+                new THREE.MeshLambertMaterial({ color: 0x4f9edb }));
+            lake.rotation.x = -Math.PI / 2;
+            lake.position.set(LAKE.x, 0.03, LAKE.z);
+            env.add(lake);
+
+            const inCorridor = (x, z) => Math.abs(x) < 30 && z > -150 && z < 150;
+            const ringPos = (rMin, rMax) => {
+                for (let tries = 0; tries < 20; tries++) {
+                    const a = rand(0, Math.PI * 2), r = rand(rMin, rMax);
+                    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+                    if (!inCorridor(x, z) && Math.hypot(x - LAKE.x, z - LAKE.z) > LAKE.r + 12) return [x, z];
+                }
+                return [rMax, rMax];
+            };
+
+            const housePalette = [0xe8b4b8, 0xf4e1a4, 0xbcd8e8, 0xd8e8bc, 0xe8d0b4, 0xf0f0e8];
+            for (let i = 0; i < 30; i++) {
+                const [x, z] = ringPos(60, 800);
+                const w = rand(4, 7), h = rand(2.6, 4.2), d = rand(4, 7);
+                const g = new THREE.Group();
+                box(g, w, h, d, housePalette[(Math.random() * housePalette.length) | 0], 0, h / 2, 0).castShadow = false;
+                const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(w, d) * 0.75, rand(1.5, 2.6), 4), mat(0xa0522d));
+                roof.position.y = h + 0.8;
+                roof.rotation.y = Math.PI / 4;
+                g.add(roof);
+                g.position.set(x, 0, z);
+                g.rotation.y = rand(0, Math.PI * 2);
+                env.add(g);
+            }
+
+            for (let i = 0; i < 90; i++) {
+                const [x, z] = ringPos(45, 900);
+                const g = new THREE.Group();
+                const th = rand(1, 1.8);
+                cyl(g, 0.22, 0.3, th, 0x6b4a2b, 0, th / 2, 0, 8).castShadow = false;
+                const leaves = new THREE.Mesh(new THREE.ConeGeometry(rand(1.1, 2.2), rand(2.4, 4.5), 8),
+                    mat(i % 3 ? 0x3e8a3e : 0x2f7032));
+                leaves.position.y = th + 1.4;
+                g.add(leaves);
+                g.position.set(x, 0, z);
+                env.add(g);
+            }
+
+            for (let i = 0; i < 9; i++) {
+                const a = (i / 9) * Math.PI * 2 + rand(-0.2, 0.2);
+                const r = rand(950, 1400);
+                const mh = rand(110, 260), mr = rand(130, 280);
+                const mnt = new THREE.Mesh(new THREE.ConeGeometry(mr, mh, 7), mat(0x8b8f96));
+                mnt.position.set(Math.cos(a) * r, mh / 2 - 4, Math.sin(a) * r);
+                env.add(mnt);
+                const cap = new THREE.Mesh(new THREE.ConeGeometry(mr * 0.34, mh * 0.3, 7), mat(0xf4f4f8));
+                cap.position.set(Math.cos(a) * r, mh - mh * 0.15 - 4, Math.sin(a) * r);
+                env.add(cap);
+            }
+
+            const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+            for (let i = 0; i < 22; i++) {
+                const g = new THREE.Group();
+                const n = 3 + (Math.random() * 3 | 0);
+                for (let j = 0; j < n; j++) {
+                    const s = new THREE.Mesh(new THREE.SphereGeometry(rand(6, 14), 10, 8), cloudMat);
+                    s.position.set(rand(-14, 14), rand(-3, 3), rand(-8, 8));
+                    g.add(s);
+                }
+                const a = rand(0, Math.PI * 2), r = rand(120, 900);
+                g.position.set(Math.cos(a) * r, rand(65, 150), Math.sin(a) * r);
+                g.userData.v = rand(1, 3);
+                clouds.push(g);
+                env.add(g);
+            }
+            return env;
+        }
+
+        // ================= SMOKE =================
+        function makePuffTexture() {
+            const c = document.createElement('canvas');
+            c.width = c.height = 64;
+            const x = c.getContext('2d');
+            const grd = x.createRadialGradient(32, 32, 4, 32, 32, 30);
+            grd.addColorStop(0, 'rgba(255,255,255,0.9)');
+            grd.addColorStop(1, 'rgba(255,255,255,0)');
+            x.fillStyle = grd;
+            x.fillRect(0, 0, 64, 64);
+            return new THREE.CanvasTexture(c);
+        }
+        const puffTex = makePuffTexture();
+        const smokePool = [];
+        for (let i = 0; i < 60; i++) {
+            const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex, transparent: true, opacity: 0 }));
+            sp.visible = false;
+            sp.userData = { life: 0, vel: new THREE.Vector3() };
+            scene.add(sp);
+            smokePool.push(sp);
+        }
+        let smokeIdx = 0;
+        function spawnPuff(pos, vel, color = 0xdddddd, size = 0.6, life = 0.8) {
+            const sp = smokePool[smokeIdx = (smokeIdx + 1) % smokePool.length];
+            sp.visible = true;
+            sp.position.copy(pos);
+            sp.material.color.set(color);
+            sp.material.opacity = 0.65;
+            sp.scale.set(size, size, 1);
+            sp.userData.life = life;
+            sp.userData.maxLife = life;
+            sp.userData.vel.copy(vel);
+        }
+        function updateSmoke(dt) {
+            for (const sp of smokePool) {
+                if (!sp.visible) continue;
+                sp.userData.life -= dt;
+                if (sp.userData.life <= 0) { sp.visible = false; continue; }
+                sp.position.addScaledVector(sp.userData.vel, dt);
+                sp.userData.vel.y += 1.2 * dt;
+                const t = 1 - sp.userData.life / sp.userData.maxLife;
+                sp.material.opacity = 0.65 * (1 - t);
+                const s = sp.scale.x + dt * 1.6;
+                sp.scale.set(s, s, 1);
+            }
+        }
+
+        // ================= SOUND =================
+        const Sound = {
+            ctx: null, thrustGain: null, muted: false,
+            init() {
+                if (this.ctx) return;
+                try {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const len = this.ctx.sampleRate * 1.5;
+                    const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+                    const d = buf.getChannelData(0);
+                    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+                    const src = this.ctx.createBufferSource();
+                    src.buffer = buf;
+                    src.loop = true;
+                    const filt = this.ctx.createBiquadFilter();
+                    filt.type = 'lowpass';
+                    filt.frequency.value = 420;
+                    this.thrustGain = this.ctx.createGain();
+                    this.thrustGain.gain.value = 0;
+                    src.connect(filt).connect(this.thrustGain).connect(this.ctx.destination);
+                    src.start();
+                } catch (e) { /* no audio, no problem */ }
+            },
+            setThrust(n) {
+                if (!this.ctx || this.muted) return;
+                const target = Math.min(0.35, 0.15 * Math.sqrt(n));
+                this.thrustGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.06);
+            },
+            beep(freq, dur, type = 'sine', vol = 0.18, when = 0) {
+                if (!this.ctx || this.muted) return;
+                const t = this.ctx.currentTime + when;
+                const o = this.ctx.createOscillator();
+                const g = this.ctx.createGain();
+                o.type = type;
+                o.frequency.value = freq;
+                g.gain.setValueAtTime(vol, t);
+                g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+                o.connect(g).connect(this.ctx.destination);
+                o.start(t);
+                o.stop(t + dur + 0.05);
+            },
+            pop() { this.beep(500, 0.09, 'square', 0.1); },
+            unpop() { this.beep(220, 0.1, 'square', 0.1); },
+            crash() {
+                if (!this.ctx || this.muted) return;
+                this.beep(70, 0.7, 'sawtooth', 0.35);
+                this.beep(52, 0.9, 'triangle', 0.3, 0.05);
+                const len = this.ctx.sampleRate * 0.4;
+                const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+                const d = buf.getChannelData(0);
+                for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+                const src = this.ctx.createBufferSource();
+                src.buffer = buf;
+                const g = this.ctx.createGain();
+                g.gain.value = 0.4;
+                src.connect(g).connect(this.ctx.destination);
+                src.start();
+            },
+            success() { [523, 659, 784, 1047].forEach((f, i) => this.beep(f, 0.3, 'triangle', 0.2, i * 0.13)); },
+            splash() { this.beep(300, 0.4, 'sine', 0.25); this.beep(150, 0.5, 'sine', 0.2, 0.08); }
+        };
+        function setMuted(m) {
+            Sound.muted = m;
+            if (Sound.thrustGain) Sound.thrustGain.gain.value = 0;
+            try { localStorage.setItem(LS_MUTED, m ? '1' : '0'); } catch (e) { }
+            $('mute-btn').textContent = m ? '🔇' : '🔊';
+            $('flight-mute').textContent = m ? '🔇' : '🔊';
+        }
+
+        // ================= DESIGN STATE + STORAGE =================
+        let design = { bodyIndex: 0, parts: [] };
+
+        const genId = () => Date.now().toString(36) + '-' + ((Math.random() * 1e6) | 0);
+        // older saves have no part ids — give them some so wing attachments work
+        function ensureIds(d) {
+            for (const p of d.parts) if (!p.id) p.id = genId();
+            return d;
+        }
+
+        function saveWorkingDesign() {
+            try { localStorage.setItem(LS_DESIGN, JSON.stringify(design)); } catch (e) { }
+        }
+        function loadWorkingDesign() {
+            try {
+                const d = JSON.parse(localStorage.getItem(LS_DESIGN));
+                if (d && typeof d.bodyIndex === 'number' && Array.isArray(d.parts)
+                    && d.bodyIndex >= 0 && d.bodyIndex < BODIES.length) {
+                    d.parts = d.parts.filter(p => p && PART_MASS[p.type] && Array.isArray(p.pos));
+                    design = ensureIds(d);
+                }
+            } catch (e) { }
+        }
+        function loadHangar() {
+            try {
+                const h = JSON.parse(localStorage.getItem(LS_HANGAR));
+                if (Array.isArray(h)) return h;
+            } catch (e) { }
+            return [];
+        }
+        function saveHangar(h) {
+            try { localStorage.setItem(LS_HANGAR, JSON.stringify(h)); } catch (e) { }
+        }
+
+        function nextFreeKey() {
+            const used = new Set(design.parts.filter(p => p.type === 'booster').map(p => p.key));
+            return KEY_ORDER.find(k => !used.has(k)) || null;
+        }
+
+        // ================= TOAST =================
+        let toastTimer = null;
+        function toast(msg, ms = 2200) {
+            toastEl.innerHTML = msg;
+            toastEl.style.opacity = 1;
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => { toastEl.style.opacity = 0; }, ms);
+        }
+
+        // ================= EDITOR =================
+        let craft = null;
+        let mode = 'editor';   // 'editor' | 'flight'
+        const raycaster = new THREE.Raycaster();
+
+        const orbit = { theta: 0.55, phi: 1.12, radius: 7.5, target: new THREE.Vector3(0, 0.9, 0) };
+        function updateEditorCamera() {
+            const { theta, phi, radius, target } = orbit;
+            camera.position.set(
+                target.x + radius * Math.sin(phi) * Math.sin(theta),
+                target.y + radius * Math.cos(phi),
+                target.z + radius * Math.sin(phi) * Math.cos(theta));
+            camera.lookAt(target);
+        }
+
+        function rebuildCraft() {
+            if (craft) { scene.remove(craft.group); disposeObject(craft.group); }
+            craft = buildCraft(design);
+            scene.add(craft.group);
+            if (mode === 'editor') {
+                orbit.target.y = Math.max(0.9, craft.size.y * 0.5);
+                sunLight.target.position.set(0, 0, 0);
+            }
+            $('body-emoji').textContent = craft.bodyDef.emoji;
+            $('body-name').textContent = craft.bodyDef.name + ' — tap to change!';
+            saveWorkingDesign();
+        }
+
+        function screenRay(cx, cy) {
+            const r = renderer.domElement.getBoundingClientRect();
+            const ndc = new THREE.Vector2(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+            raycaster.setFromCamera(ndc, camera);
+        }
+
+        function partIndexFromObject(obj) {
+            let o = obj;
+            while (o && o !== craft.group) {
+                if (o.userData.partIndex !== undefined) return o.userData.partIndex;
+                o = o.parent;
+            }
+            return null;
+        }
+
+        // ----- drag-from-tray -----
+        let drag = null;
+        function beginTrayDrag(type, ev) {
+            if (mode !== 'editor') return;
+            Sound.init();
+            if (type === 'booster' && !nextFreeKey()) {
+                toast('Out of booster letters — 34 is the max! 🤯');
+                return;
+            }
+            const ghostData = {
+                type,
+                pos: [0, 0, 0],
+                normal: [0, 1, 0],
+                key: type === 'booster' ? nextFreeKey() : null
+            };
+            const ghost = buildPart(ghostData);
+            ghost.traverse((o) => {
+                if (o.material) {
+                    o.material = o.material.clone();
+                    o.material.transparent = true;
+                    o.material.opacity = Math.min(0.55, o.material.opacity || 1);
+                }
+                o.castShadow = false;
+            });
+            ghost.visible = false;
+            scene.add(ghost);
+            drag = { type, ghost, cand: null, key: ghostData.key };
+            ev.target.setPointerCapture?.(ev.pointerId);
+        }
+
+        function updateTrayDrag(cx, cy) {
+            if (!drag || !craft) return;
+            screenRay(cx, cy);
+            const b = craft.bbox;
+            drag.cand = null;
+            drag.ghost.visible = false;
+
+            if (drag.type === 'booster') {
+                // boosters glue to the body OR onto wings
+                const hits = raycaster.intersectObjects([...craft.bodyMeshes, ...craft.wingMeshes], false);
+                if (hits.length) {
+                    const h = hits[0];
+                    const n = h.face.normal.clone().transformDirection(h.object.matrixWorld).normalize();
+                    drag.ghost.position.copy(h.point);
+                    drag.ghost.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+                    drag.ghost.visible = true;
+                    const pi = partIndexFromObject(h.object);
+                    drag.cand = { pos: h.point.toArray(), normal: n.toArray(), parent: pi !== null ? design.parts[pi].id : undefined };
+                }
+            } else if (drag.type === 'wheel') {
+                // wheels snap under the body, or hang under a wing
+                const hits = raycaster.intersectObjects([...craft.bodyMeshes, craft.bboxMesh, ...craft.wingMeshes], false);
+                if (hits.length) {
+                    let wingHit = null, bodyHit = null;
+                    for (const h of hits) {
+                        if (partIndexFromObject(h.object) !== null) { if (!wingHit) wingHit = h; }
+                        else if (!bodyHit) bodyHit = h;
+                    }
+                    let pos = null, parent;
+                    if (wingHit && (!bodyHit || wingHit.distance <= bodyHit.distance + 0.05)) {
+                        const wing = design.parts[partIndexFromObject(wingHit.object)];
+                        pos = new THREE.Vector3(wingHit.point.x, wing.pos[1] - 0.06, wingHit.point.z);
+                        parent = wing.id;
+                    } else if (bodyHit) {
+                        const p = bodyHit.point;
+                        pos = new THREE.Vector3(
+                            clamp(p.x, b.min.x + 0.1, b.max.x - 0.1),
+                            b.min.y + 0.02,
+                            clamp(p.z, b.min.z + 0.1, b.max.z - 0.1));
+                    }
+                    if (pos) {
+                        drag.ghost.position.copy(pos);
+                        drag.ghost.quaternion.identity();
+                        drag.ghost.visible = true;
+                        drag.cand = { pos: pos.toArray(), normal: [0, -1, 0], parent };
+                    }
+                }
+            } else {
+                const hits = raycaster.intersectObjects([...craft.bodyMeshes, craft.bboxMesh], false);
+                if (hits.length) {
+                    const p = hits[0].point;
+                    let pos, normal = [0, 1, 0];
+                    const yy = clamp(p.y, b.min.y + craft.size.y * 0.25, b.max.y - craft.size.y * 0.05);
+                    const zz = clamp(p.z, b.min.z + craft.size.z * 0.12, b.max.z - craft.size.z * 0.12);
+                    if (drag.type === 'aileron') {
+                        pos = new THREE.Vector3(b.max.x - 0.03, yy, zz);
+                        drag.ghost.userData.leftWrap.position.x = -2 * pos.x;
+                        normal = [1, 0, 0];
+                    } else if (drag.type === 'tail') {
+                        pos = new THREE.Vector3(0, yy, b.max.z - 0.02);
+                        normal = [0, 0, 1];
+                    } else {
+                        pos = new THREE.Vector3(drag.type === 'wingL' ? b.min.x + 0.03 : b.max.x - 0.03, yy, zz);
+                        normal = [drag.type === 'wingL' ? -1 : 1, 0, 0];
+                    }
+                    drag.ghost.position.copy(pos);
+                    drag.ghost.quaternion.identity();
+                    drag.ghost.visible = true;
+                    drag.cand = { pos: pos.toArray(), normal };
+                }
+            }
+        }
+
+        function endTrayDrag() {
+            if (!drag) return;
+            if (drag.cand) {
+                const newPart = { id: genId(), type: drag.type, pos: drag.cand.pos, normal: drag.cand.normal, key: drag.key };
+                if (drag.cand.parent) newPart.parent = drag.cand.parent;
+                design.parts.push(newPart);
+                rebuildCraft();
+                Sound.pop();
+            } else {
+                toast('Drop it on the body! 👆');
+            }
+            scene.remove(drag.ghost);
+            disposeObject(drag.ghost);
+            drag = null;
+        }
+
+        for (const tile of document.querySelectorAll('.tile[data-type]')) {
+            tile.addEventListener('pointerdown', (ev) => {
+                ev.preventDefault();
+                beginTrayDrag(tile.dataset.type, ev);
+            });
+            tile.addEventListener('pointermove', (ev) => { if (drag) updateTrayDrag(ev.clientX, ev.clientY); });
+            tile.addEventListener('pointerup', () => endTrayDrag());
+            tile.addEventListener('pointercancel', () => endTrayDrag());
+        }
+
+        // ----- orbit / part removal on canvas -----
+        const pointers = new Map();
+        let orbitState = null;
+        renderer.domElement.addEventListener('pointerdown', (ev) => {
+            Sound.init();
+            pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+            if (mode !== 'editor') return;
+            if (pointers.size === 1) {
+                screenRay(ev.clientX, ev.clientY);
+                let removeIndex = null;
+                if (craft) {
+                    const hits = raycaster.intersectObject(craft.group, true);
+                    for (const h of hits) {
+                        let o = h.object;
+                        while (o && o !== craft.group) {
+                            if (o.userData.partIndex !== undefined) { removeIndex = o.userData.partIndex; break; }
+                            o = o.parent;
+                        }
+                        if (removeIndex !== null) break;
+                        if (h.object.name !== 'bboxHelper') break;   // hit the body first
+                    }
+                }
+                orbitState = { sx: ev.clientX, sy: ev.clientY, moved: false, removeIndex };
+            }
+            renderer.domElement.setPointerCapture?.(ev.pointerId);
+        });
+        renderer.domElement.addEventListener('pointermove', (ev) => {
+            const prev = pointers.get(ev.pointerId);
+            if (!prev) return;
+            if (mode === 'editor') {
+                if (pointers.size === 2) {
+                    const ids = [...pointers.keys()];
+                    const a = pointers.get(ids[0]), bpt = pointers.get(ids[1]);
+                    const before = Math.hypot(a.x - bpt.x, a.y - bpt.y);
+                    prev.x = ev.clientX; prev.y = ev.clientY;
+                    const a2 = pointers.get(ids[0]), b2 = pointers.get(ids[1]);
+                    const after = Math.hypot(a2.x - b2.x, a2.y - b2.y);
+                    if (before > 0) orbit.radius = clamp(orbit.radius * before / after, 3.5, 15);
+                    updateEditorCamera();
+                    if (orbitState) orbitState.moved = true;
+                    return;
+                }
+                if (orbitState) {
+                    const dx = ev.clientX - prev.x, dy = ev.clientY - prev.y;
+                    if (Math.abs(ev.clientX - orbitState.sx) + Math.abs(ev.clientY - orbitState.sy) > 7) orbitState.moved = true;
+                    if (orbitState.moved) {
+                        orbit.theta -= dx * 0.006;
+                        orbit.phi = clamp(orbit.phi - dy * 0.005, 0.3, 1.5);
+                        updateEditorCamera();
+                    }
+                }
+            }
+            prev.x = ev.clientX;
+            prev.y = ev.clientY;
+        });
+        function pointerEnd(ev) {
+            pointers.delete(ev.pointerId);
+            if (mode === 'editor' && orbitState && pointers.size === 0) {
+                if (!orbitState.moved && orbitState.removeIndex !== null) {
+                    const removed = design.parts[orbitState.removeIndex];
+                    // anything glued onto this part (wing-mounted boosters/wheels) comes off with it
+                    const before = design.parts.length;
+                    design.parts = design.parts.filter(p => p !== removed && (!removed.id || p.parent !== removed.id));
+                    const swept = before - 1 - design.parts.length;
+                    rebuildCraft();
+                    Sound.unpop();
+                    const label = removed.type === 'booster' ? `Booster ${removed.key} removed` : 'Part removed';
+                    toast(label + (swept > 0 ? ` (with ${swept} part${swept > 1 ? 's' : ''} glued to it!)` : ''));
+                }
+                orbitState = null;
+            }
+        }
+        renderer.domElement.addEventListener('pointerup', pointerEnd);
+        renderer.domElement.addEventListener('pointercancel', pointerEnd);
+        renderer.domElement.addEventListener('wheel', (ev) => {
+            if (mode !== 'editor') return;
+            orbit.radius = clamp(orbit.radius * (1 + ev.deltaY * 0.001), 3.5, 15);
+            updateEditorCamera();
+        }, { passive: true });
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // ----- body picker -----
+        const bodyThumbCache = [];
+        function openBodyPicker() {
+            Sound.init();
+            const grid = $('body-grid');
+            grid.innerHTML = '';
+            BODIES.forEach((bodyDef, i) => {
+                const opt = document.createElement('div');
+                opt.className = 'body-option sketch' + (i % 2 ? ' sketch-b' : '') + (i === design.bodyIndex ? ' current' : '');
+                const img = document.createElement('img');
+                try {
+                    if (!bodyThumbCache[i]) bodyThumbCache[i] = renderThumb({ bodyIndex: i, parts: [] });
+                    img.src = bodyThumbCache[i];
+                } catch (e) { }
+                img.draggable = false;
+                const name = document.createElement('div');
+                name.className = 'bname';
+                name.textContent = `${bodyDef.emoji} ${bodyDef.name}`;
+                const massEl = document.createElement('div');
+                massEl.className = 'bmass';
+                massEl.textContent = `${bodyDef.mass} kg` + (bodyDef.wheelContacts ? ' · has wheels!' : '');
+                opt.append(img, name, massEl);
+                opt.addEventListener('click', () => {
+                    if (i !== design.bodyIndex) {
+                        design.bodyIndex = i;
+                        const hadParts = design.parts.length > 0;
+                        design.parts = [];
+                        rebuildCraft();
+                        Sound.pop();
+                        toast(`${craft.bodyDef.emoji} <b>${craft.bodyDef.name}</b>!` + (hadParts ? ' (parts cleared)' : ''));
+                    }
+                    $('body-picker').classList.add('hidden');
+                });
+                grid.appendChild(opt);
+            });
+            $('body-picker').classList.remove('hidden');
+        }
+        $('tile-bodies').addEventListener('pointerdown', () => {
+            if (mode !== 'editor') return;
+            openBodyPicker();
+        });
+        $('body-picker-close').addEventListener('click', () => $('body-picker').classList.add('hidden'));
+        $('body-picker').addEventListener('pointerdown', (e) => {
+            if (e.target === $('body-picker')) $('body-picker').classList.add('hidden');
+        });
+
+        // ================= HANGAR =================
+        let thumbRenderer = null, thumbScene = null, thumbCam = null;
+        function renderThumb(d) {
+            if (!thumbRenderer) {
+                thumbRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                thumbRenderer.setSize(240, 240);
+                thumbScene = new THREE.Scene();
+                thumbScene.add(new THREE.HemisphereLight(0xffffff, 0x998877, 1.3));
+                const dl = new THREE.DirectionalLight(0xfff4e0, 1.6);
+                dl.position.set(4, 7, 5);
+                thumbScene.add(dl);
+                thumbCam = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+            }
+            const c = buildCraft(d);
+            thumbScene.add(c.group);
+            const bb = new THREE.Box3().setFromObject(c.group);
+            const center = bb.getCenter(new THREE.Vector3());
+            const radius = Math.max(1.2, bb.getSize(new THREE.Vector3()).length() * 0.5);
+            thumbCam.position.set(center.x + radius * 1.6, center.y + radius * 1.1, center.z + radius * 1.9);
+            thumbCam.lookAt(center);
+            thumbRenderer.render(thumbScene, thumbCam);
+            const url = thumbRenderer.domElement.toDataURL('image/png');
+            thumbScene.remove(c.group);
+            disposeObject(c.group);
+            return url;
+        }
+
+        function partCounts(d) {
+            const n = { booster: 0, wheel: 0, wing: 0, ctrl: 0 };
+            for (const p of d.parts) {
+                if (p.type === 'booster') n.booster++;
+                else if (p.type === 'wheel') n.wheel++;
+                else if (p.type === 'aileron' || p.type === 'tail') n.ctrl++;
+                else n.wing++;
+            }
+            return `🚀${n.booster} &nbsp;🛞${n.wheel} &nbsp;✈️${n.wing}` + (n.ctrl ? ` &nbsp;🕹️${n.ctrl}` : '');
+        }
+
+        function openHangar() {
+            const hangar = loadHangar();
+            const grid = $('hangar-grid');
+            grid.innerHTML = '';
+            $('hangar-empty').classList.toggle('hidden', hangar.length > 0);
+            for (const entry of hangar) {
+                const card = document.createElement('div');
+                card.className = 'hangar-card sketch';
+                const img = document.createElement('img');
+                try { img.src = renderThumb(entry.design); } catch (e) { }
+                img.draggable = false;
+                const name = document.createElement('div');
+                name.className = 'hname';
+                name.textContent = entry.name;
+                const meta = document.createElement('div');
+                meta.className = 'hmeta';
+                meta.innerHTML = `${BODIES[entry.design.bodyIndex].emoji} ${BODIES[entry.design.bodyIndex].name} · ` + partCounts(entry.design);
+                const row = document.createElement('div');
+                row.className = 'row';
+
+                const flyBtn = document.createElement('button');
+                flyBtn.className = 'sketch';
+                flyBtn.textContent = '🛫 Fly!';
+                flyBtn.onclick = () => {
+                    design = ensureIds(JSON.parse(JSON.stringify(entry.design)));
+                    rebuildCraft();
+                    closeHangar();
+                    startFlight();
+                };
+                const editBtn = document.createElement('button');
+                editBtn.className = 'sketch sketch-b';
+                editBtn.textContent = '✏️ Edit';
+                editBtn.onclick = () => {
+                    design = ensureIds(JSON.parse(JSON.stringify(entry.design)));
+                    rebuildCraft();
+                    closeHangar();
+                    toast(`Loaded <b>${entry.name}</b>!`);
+                };
+                const delBtn = document.createElement('button');
+                delBtn.className = 'sketch danger';
+                delBtn.textContent = '🗑️';
+                let armed = false;
+                delBtn.onclick = () => {
+                    if (!armed) {
+                        armed = true;
+                        delBtn.textContent = 'Sure?';
+                        setTimeout(() => { armed = false; delBtn.textContent = '🗑️'; }, 2500);
+                        return;
+                    }
+                    const h = loadHangar().filter(e => e.id !== entry.id);
+                    saveHangar(h);
+                    openHangar();
+                };
+                row.append(flyBtn, editBtn, delBtn);
+                card.append(img, name, meta, row);
+                grid.appendChild(card);
+            }
+            updateHangarCount();
+            $('hangar').classList.remove('hidden');
+        }
+        function closeHangar() { $('hangar').classList.add('hidden'); }
+        function updateHangarCount() {
+            const n = loadHangar().length;
+            $('hangar-btn').textContent = n ? `🛖 Hangar (${n})` : '🛖 Hangar';
+        }
+
+        $('hangar-btn').addEventListener('click', openHangar);
+        $('hangar-close').addEventListener('click', closeHangar);
+
+        // ----- save dialog -----
+        const NAME_ADJ = ['Turbo', 'Mighty', 'Super', 'Zoomy', 'Rocket', 'Wobbly', 'Speedy', 'Flying', 'Mega', 'Silly', 'Epic'];
+        $('save-btn').addEventListener('click', () => {
+            $('save-name').value = `${NAME_ADJ[(Math.random() * NAME_ADJ.length) | 0]} ${craft.bodyDef.name}`;
+            $('save-dialog').classList.remove('hidden');
+            setTimeout(() => { $('save-name').focus(); $('save-name').select(); }, 50);
+        });
+        $('save-cancel').addEventListener('click', () => $('save-dialog').classList.add('hidden'));
+        function doSave() {
+            const name = $('save-name').value.trim() || 'My Aircraft';
+            const h = loadHangar();
+            h.unshift({ id: Date.now() + '-' + ((Math.random() * 1e6) | 0), name, created: Date.now(), design: JSON.parse(JSON.stringify(design)) });
+            saveHangar(h);
+            $('save-dialog').classList.add('hidden');
+            updateHangarCount();
+            Sound.pop();
+            toast(`💾 <b>${name}</b> saved to your Hangar! 🛖`);
+            gtag('event', 'aircraft_saved', { game_name: 'Test Flight', body: craft.bodyDef.name });
+        }
+        $('save-ok').addEventListener('click', doSave);
+        $('save-name').addEventListener('keydown', (e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter') doSave();
+            if (e.key === 'Escape') $('save-dialog').classList.add('hidden');
+        });
+
+        // ================= FLIGHT =================
+        const phys = {
+            m: 1, I: 1,
+            pos: new THREE.Vector3(),
+            vel: new THREE.Vector3(),
+            quat: new THREE.Quaternion(),
+            angVel: new THREE.Vector3()
+        };
+        const flight = {
+            contacts: [], broken: false, finished: false, splash: false,
+            airTime: 0, maxAlt: 0, landTimer: 0, grounded: true, lowY: 0,
+            camPos: new THREE.Vector3(), lastHead: new THREE.Vector3(0, 0, -1),
+            overlayTimer: null, debris: []
+        };
+        const activeKeys = new Set();
+
+        function syncCraftTransform() {
+            craft.group.quaternion.copy(phys.quat);
+            craft.group.position.copy(phys.pos)
+                .sub(craft.comLocal.clone().applyQuaternion(phys.quat));
+        }
+
+        function startFlight() {
+            Sound.init();
+            mode = 'flight';
+            if (!flightEnv) {
+                flightEnv = buildFlightEnv();
+                scene.add(flightEnv);
+            }
+            flightEnv.visible = true;
+            editorEnv.visible = false;
+            scene.background = new THREE.Color(0x87c8f0);
+            scene.fog = new THREE.Fog(0x9fd3f2, 300, 1700);
+            setShadowBox(16);
+            resetFlight();
+
+            editorUI.classList.add('hidden');
+            flightUI.classList.remove('hidden');
+            buildBoosterButtons();
+            updateArrowPad();
+            const nBoosters = design.parts.filter(p => p.type === 'booster').length;
+            const steerHint = (craft.aileronCount > 0 || craft.tailCount > 0)
+                ? (craft.tailCount > 0
+                    ? ' Steer with the arrow keys — hold ⬇ to pull the nose UP, like a real pilot!'
+                    : ' Steer with ⬅➡ once you\'re moving!') : '';
+            flightHintEl.innerHTML = nBoosters === 0
+                ? '😅 No boosters! Go back to the editor and drag some 🚀 on!'
+                : (nBoosters === 1
+                    ? `Hold <b>${design.parts.find(p => p.type === 'booster').key}</b> (key or button) to blast off! 🚀 Then land gently on your wheels.${steerHint}`
+                    : `Hold your booster keys to blast off! 🚀 Then land gently on your wheels.${steerHint}`);
+            flightHintEl.style.opacity = 1;
+            setTimeout(() => { flightHintEl.style.opacity = 0; }, 6000);
+            gtag('event', 'flight_start', { game_name: 'Test Flight', body: craft.bodyDef.name, boosters: nBoosters });
+        }
+
+        function resetFlight() {
+            rebuildCraft();
+            for (const d of flight.debris) { scene.remove(d.mesh); disposeObject(d.mesh); }
+            flight.debris = [];
+            flight.contacts = buildContacts(craft, true);
+            flight.broken = false;
+            flight.finished = false;
+            flight.splash = false;
+            flight.airTime = 0;
+            flight.maxAlt = 0;
+            flight.landTimer = 0;
+            clearTimeout(flight.overlayTimer);
+            bigOverlay.classList.add('hidden');
+            $('flash').style.opacity = 0;
+            activeKeys.clear();
+            activeArrows.clear();
+            updateBoosterButtonStates();
+            updateArrowBtnStates();
+
+            phys.m = craft.mass;
+            phys.I = craft.inertia;
+            phys.quat.identity();
+            phys.angVel.set(0, 0, 0);
+            phys.vel.set(0, 0, 0);
+            let minY = Infinity;
+            for (const c of flight.contacts) minY = Math.min(minY, c.p.y);
+            const groupPos = new THREE.Vector3(0, -minY + 0.03, 38);
+            phys.pos.copy(groupPos).add(craft.comLocal);
+            syncCraftTransform();
+
+            flight.lastHead.set(0, 0, -1);
+            flight.camPos.copy(phys.pos).add(new THREE.Vector3(0, 3.2, 10));
+            camera.position.copy(flight.camPos);
+            camera.lookAt(phys.pos);
+        }
+
+        function endFlight() {
+            mode = 'editor';
+            Sound.setThrust(0);
+            activeKeys.clear();
+            activeArrows.clear();
+            if (flightEnv) flightEnv.visible = false;
+            editorEnv.visible = true;
+            scene.background = new THREE.Color(0xf7f5ee);
+            scene.fog = null;
+            setShadowBox(8);
+            sunLight.position.set(6, 12, 8);
+            sunLight.target.position.set(0, 0, 0);
+            for (const d of flight.debris) { scene.remove(d.mesh); disposeObject(d.mesh); }
+            flight.debris = [];
+            clearTimeout(flight.overlayTimer);
+            bigOverlay.classList.add('hidden');
+            $('flash').style.opacity = 0;
+            flightUI.classList.add('hidden');
+            editorUI.classList.remove('hidden');
+            rebuildCraft();
+            updateEditorCamera();
+        }
+
+        // ----- booster buttons / keys -----
+        function buildBoosterButtons() {
+            boosterBtnsEl.innerHTML = '';
+            const boosters = design.parts.filter(p => p.type === 'booster');
+            boosters.sort((a, b) => KEY_ORDER.indexOf(a.key) - KEY_ORDER.indexOf(b.key));
+            for (const b of boosters) {
+                const btn = document.createElement('button');
+                btn.className = 'bbtn';
+                btn.textContent = b.key;
+                btn.dataset.key = b.key;
+                btn.addEventListener('pointerdown', (e) => { e.preventDefault(); pressKey(b.key); });
+                btn.addEventListener('pointerup', () => releaseKey(b.key));
+                btn.addEventListener('pointerleave', () => releaseKey(b.key));
+                btn.addEventListener('pointercancel', () => releaseKey(b.key));
+                boosterBtnsEl.appendChild(btn);
+            }
+        }
+        function updateBoosterButtonStates() {
+            for (const btn of boosterBtnsEl.children)
+                btn.classList.toggle('pressed', activeKeys.has(btn.dataset.key));
+            Sound.setThrust(mode === 'flight' && !flight.broken ? activeKeys.size : 0);
+        }
+        function pressKey(k) {
+            if (mode !== 'flight' || flight.broken) return;
+            activeKeys.add(k);
+            updateBoosterButtonStates();
+        }
+        function releaseKey(k) {
+            activeKeys.delete(k);
+            updateBoosterButtonStates();
+        }
+
+        // ----- arrow keys: ailerons (left/right) + elevator (up/down) -----
+        const activeArrows = new Set();
+        function getControls() {
+            return {
+                roll: (activeArrows.has('ArrowRight') ? 1 : 0) - (activeArrows.has('ArrowLeft') ? 1 : 0),
+                // airplane-style stick: pull DOWN to bring the nose UP
+                pitch: (activeArrows.has('ArrowDown') ? 1 : 0) - (activeArrows.has('ArrowUp') ? 1 : 0)
+            };
+        }
+        function updateArrowBtnStates() {
+            for (const btn of document.querySelectorAll('.abtn'))
+                btn.classList.toggle('pressed', activeArrows.has(btn.dataset.arrow));
+        }
+        function updateArrowPad() {
+            const hasAil = craft.aileronCount > 0, hasTail = craft.tailCount > 0;
+            $('arrow-pad').classList.toggle('hidden', !hasAil && !hasTail);
+            $('ab-left').style.display = hasAil ? '' : 'none';
+            $('ab-right').style.display = hasAil ? '' : 'none';
+            $('ab-up').style.display = hasTail ? '' : 'none';
+            $('ab-down').style.display = hasTail ? '' : 'none';
+        }
+        for (const btn of document.querySelectorAll('.abtn')) {
+            const a = btn.dataset.arrow;
+            btn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                if (mode !== 'flight' || flight.broken) return;
+                activeArrows.add(a);
+                updateArrowBtnStates();
+            });
+            const rel = () => { activeArrows.delete(a); updateArrowBtnStates(); };
+            btn.addEventListener('pointerup', rel);
+            btn.addEventListener('pointerleave', rel);
+            btn.addEventListener('pointercancel', rel);
+        }
+
+        addEventListener('keydown', (e) => {
+            if (e.metaKey || e.ctrlKey || e.altKey) return;
+            if (e.key === 'Escape') {
+                if (!$('body-picker').classList.contains('hidden')) { $('body-picker').classList.add('hidden'); return; }
+                if (!$('hangar').classList.contains('hidden')) { closeHangar(); return; }
+                if (mode === 'flight') endFlight();
+                return;
+            }
+            if (mode === 'flight' && e.key.startsWith('Arrow')) {
+                e.preventDefault();
+                if (!e.repeat && !flight.broken) { activeArrows.add(e.key); updateArrowBtnStates(); }
+                return;
+            }
+            if (mode !== 'flight' || e.repeat) return;
+            const k = e.key.toUpperCase();
+            if (KEY_ORDER.includes(k)) { Sound.init(); pressKey(k); }
+        });
+        addEventListener('keyup', (e) => {
+            if (e.key.startsWith('Arrow')) {
+                activeArrows.delete(e.key);
+                updateArrowBtnStates();
+                return;
+            }
+            const k = e.key.toUpperCase();
+            if (KEY_ORDER.includes(k)) releaseKey(k);
+        });
+        addEventListener('blur', () => {
+            activeKeys.clear();
+            activeArrows.clear();
+            updateBoosterButtonStates();
+            updateArrowBtnStates();
+        });
+
+        // ----- physics -----
+        const tmpV1 = new THREE.Vector3(), tmpV2 = new THREE.Vector3(), tmpV3 = new THREE.Vector3();
+
+        function substep(h) {
+            const F = tmpV1.set(0, -G * phys.m, 0);
+            const T = tmpV2.set(0, 0, 0);
+            const fwd = AXIS_FWD.clone().applyQuaternion(phys.quat);
+            const up = WORLD_UP.clone().applyQuaternion(phys.quat);
+
+            if (!flight.broken) {
+                for (const e of craft.partEntries) {
+                    if (e.data.type === 'booster' && activeKeys.has(e.key)) {
+                        const f = e.thrustDirLocal.clone().applyQuaternion(phys.quat).multiplyScalar(THRUST);
+                        F.add(f);
+                        const r = e.posLocal.clone().sub(craft.comLocal).applyQuaternion(phys.quat);
+                        T.add(tmpV3.copy(r).cross(f));
+                    } else if (e.data.type === 'wingL' || e.data.type === 'wingR') {
+                        const vF = phys.vel.dot(fwd);
+                        if (vF > 0.5) {
+                            const L = Math.min(WING_CL * vF * vF, 0.75 * phys.m * G);
+                            const f = up.clone().multiplyScalar(L);
+                            F.add(f);
+                            const r = e.posLocal.clone().sub(craft.comLocal).applyQuaternion(phys.quat);
+                            T.add(tmpV3.copy(r).cross(f));
+                            F.addScaledVector(fwd, -0.015 * vF * vF);   // wing drag
+                        }
+                    }
+                }
+                const ctrl = getControls();
+                const steering = ctrl.roll !== 0 || ctrl.pitch !== 0;
+                if (craft.wingCount > 0) {   // wings gently keep you level (unless the pilot is steering)
+                    const axis = new THREE.Vector3().crossVectors(up, WORLD_UP);
+                    const speedFactor = clamp(phys.vel.length() / 12, 0, 1);
+                    T.addScaledVector(axis, phys.m * 5 * Math.min(craft.wingCount, 2) / 2 * speedFactor * (steering ? 0.12 : 1));
+                }
+                // control surfaces only bite when there's airflow over them
+                const airFactor = clamp(phys.vel.length() / 10, 0, 1);
+                if (craft.aileronCount > 0 && ctrl.roll !== 0) {
+                    T.addScaledVector(fwd, 2.2 * phys.I * airFactor * Math.min(craft.aileronCount, 2) * ctrl.roll);
+                }
+                if (craft.tailCount > 0 && ctrl.pitch !== 0) {
+                    const rightAxis = new THREE.Vector3(1, 0, 0).applyQuaternion(phys.quat);
+                    T.addScaledVector(rightAxis, 2.4 * phys.I * airFactor * Math.min(craft.tailCount, 2) * ctrl.pitch);
+                }
+                if (craft.tailCount > 0) {   // vertical stabilizer: nose weathervanes toward the flight path
+                    const velH = new THREE.Vector3(phys.vel.x, 0, phys.vel.z);
+                    const fwdH = new THREE.Vector3(fwd.x, 0, fwd.z);
+                    if (velH.lengthSq() > 4 && fwdH.lengthSq() > 0.04) {
+                        velH.normalize();
+                        fwdH.normalize();
+                        T.addScaledVector(new THREE.Vector3().crossVectors(fwdH, velH), 0.9 * phys.I * airFactor);
+                    }
+                }
+            }
+
+            F.addScaledVector(phys.vel, -DRAG_Q * phys.vel.length());
+
+            phys.vel.addScaledVector(F, h / phys.m);
+            phys.angVel.addScaledVector(T, h / phys.I);
+            const angDamp = 0.9 + 1.1 * Math.min(craft.wingCount, 2) + (flight.broken ? 1.5 : 0);
+            phys.angVel.multiplyScalar(Math.exp(-h * angDamp));
+            phys.pos.addScaledVector(phys.vel, h);
+
+            const w = phys.angVel;
+            const dq = new THREE.Quaternion(w.x * h * 0.5, w.y * h * 0.5, w.z * h * 0.5, 0).multiply(phys.quat);
+            phys.quat.set(phys.quat.x + dq.x, phys.quat.y + dq.y, phys.quat.z + dq.z, phys.quat.w + dq.w).normalize();
+
+            resolveContacts();
+        }
+
+        function resolveContacts() {
+            let maxPen = 0, grounded = false, minY = Infinity;
+            const fwd = AXIS_FWD.clone().applyQuaternion(phys.quat);
+            const fwdG = tmpV3.set(fwd.x, 0, fwd.z);
+            if (fwdG.lengthSq() > 0.01) fwdG.normalize(); else fwdG.set(0, 0, -1);
+
+            for (const c of flight.contacts) {
+                const r = c.p.clone().sub(craft.comLocal).applyQuaternion(phys.quat);
+                const py = phys.pos.y + r.y;
+                minY = Math.min(minY, py);
+                if (py >= 0) continue;
+                grounded = true;
+                maxPen = Math.max(maxPen, -py);
+
+                const vP = phys.vel.clone().add(tmpV1.copy(phys.angVel).cross(r));
+                const vn = vP.y;
+
+                if (!flight.broken && !flight.finished) {
+                    const px = phys.pos.x + r.x, pz = phys.pos.z + r.z;
+                    if (Math.hypot(px - LAKE.x, pz - LAKE.z) < LAKE.r) { triggerCrash(true); }
+                    else if (vn < -(c.wheel ? CRASH_WHEEL_V : CRASH_BODY_V)) { triggerCrash(false); }
+                }
+
+                if (vn < 0) {
+                    const e = c.wheel ? 0.18 : 0.08;
+                    const rn = new THREE.Vector3().crossVectors(r, WORLD_UP);
+                    const kEff = 1 / phys.m + rn.lengthSq() / phys.I;
+                    const j = -(1 + e) * vn / kEff;
+                    phys.vel.y += j / phys.m;
+                    phys.angVel.addScaledVector(rn, j / phys.I);
+
+                    const vP2 = phys.vel.clone().add(tmpV1.copy(phys.angVel).cross(r));
+                    const vt = new THREE.Vector3(vP2.x, 0, vP2.z);
+                    const vtl = vt.length();
+                    if (vtl > 1e-3) {
+                        let mu;
+                        if (c.wheel) {
+                            const vFwd = Math.abs(vt.dot(fwdG));
+                            const side = Math.sqrt(Math.max(0, vtl * vtl - vFwd * vFwd));
+                            mu = 0.05 + 0.55 * (side / (vtl + 1e-6));   // wheels roll forward, grip sideways
+                        } else {
+                            mu = 0.45;
+                        }
+                        const t = vt.multiplyScalar(1 / vtl);
+                        const rt = new THREE.Vector3().crossVectors(r, t);
+                        const kT = 1 / phys.m + rt.lengthSq() / phys.I;
+                        const jt = Math.min(mu * j, vtl / kT);
+                        phys.vel.addScaledVector(t, -jt / phys.m);
+                        phys.angVel.addScaledVector(rt, -jt / phys.I);
+                    }
+                }
+            }
+            if (maxPen > 0) phys.pos.y += maxPen * 0.85;
+            flight.grounded = grounded;
+            flight.lowY = minY;
+
+            if (grounded && activeKeys.size === 0 && phys.vel.length() < 0.3 && phys.angVel.length() < 0.4) {
+                phys.vel.multiplyScalar(0.9);
+                phys.angVel.multiplyScalar(0.85);
+            }
+        }
+
+        function stepPhysics(dt) {
+            const sub = 3, h = dt / sub;
+            for (let s = 0; s < sub; s++) substep(h);
+            syncCraftTransform();
+
+            // control-surface animation
+            const ctrl = getControls();
+            for (const e of craft.partEntries) {
+                if (e.data.type === 'aileron') {
+                    const u = e.group.userData;
+                    u.flapR.rotation.x = THREE.MathUtils.lerp(u.flapR.rotation.x, -0.55 * ctrl.roll, 0.35);
+                    u.flapL.rotation.x = THREE.MathUtils.lerp(u.flapL.rotation.x, 0.55 * ctrl.roll, 0.35);
+                } else if (e.data.type === 'tail') {
+                    const elev = e.group.userData.elev;
+                    elev.rotation.x = THREE.MathUtils.lerp(elev.rotation.x, -0.5 * ctrl.pitch, 0.35);
+                }
+            }
+
+            // flames + exhaust smoke
+            for (const e of craft.partEntries) {
+                if (e.data.type !== 'booster') continue;
+                const flame = e.group.userData.flame;
+                const on = activeKeys.has(e.key) && !flight.broken;
+                flame.visible = on;
+                if (on) {
+                    const s = 0.85 + Math.random() * 0.5;
+                    flame.scale.set(1, s, 1);
+                    if (Math.random() < 0.5) {
+                        const wp = new THREE.Vector3(0, 1.0, 0);
+                        e.group.localToWorld(wp);
+                        const dir = new THREE.Vector3(0, 1, 0).applyQuaternion(e.group.getWorldQuaternion(new THREE.Quaternion()));
+                        spawnPuff(wp, dir.multiplyScalar(rand(1.5, 3)).add(tmpV1.set(rand(-0.5, 0.5), rand(-0.5, 0.5), rand(-0.5, 0.5))), 0xdddddd, rand(0.4, 0.8));
+                    }
+                }
+            }
+
+            // flying / landing detection
+            if (!flight.broken && !flight.finished) {
+                const alt = Math.max(0, flight.lowY);
+                if (alt > 3) {
+                    if (flight.airTime === 0) toast('🛫 Liftoff!!', 1500);
+                    flight.airTime += dt;
+                }
+                flight.maxAlt = Math.max(flight.maxAlt, alt);
+                const upDot = WORLD_UP.clone().applyQuaternion(phys.quat).y;
+                const flewEnough = flight.airTime > 2.5 && flight.maxAlt > 10;
+                if (flewEnough && flight.grounded && phys.vel.length() < 1.0 && upDot > 0.65) {
+                    flight.landTimer += dt;
+                    if (flight.landTimer > 1.2) triggerSuccess();
+                } else {
+                    flight.landTimer = 0;
+                }
+            }
+
+            // debris
+            for (const d of flight.debris) {
+                if (d.resting) continue;
+                d.vel.y -= G * dt;
+                d.mesh.position.addScaledVector(d.vel, dt);
+                d.mesh.rotation.x += d.angVel.x * dt;
+                d.mesh.rotation.y += d.angVel.y * dt;
+                d.mesh.rotation.z += d.angVel.z * dt;
+                if (d.mesh.position.y < 0.2) {
+                    d.mesh.position.y = 0.2;
+                    d.vel.y *= -0.3;
+                    d.vel.x *= 0.6;
+                    d.vel.z *= 0.6;
+                    d.angVel.multiplyScalar(0.5);
+                    if (d.vel.length() < 0.5) d.resting = true;
+                }
+            }
+        }
+
+        function triggerCrash(splash) {
+            if (flight.broken || flight.finished) return;
+            flight.broken = true;
+            flight.splash = splash;
+            Sound.setThrust(0);
+            if (splash) Sound.splash(); else Sound.crash();
+            activeKeys.clear();
+            updateBoosterButtonStates();
+
+            $('flash').style.background = splash ? '#4f9edb' : '#ff5544';
+            $('flash').style.opacity = 0.5;
+            setTimeout(() => { $('flash').style.opacity = 0; }, 120);
+
+            // parts pop off!
+            for (const e of craft.partEntries) {
+                const wp = new THREE.Vector3(), wq = new THREE.Quaternion();
+                e.group.getWorldPosition(wp);
+                e.group.getWorldQuaternion(wq);
+                craft.group.remove(e.group);
+                e.group.position.copy(wp);
+                e.group.quaternion.copy(wq);
+                if (e.group.userData.flame) e.group.userData.flame.visible = false;
+                scene.add(e.group);
+                flight.debris.push({
+                    mesh: e.group,
+                    vel: phys.vel.clone().multiplyScalar(0.6).add(new THREE.Vector3(rand(-4, 4), rand(2, 6), rand(-4, 4))),
+                    angVel: new THREE.Vector3(rand(-6, 6), rand(-6, 6), rand(-6, 6)),
+                    resting: false
+                });
+            }
+            flight.contacts = buildContacts(craft, false);
+            const puffColor = splash ? 0x9fd3f2 : 0x555555;
+            for (let i = 0; i < 16; i++)
+                spawnPuff(phys.pos.clone().add(tmpV1.set(rand(-1, 1), rand(-0.5, 1), rand(-1, 1))),
+                    new THREE.Vector3(rand(-3, 3), rand(1, 5), rand(-3, 3)), puffColor, rand(0.8, 1.6), rand(0.8, 1.4));
+
+            flight.overlayTimer = setTimeout(() => {
+                bigTitle.textContent = splash ? '💦 SPLASH!' : '💥 CRASH!';
+                bigSub.textContent = splash
+                    ? 'You landed in the lake! Aircraft are not fish.'
+                    : 'Back to the drawing board!';
+                bigOverlay.classList.remove('hidden');
+            }, 1400);
+            gtag('event', splash ? 'flight_splash' : 'flight_crash', { game_name: 'Test Flight', body: craft.bodyDef.name });
+        }
+
+        function triggerSuccess() {
+            flight.finished = true;
+            Sound.setThrust(0);
+            Sound.success();
+            bigTitle.textContent = '🎉 GREAT LANDING!';
+            bigSub.innerHTML = `You flew <b>${Math.round(flight.maxAlt)} m</b> high and landed like a pro!`;
+            bigOverlay.classList.remove('hidden');
+            confetti();
+            gtag('event', 'flight_success', { game_name: 'Test Flight', body: craft.bodyDef.name, max_alt: Math.round(flight.maxAlt) });
+        }
+
+        function confetti() {
+            const colors = ['#ff5544', '#ffb347', '#ffe14d', '#7ed957', '#4f9edb', '#c47ed9'];
+            for (let i = 0; i < 80; i++) {
+                const d = document.createElement('div');
+                d.className = 'confetti';
+                d.style.left = rand(0, 100) + 'vw';
+                d.style.background = colors[(Math.random() * colors.length) | 0];
+                d.style.animationDuration = rand(2, 4) + 's';
+                d.style.animationDelay = rand(0, 0.8) + 's';
+                d.style.transform = `rotate(${rand(0, 360)}deg)`;
+                document.body.appendChild(d);
+                setTimeout(() => d.remove(), 5200);
+            }
+        }
+
+        // ----- flight camera + HUD -----
+        function updateFlightCamera(dt) {
+            const fwd = AXIS_FWD.clone().applyQuaternion(phys.quat);
+            const head = tmpV1.set(fwd.x, 0, fwd.z);
+            if (head.lengthSq() > 0.04) flight.lastHead.copy(head.normalize());
+            const dist = 9 + phys.vel.length() * 0.12;
+            const desired = phys.pos.clone().addScaledVector(flight.lastHead, -dist).add(tmpV2.set(0, 3.5, 0));
+            flight.camPos.lerp(desired, 1 - Math.exp(-2.8 * dt));
+            flight.camPos.y = Math.max(flight.camPos.y, 1.0);
+            camera.position.copy(flight.camPos);
+            const look = phys.pos.clone().addScaledVector(phys.vel, 0.12).add(tmpV2.set(0, 0.8, 0));
+            camera.lookAt(look);
+
+            sunLight.position.copy(phys.pos).add(tmpV2.set(12, 26, 16));
+            sunLight.target.position.copy(phys.pos);
+        }
+
+        let hudTimer = 0;
+        function updateHUD(dt) {
+            hudTimer -= dt;
+            if (hudTimer > 0) return;
+            hudTimer = 0.1;
+            const alt = Math.max(0, Math.round(flight.lowY));
+            const spd = Math.round(phys.vel.length());
+            hudEl.innerHTML = `⬆ ${alt} m &nbsp;&nbsp; 💨 ${spd}`;
+        }
+
+        // ----- flight buttons -----
+        $('start-btn').addEventListener('click', () => { Sound.init(); startFlight(); });
+        $('editor-btn').addEventListener('click', endFlight);
+        $('retry-btn').addEventListener('click', resetFlight);
+        $('big-retry').addEventListener('click', resetFlight);
+        $('big-editor').addEventListener('click', endFlight);
+        $('mute-btn').addEventListener('click', () => setMuted(!Sound.muted));
+        $('flight-mute').addEventListener('click', () => setMuted(!Sound.muted));
+
+        // ================= MAIN LOOP =================
+        let last = performance.now();
+        function animate(t) {
+            requestAnimationFrame(animate);
+            const dt = Math.min((t - last) / 1000, 1 / 24);
+            last = t;
+            if (mode === 'flight') {
+                stepPhysics(dt);
+                updateFlightCamera(dt);
+                updateHUD(dt);
+                for (const c of clouds) {
+                    c.position.x += c.userData.v * dt;
+                    if (c.position.x > 1300) c.position.x = -1300;
+                }
+            }
+            updateSmoke(dt);
+            renderer.render(scene, camera);
+        }
+
+        // ================= BOOT =================
+        loadWorkingDesign();
+        rebuildCraft();
+        updateEditorCamera();
+        updateHangarCount();
+        try { if (localStorage.getItem(LS_MUTED) === '1') setMuted(true); } catch (e) { }
+        try {
+            if (localStorage.getItem(LS_HINT)) $('editor-hint').classList.add('hidden');
+            else setTimeout(() => {
+                $('editor-hint').classList.add('hidden');
+                localStorage.setItem(LS_HINT, '1');
+            }, 12000);
+        } catch (e) { }
+        requestAnimationFrame(animate);
+    </script>
+</body>
+
+</html>
