@@ -280,6 +280,10 @@
             max-width: 86vw;
             pointer-events: auto;
         }
+        #big-card.gold {
+            background: #fff3c4;
+            box-shadow: 0 0 30px rgba(255, 200, 60, 0.8), 2px 3px 0 rgba(43, 43, 43, 0.18);
+        }
         #big-card h1 { margin: 0 0 8px 0; font-size: 42px; }
         #big-card p { margin: 4px 0 18px 0; font-size: 19px; color: #555; }
         #big-card .row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
@@ -1400,6 +1404,10 @@
                 src.start();
             },
             success() { [523, 659, 784, 1047].forEach((f, i) => this.beep(f, 0.3, 'triangle', 0.2, i * 0.13)); },
+            fanfare() {
+                [523, 659, 784, 1047, 784, 1047, 1319, 1568].forEach((f, i) => this.beep(f, 0.3, 'triangle', 0.2, i * 0.11));
+                [523, 659, 784, 1047].forEach(f => this.beep(f, 1.2, 'triangle', 0.1, 0.95));
+            },
             splash() { this.beep(300, 0.4, 'sine', 0.25); this.beep(150, 0.5, 'sine', 0.2, 0.08); }
         };
         function setMuted(m) {
@@ -2346,6 +2354,7 @@
                     new THREE.Vector3(rand(-3, 3), rand(1, 5), rand(-3, 3)), puffColor, rand(0.8, 1.6), rand(0.8, 1.4));
 
             flight.overlayTimer = setTimeout(() => {
+                $('big-card').classList.remove('gold');
                 bigTitle.textContent = splash ? '💦 SPLASH!' : '💥 CRASH!';
                 bigSub.textContent = splash
                     ? 'You landed in the lake! Aircraft are not fish.'
@@ -2358,17 +2367,44 @@
         function triggerSuccess() {
             flight.finished = true;
             Sound.setThrust(0);
-            Sound.success();
-            bigTitle.textContent = '🎉 GREAT LANDING!';
-            bigSub.innerHTML = `You flew <b>${Math.round(flight.maxAlt)} m</b> high and landed like a pro!`;
+            // landing back on the airstrip earns the BIG celebration
+            const onRunway = Math.abs(phys.pos.x) <= 7.5 && Math.abs(phys.pos.z) <= 61;
+            $('big-card').classList.toggle('gold', onRunway);
+            if (onRunway) {
+                Sound.fanfare();
+                bigTitle.textContent = '🏆 RUNWAY LANDING!!!';
+                bigSub.innerHTML = `You flew <b>${Math.round(flight.maxAlt)} m</b> high and came back to the airstrip like a REAL pilot! ✈️`;
+                confetti(130);
+                setTimeout(() => confetti(130), 900);
+                fireworks();
+            } else {
+                Sound.success();
+                bigTitle.textContent = '🎉 GREAT LANDING!';
+                bigSub.innerHTML = `You flew <b>${Math.round(flight.maxAlt)} m</b> high and landed like a pro! Next challenge: land back on the airstrip!`;
+                confetti(80);
+            }
             bigOverlay.classList.remove('hidden');
-            confetti();
-            gtag('event', 'flight_success', { game_name: 'Test Flight', body: craft.bodyDef.name, max_alt: Math.round(flight.maxAlt) });
+            gtag('event', 'flight_success', { game_name: 'Test Flight', body: craft.bodyDef.name, max_alt: Math.round(flight.maxAlt), runway: onRunway });
         }
 
-        function confetti() {
+        function fireworks() {
+            const colors = [0xff5544, 0xffe14d, 0x7ed957, 0x4f9edb, 0xc47ed9, 0xff8c1a];
+            for (let burst = 0; burst < 3; burst++) {
+                setTimeout(() => {
+                    if (mode !== 'flight') return;
+                    const center = phys.pos.clone().add(new THREE.Vector3(rand(-5, 5), rand(3, 7), rand(-5, 5)));
+                    for (let i = 0; i < 12; i++) {
+                        spawnPuff(center.clone().add(new THREE.Vector3(rand(-0.5, 0.5), rand(-0.5, 0.5), rand(-0.5, 0.5))),
+                            new THREE.Vector3(rand(-3, 3), rand(1, 4), rand(-3, 3)),
+                            colors[(Math.random() * colors.length) | 0], rand(0.9, 1.5), rand(1.0, 1.6));
+                    }
+                }, burst * 550);
+            }
+        }
+
+        function confetti(count = 80) {
             const colors = ['#ff5544', '#ffb347', '#ffe14d', '#7ed957', '#4f9edb', '#c47ed9'];
-            for (let i = 0; i < 80; i++) {
+            for (let i = 0; i < count; i++) {
                 const d = document.createElement('div');
                 d.className = 'confetti';
                 d.style.left = rand(0, 100) + 'vw';
@@ -2435,6 +2471,9 @@
             updateSmoke(dt);
             renderer.render(scene, camera);
         }
+
+        // hidden debug handle (like the other games' secret dev affordances)
+        window.__tf = { get phys() { return phys; }, get flight() { return flight; }, get design() { return design; } };
 
         // ================= BOOT =================
         loadWorkingDesign();
