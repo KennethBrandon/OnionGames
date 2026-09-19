@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="description" content="Play Test Flight on Onion Games! Build a flying machine out of a bathtub, piano, or rubber duck — glue on boosters, wheels and wings, then take off and land it!">
+    <meta name="description" content="Play Test Flight on Onion Games! Build a flying machine out of a bathtub, boat, baguette, or hot dog — glue on boosters, propellers, blocks and wings, fire superpowers, and parachute out over a huge world!">
     <meta name="keywords" content="Test Flight, Onion Games, free browser games, HTML5 games, mini-games, flying game, building game">
     <meta name="robots" content="index, follow">
     <meta name="author" content="Onion Games">
@@ -13,14 +13,14 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://onion.redkb.com/TestFlight/">
     <meta property="og:title" content="Test Flight">
-    <meta property="og:description" content="Build a flying machine out of a bathtub, piano, or rubber duck — glue on boosters, wheels and wings, then take off and land it!">
+    <meta property="og:description" content="Build a flying machine out of a bathtub, boat, baguette, or hot dog — glue on boosters, propellers, blocks and wings, fire superpowers, and parachute out over a huge world!">
     <meta property="og:image" content="https://onion.redkb.com/assets/images/favicon.png">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://onion.redkb.com/TestFlight/">
     <meta property="twitter:title" content="Test Flight">
-    <meta property="twitter:description" content="Build a flying machine out of a bathtub, piano, or rubber duck — glue on boosters, wheels and wings, then take off and land it!">
+    <meta property="twitter:description" content="Build a flying machine out of a bathtub, boat, baguette, or hot dog — glue on boosters, propellers, blocks and wings, fire superpowers, and parachute out over a huge world!">
     <meta property="twitter:image" content="https://onion.redkb.com/assets/images/favicon.png">
 
     <!-- JSON-LD Structured Data -->
@@ -29,7 +29,7 @@
       "@context": "https://schema.org",
       "@type": "VideoGame",
       "name": "Test Flight",
-      "description": "Build a flying machine out of a bathtub, piano, or rubber duck — glue on boosters, wheels and wings, then take off and land it!",
+      "description": "Build a flying machine out of a bathtub, boat, baguette, or hot dog — glue on boosters, propellers, blocks and wings, fire superpowers, and parachute out over a huge world!",
       "url": "https://onion.redkb.com/TestFlight/",
       "image": "https://onion.redkb.com/assets/images/favicon.png",
       "publisher": {
@@ -143,8 +143,9 @@
             justify-content: space-between;
             padding: 0 16px;
             gap: 8px;
+            flex-wrap: wrap;
         }
-        .tray-group { display: flex; gap: 8px; align-items: flex-end; }
+        .tray-group { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
         .tile {
             padding: 8px 12px;
             text-align: center;
@@ -240,6 +241,21 @@
             transform: scale(0.92);
             box-shadow: 0 0 12px #ffb347;
         }
+        .bbtn.all-btn {
+            width: auto;
+            padding: 0 16px;
+            font-size: 17px;
+            background: #d1f7c4;
+        }
+        .bbtn.power-btn {
+            background: #ffe9a8;
+            font-size: 26px;
+        }
+        .bbtn.chute-btn {
+            background: #dff1ff;
+            font-size: 22px;
+        }
+        .bpower { font-size: 11px; color: #b8860b; font-weight: bold; }
 
         /* ---------- arrow pad (ailerons + elevator) ---------- */
         #arrow-pad {
@@ -474,8 +490,8 @@
         <button id="mute-btn" class="sketch sketch-b">🔊</button>
 
         <div id="editor-hint" class="sketch">
-            1️⃣ Tap <b>Bodies</b> to pick a body &nbsp; 2️⃣ Drag on 🚀 🛞 and wings &nbsp; 3️⃣ Press <b>Start!</b><br>
-            <span style="font-size:13px;color:#777">(Tap a glued part to take it off. Drag empty space to spin the view.)</span>
+            1️⃣ Tap <b>Bodies</b> to pick a body &nbsp; 2️⃣ Drag on 🚀 🌀 🛞 🧱 and wings &nbsp; 3️⃣ Press <b>Start!</b><br>
+            <span style="font-size:13px;color:#777">(Tap a glued part to take it off. Drag empty space to spin the view. Every body has a ➕ SUPERPOWER in flight!)</span>
         </div>
 
         <div id="tray">
@@ -492,10 +508,23 @@
                     <span class="label">Boosters</span>
                     <span class="sub">drag me on!</span>
                 </div>
-                <div id="tile-wheel" class="tile sketch" data-type="wheel">
+                <div id="tile-prop" class="tile sketch" data-type="prop">
+                    <svg width="38" height="38" viewBox="0 0 40 40">
+                        <path d="M8 8 L32 32 M32 8 L8 32" stroke="#2b2b2b" stroke-width="5" stroke-linecap="round" />
+                        <circle cx="20" cy="20" r="4.5" fill="#d03a2c" stroke="#2b2b2b" stroke-width="2" />
+                    </svg>
+                    <span class="label">Propellers</span>
+                    <span class="sub">pulls you!</span>
+                </div>
+                <div id="tile-wheel" class="tile sketch sketch-b" data-type="wheel">
                     <span class="icon">🛞</span>
                     <span class="label">Wheels</span>
                     <span class="sub">drag me on!</span>
+                </div>
+                <div id="tile-block" class="tile sketch" data-type="block">
+                    <span class="icon">🧱</span>
+                    <span class="label">Blocks</span>
+                    <span class="sub">stack & build!</span>
                 </div>
                 <div id="tile-wingL" class="tile sketch sketch-b" data-type="wingL">
                     <svg width="52" height="26" viewBox="0 0 52 26">
@@ -622,8 +651,23 @@
         const DRAG_Q = 0.02;        // parasitic drag (low, so diving trades altitude for real speed)
         const CRASH_BODY_V = 6.0;   // body hits ground faster than this = crash
         const CRASH_WHEEL_V = 10.0; // wheels are tougher
-        const PART_MASS = { booster: 0.25, wheel: 0.35, wingL: 0.5, wingR: 0.5, aileron: 0.3, tail: 0.4 };
-        const LAKE = { x: 260, z: -320, r: 68 };
+        const PART_MASS = { booster: 0.25, wheel: 0.35, wingL: 0.5, wingR: 0.5, aileron: 0.3, tail: 0.4, prop: 0.25, block: 0.2 };
+        // water you can splash into (or float on, if your body floats!)
+        const WATERS = [
+            { x: 260, z: -320, r: 68 },        // the classic lake
+            { x: -260, z: 210, r: 60 },        // second lake
+            { x: -2400, z: -150, r: 1250 }     // the OCEAN, way out west
+        ];
+        const DESERT = { x: 780, z: 620, r: 270 };
+        const SNOW = { x: -840, z: -700, r: 250 };
+        const CITY = { x: 0, z: -850, r: 160 };
+        function waterAt(x, z) {
+            for (const w of WATERS) {
+                const dx = x - w.x, dz = z - w.z;
+                if (dx * dx + dz * dz < w.r * w.r) return w;
+            }
+            return null;
+        }
         const WORLD_UP = new THREE.Vector3(0, 1, 0);
         const AXIS_FWD = new THREE.Vector3(0, 0, -1);
 
@@ -644,7 +688,7 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf7f5ee);
 
-        const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.3, 3000);
+        const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.3, 6500);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(innerWidth, innerHeight);
         renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -719,7 +763,8 @@
         // Every body is built facing -Z (that's "forward"), resting on y=0.
         const BODIES = [
             {
-                name: 'Bathtub', emoji: '🛁', mass: 4,
+                name: 'Bathtub', emoji: '🛁', mass: 4, floats: true,
+                power: { name: 'BUBBLE BLAST', emoji: '🫧', type: 'jump', v: 13, color: 0x8fd3ff, snd: 'splash' },
                 build() {
                     const g = new THREE.Group();
                     box(g, 2.2, 0.16, 1.1, 0xf4f4f0, 0, 0.33, 0);                 // floor
@@ -738,6 +783,7 @@
             },
             {
                 name: 'Chair', emoji: '🪑', mass: 2.5,
+                power: { name: 'EJECTOR SEAT', emoji: '💺', type: 'jump', v: 16, color: 0xffb347, snd: 'boing' },
                 build() {
                     const g = new THREE.Group();
                     const wood = 0xb5651d, dark = 0x8d5524;
@@ -752,6 +798,7 @@
             },
             {
                 name: 'Lawn Mower', emoji: '🌿', mass: 3,
+                power: { name: 'GRASS BLAST', emoji: '🌱', type: 'boost', a: 32, color: 0x7ed957, snd: 'zap' },
                 // its painted-on wheels really roll
                 wheelContacts: [[-0.45, 0, -0.32], [0.45, 0, -0.32], [-0.45, 0, 0.32], [0.45, 0, 0.32]],
                 bottomClearance: 0.12,
@@ -774,7 +821,8 @@
                 }
             },
             {
-                name: 'Human', emoji: '🧍', mass: 3,
+                name: 'Human', emoji: '🧍', mass: 3, isHuman: true,
+                power: { name: 'SUPERHERO FLY', emoji: '🦸', type: 'hover', color: 0xffe14d, snd: 'zap' },
                 build() {
                     const g = new THREE.Group();
                     const skin = 0xf0c090, shirt = 0xd03a2c, pants = 0x3a6ad0;
@@ -792,6 +840,7 @@
             },
             {
                 name: 'Toilet', emoji: '🚽', mass: 3.5,
+                power: { name: 'FLUSH POWER', emoji: '🌀', type: 'hover', color: 0x8fd3ff, snd: 'splash' },
                 build() {
                     const g = new THREE.Group();
                     box(g, 0.5, 0.4, 0.55, 0xf4f4f0, 0, 0.2, 0.05);               // base
@@ -804,6 +853,7 @@
             },
             {
                 name: 'Couch', emoji: '🛋️', mass: 5,
+                power: { name: 'COMFY FLOAT', emoji: '🪶', type: 'slowfall', color: 0xf2cc8f, snd: 'chord' },
                 build() {
                     const g = new THREE.Group();
                     const main = 0xe07a5f, cush = 0xf2cc8f;
@@ -820,6 +870,7 @@
             },
             {
                 name: 'Fridge', emoji: '🧊', mass: 7,
+                power: { name: 'FREEZE FLOAT', emoji: '❄️', type: 'antigrav', color: 0xbfe8ff, snd: 'zap' },
                 build() {
                     const g = new THREE.Group();
                     box(g, 0.9, 1.9, 0.85, 0xe8e8ec, 0, 0.95, 0);
@@ -831,6 +882,7 @@
             },
             {
                 name: 'Piano', emoji: '🎹', mass: 8,
+                power: { name: 'PIANO BOUNCE', emoji: '🎵', type: 'jump', v: 15, color: 0xc47ed9, snd: 'chord' },
                 build() {
                     const g = new THREE.Group();
                     box(g, 1.5, 1.1, 0.62, 0x1c1c22, 0, 0.75, 0.05);              // body
@@ -844,7 +896,8 @@
                 }
             },
             {
-                name: 'Rubber Duck', emoji: '🦆', mass: 1.5,
+                name: 'Rubber Duck', emoji: '🦆', mass: 1.5, floats: true,
+                power: { name: 'QUACK ATTACK', emoji: '🦆', type: 'boost', a: 30, color: 0xffe14d, snd: 'quack' },
                 build() {
                     const g = new THREE.Group();
                     const yellow = 0xffd21f;
@@ -863,6 +916,7 @@
             },
             {
                 name: 'Giant Hot Dog', emoji: '🌭', mass: 4,
+                power: 'hotdog',   // secret: its power depends on the name you save it with!
                 build() {
                     const g = new THREE.Group();
                     const bun = 0xe8b774;
@@ -883,6 +937,7 @@
             },
             {
                 name: 'Race Car', emoji: '🏎️', mass: 4.5,
+                power: { name: 'NITRO', emoji: '🔥', type: 'boost', a: 38, color: 0xff8c1a, snd: 'zap' },
                 // built-in wheels that actually work as landing gear
                 wheelContacts: [[-0.55, 0, -0.75], [0.55, 0, -0.75], [-0.55, 0, 0.75], [0.55, 0, 0.75]],
                 bottomClearance: 0.16,
@@ -904,6 +959,71 @@
                         const hub = cyl(g, 0.1, 0.1, 0.22, 0xd8d8e0, x, 0.24, z, 10);
                         hub.rotation.z = Math.PI / 2;
                     }
+                    return g;
+                }
+            },
+            {
+                name: 'Boat', emoji: '⛵', mass: 4, floats: true,
+                power: { name: 'SPLASH DASH', emoji: '🌊', type: 'boost', a: 30, color: 0x4f9edb, snd: 'splash' },
+                build() {
+                    const g = new THREE.Group();
+                    const hullC = 0xc0503a;
+                    box(g, 1.0, 0.36, 2.3, hullC, 0, 0.34, 0);                    // hull
+                    const bow = box(g, 0.72, 0.34, 0.72, hullC, 0, 0.35, -1.32);  // pointy front
+                    bow.rotation.y = Math.PI / 4;
+                    box(g, 1.06, 0.1, 2.1, 0xe8b774, 0, 0.55, 0.1);               // deck
+                    box(g, 0.56, 0.42, 0.7, 0xf4f4f0, 0, 0.8, 0.55);              // cabin
+                    box(g, 0.64, 0.06, 0.78, 0x8d5524, 0, 1.03, 0.55);            // cabin roof
+                    cyl(g, 0.035, 0.035, 1.1, 0x8d5524, 0, 1.1, -0.4, 8);         // mast
+                    box(g, 0.3, 0.18, 0.02, 0xd03a2c, 0.18, 1.5, -0.4);           // flag
+                    cyl(g, 0.09, 0.09, 0.06, 0xf4f4f0, -0.35, 0.62, -0.5, 12);    // life ring
+                    return g;
+                }
+            },
+            {
+                name: 'Baguette', emoji: '🥖', mass: 3,
+                power: { name: 'EAT ITSELF', emoji: '🥖', type: 'eat', color: 0xe8b774, snd: 'bite' },
+                build() {
+                    const g = new THREE.Group();
+                    const segs = [];
+                    for (let i = 0; i < 6; i++) {                                 // bite-sized chunks
+                        const seg = new THREE.Group();
+                        seg.position.set(0, 0.45, -1.25 + i * 0.5);
+                        sph(seg, 0.42, 0xd9a05b, 0, 0, 0, 1, 0.9, 0.78);
+                        if (i > 0) {                                              // score lines
+                            const cut = box(seg, 0.34, 0.05, 0.12, 0xf2d8a8, 0, 0.34, -0.2);
+                            cut.rotation.y = 0.55;
+                            cut.castShadow = false;
+                        }
+                        g.add(seg);
+                        segs.push(seg);
+                    }
+                    g.userData.eatParts = segs;   // eaten nose-first!
+                    return g;
+                }
+            },
+            {
+                name: 'Onion Hat', emoji: '🎩', mass: 2.5,
+                power: { name: 'TA-DA!', emoji: '🎩', type: 'jump', v: 15, color: 'confetti', snd: 'chord' },
+                build() {
+                    const g = new THREE.Group();
+                    cyl(g, 1.05, 1.05, 0.09, 0x24242a, 0, 0.05, 0, 28);           // brim
+                    const c = document.createElement('canvas');                    // ONION brand band
+                    c.width = 512; c.height = 128;
+                    const x = c.getContext('2d');
+                    x.fillStyle = '#24242a'; x.fillRect(0, 0, 512, 128);
+                    x.fillStyle = '#f4f4f0'; x.fillRect(0, 76, 512, 38);
+                    x.fillStyle = '#d03a2c';
+                    x.font = 'bold 32px "Comic Sans MS", sans-serif';
+                    x.textAlign = 'center'; x.textBaseline = 'middle';
+                    x.fillText('O N I O N', 128, 96);
+                    x.fillText('O N I O N', 384, 96);
+                    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.68, 0.9, 24),
+                        new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(c), roughness: 0.85 }));
+                    crown.position.y = 0.55;
+                    crown.castShadow = true;
+                    g.add(crown);
+                    cyl(g, 0.63, 0.63, 0.03, 0x1c1c22, 0, 1.0, 0, 24);            // top
                     return g;
                 }
             }
@@ -964,6 +1084,58 @@
                 sp.position.set(0, 0.3, 0);
                 g.add(sp);
             }
+            return g;
+        }
+
+        // Propeller: like a booster, but it PULLS along its surface normal (+Y here).
+        // Two crossed blades make an X, just like the drawing.
+        function buildProp(key) {
+            const g = new THREE.Group();
+            cyl(g, 0.1, 0.14, 0.3, 0xd8d8e0, 0, 0.15, 0, 12);                    // motor can
+            const spinner = new THREE.Group();
+            spinner.position.y = 0.34;
+            const nose = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.24, 12), mat(0xd03a2c));
+            nose.position.y = 0.1;
+            nose.castShadow = true;
+            spinner.add(nose);
+            for (const a of [Math.PI / 4, -Math.PI / 4]) {
+                const blade = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.04, 0.14), mat(0x8d5524));
+                blade.rotation.y = a;
+                blade.castShadow = true;
+                spinner.add(blade);
+            }
+            g.add(spinner);
+            g.userData.spinner = spinner;
+            if (key) {
+                const sp = makeKeySprite(key);
+                sp.position.set(0, 0.12, 0);
+                g.add(sp);
+            }
+            return g;
+        }
+
+        // Block: a toy brick you can glue anywhere — and glue MORE parts onto!
+        const BLOCK_COLORS = [0xffb347, 0x8fd3ff, 0x7ed957, 0xc47ed9, 0xffe14d, 0xff8c8c];
+        function buildBlock(colorIdx = 0) {
+            const g = new THREE.Group();
+            const color = BLOCK_COLORS[colorIdx % BLOCK_COLORS.length];
+            box(g, 0.52, 0.52, 0.52, color, 0, 0.26, 0);
+            cyl(g, 0.13, 0.13, 0.1, color, 0, 0.55, 0, 14);                      // stud on top
+            return g;
+        }
+
+        // Every aircraft needs a pilot! A tiny brave human rides on top.
+        function buildPilot() {
+            const g = new THREE.Group();
+            box(g, 0.26, 0.3, 0.16, 0xd03a2c, 0, 0.47, 0);                       // torso
+            box(g, 0.09, 0.32, 0.11, 0x3a6ad0, -0.07, 0.16, 0);                  // legs
+            box(g, 0.09, 0.32, 0.11, 0x3a6ad0, 0.07, 0.16, 0);
+            box(g, 0.07, 0.26, 0.09, 0xd03a2c, -0.19, 0.47, 0);                  // arms
+            box(g, 0.07, 0.26, 0.09, 0xd03a2c, 0.19, 0.47, 0);
+            sph(g, 0.11, 0xf0c090, 0, 0.72, 0);                                  // head
+            box(g, 0.24, 0.05, 0.24, 0x704214, 0, 0.81, 0);                      // hair
+            const goggles = box(g, 0.2, 0.05, 0.03, 0xfffefb, 0, 0.74, -0.1);    // goggles
+            goggles.castShadow = false;
             return g;
         }
 
@@ -1047,12 +1219,14 @@
         function buildPart(data) {
             let g;
             if (data.type === 'booster') g = buildBooster(data.key);
+            else if (data.type === 'prop') g = buildProp(data.key);
+            else if (data.type === 'block') g = buildBlock(data.c || 0);
             else if (data.type === 'wheel') g = buildWheel();
             else if (data.type === 'aileron') g = buildAileron();
             else if (data.type === 'tail') g = buildTail();
             else g = buildWing(data.type === 'wingL' ? 'L' : 'R');
             g.position.fromArray(data.pos);
-            if (data.type === 'booster') {
+            if (data.type === 'booster' || data.type === 'prop' || data.type === 'block') {
                 const n = new THREE.Vector3().fromArray(data.normal).normalize();
                 g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
             } else if (data.type === 'aileron') {
@@ -1072,6 +1246,14 @@
             const size = bbox.getSize(new THREE.Vector3());
             const center = bbox.getCenter(new THREE.Vector3());
 
+            // there has to be a human somewhere on the body!
+            let pilotGroup = null;
+            if (!bodyDef.isHuman) {
+                pilotGroup = buildPilot();
+                pilotGroup.position.set(center.x, bbox.max.y - 0.02, center.z);
+                bodyGroup.add(pilotGroup);
+            }
+
             // invisible helper for wheel/wing drops
             const bboxMesh = new THREE.Mesh(
                 new THREE.BoxGeometry(size.x, size.y, size.z),
@@ -1085,18 +1267,25 @@
 
             const partEntries = [];
             const wingMeshes = [];
+            const blockMeshes = [];
             design.parts.forEach((data, i) => {
                 const pg = buildPart(data);
                 pg.userData.partIndex = i;
                 group.add(pg);
                 if (data.type === 'wingL' || data.type === 'wingR')
                     pg.traverse((o) => { if (o.isMesh) wingMeshes.push(o); });
+                if (data.type === 'block')
+                    pg.traverse((o) => { if (o.isMesh) blockMeshes.push(o); });
                 const entry = {
                     data, group: pg, key: data.key,
                     posLocal: new THREE.Vector3().fromArray(data.pos)
                 };
                 if (data.type === 'booster') {
                     entry.thrustDirLocal = new THREE.Vector3().fromArray(data.normal).normalize().negate();
+                } else if (data.type === 'prop') {
+                    // propellers PULL: thrust points along the surface normal, away from the craft
+                    entry.thrustDirLocal = new THREE.Vector3().fromArray(data.normal).normalize();
+                    entry.isProp = true;
                 }
                 partEntries.push(entry);
             });
@@ -1120,7 +1309,7 @@
             const fs = full.getSize(new THREE.Vector3());
             const inertia = Math.max(0.6, m * (fs.x * fs.x + fs.y * fs.y + fs.z * fs.z) / 9);
 
-            return { group, bodyGroup, bodyMeshes, bboxMesh, wingMeshes, bbox, size, center, partEntries, wingCount, aileronCount, tailCount, wheels, mass: m, comLocal: com, inertia, bodyDef };
+            return { group, bodyGroup, bodyMeshes, bboxMesh, wingMeshes, blockMeshes, pilotGroup, bbox, size, center, partEntries, wingCount, aileronCount, tailCount, wheels, mass: m, comLocal: com, inertia, bodyDef };
         }
 
         // contact points in craft-local space
@@ -1146,6 +1335,8 @@
                     }
                     else if (e.data.type === 'tail') pts.push({ p: e.posLocal.clone().add(new THREE.Vector3(0, 0.05, 0.35)), wheel: false });
                     else if (e.data.type === 'booster') pts.push({ p: e.posLocal.clone().addScaledVector(new THREE.Vector3().fromArray(e.data.normal).normalize(), 0.7), wheel: false });
+                    else if (e.data.type === 'prop') pts.push({ p: e.posLocal.clone().addScaledVector(new THREE.Vector3().fromArray(e.data.normal).normalize(), 0.5), wheel: false });
+                    else if (e.data.type === 'block') pts.push({ p: e.posLocal.clone().addScaledVector(new THREE.Vector3().fromArray(e.data.normal).normalize(), 0.55), wheel: false });
                 }
             }
             return pts;
@@ -1165,53 +1356,112 @@
         scene.add(editorEnv);
 
         let flightEnv = null;
+        let skyDome = null;
         const clouds = [];
+        const balloons = [];
+        let colliders = [];   // stuff you can CRASH into: mountains, trees, houses, skyscrapers...
+
         function makeGroundTexture() {
             const c = document.createElement('canvas');
-            c.width = c.height = 1024;
+            c.width = c.height = 2048;
             const x = c.getContext('2d');
             x.fillStyle = '#7fb35c';
-            x.fillRect(0, 0, 1024, 1024);
+            x.fillRect(0, 0, 2048, 2048);
             const fieldColors = ['#8cbf62', '#a5c95c', '#c9c05f', '#77aa55', '#b8d078', '#d9c982', '#9fbf6a', '#86b96e'];
-            for (let i = 0; i < 60; i++) {
+            for (let i = 0; i < 130; i++) {
                 x.fillStyle = fieldColors[(Math.random() * fieldColors.length) | 0];
                 x.globalAlpha = rand(0.5, 0.95);
-                x.fillRect(rand(0, 950), rand(0, 950), rand(50, 210), rand(50, 210));
+                x.fillRect(rand(0, 1950), rand(0, 1950), rand(60, 280), rand(60, 280));
             }
             x.globalAlpha = 0.5;
-            for (let i = 0; i < 14; i++) {                                       // forests
+            for (let i = 0; i < 30; i++) {                                       // forests
                 x.fillStyle = '#557f3f';
                 x.beginPath();
-                x.arc(rand(0, 1024), rand(0, 1024), rand(28, 80), 0, Math.PI * 2);
+                x.arc(rand(0, 2048), rand(0, 2048), rand(30, 110), 0, Math.PI * 2);
                 x.fill();
             }
             x.globalAlpha = 0.8;
             x.strokeStyle = '#b0aca2';
-            for (let i = 0; i < 7; i++) {                                        // roads
-                x.lineWidth = rand(3, 5);
+            for (let i = 0; i < 12; i++) {                                       // roads
+                x.lineWidth = rand(4, 7);
                 x.beginPath();
-                if (Math.random() < 0.5) { x.moveTo(0, rand(0, 1024)); x.lineTo(1024, rand(0, 1024)); }
-                else { x.moveTo(rand(0, 1024), 0); x.lineTo(rand(0, 1024), 1024); }
+                if (Math.random() < 0.5) { x.moveTo(0, rand(0, 2048)); x.lineTo(2048, rand(0, 2048)); }
+                else { x.moveTo(rand(0, 2048), 0); x.lineTo(rand(0, 2048), 2048); }
                 x.stroke();
             }
             x.globalAlpha = 1;
             const tex = new THREE.CanvasTexture(c);
             tex.wrapS = tex.wrapT = THREE.MirroredRepeatWrapping;
-            tex.repeat.set(3, 3);
+            tex.repeat.set(4, 4);
             tex.anisotropy = 4;
+            return tex;
+        }
+
+        function makeWindowTexture() {
+            const c = document.createElement('canvas');
+            c.width = 64; c.height = 128;
+            const x = c.getContext('2d');
+            x.fillStyle = '#5a6472';
+            x.fillRect(0, 0, 64, 128);
+            for (let wy = 0; wy < 8; wy++) for (let wx = 0; wx < 4; wx++) {
+                x.fillStyle = Math.random() < 0.4 ? '#ffe9a8' : '#3a4148';
+                x.fillRect(4 + wx * 15, 5 + wy * 15, 10, 10);
+            }
+            const tex = new THREE.CanvasTexture(c);
+            tex.magFilter = THREE.NearestFilter;
             return tex;
         }
 
         function buildFlightEnv() {
             const env = new THREE.Group();
+            colliders = [];
 
-            const ground = new THREE.Mesh(new THREE.PlaneGeometry(3200, 3200),
+            // ----- sky dome + sun (way nicer than a flat color!) -----
+            skyDome = new THREE.Mesh(
+                new THREE.SphereGeometry(4200, 20, 12),
+                new THREE.ShaderMaterial({
+                    side: THREE.BackSide, depthWrite: false, fog: false,
+                    uniforms: {
+                        top: { value: new THREE.Color(0x3f8fe0) },
+                        bottom: { value: new THREE.Color(0xcfeaf7) }
+                    },
+                    vertexShader: 'varying float vY; void main(){ vY = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+                    fragmentShader: 'uniform vec3 top; uniform vec3 bottom; varying float vY; void main(){ gl_FragColor = vec4(mix(bottom, top, clamp(vY * 1.7, 0.0, 1.0)), 1.0); }'
+                }));
+            skyDome.renderOrder = -10;
+            env.add(skyDome);
+
+            const sunC = document.createElement('canvas');
+            sunC.width = sunC.height = 128;
+            const sx = sunC.getContext('2d');
+            const sgrd = sx.createRadialGradient(64, 64, 8, 64, 64, 64);
+            sgrd.addColorStop(0, 'rgba(255,250,225,1)');
+            sgrd.addColorStop(0.25, 'rgba(255,236,160,0.9)');
+            sgrd.addColorStop(1, 'rgba(255,236,160,0)');
+            sx.fillStyle = sgrd;
+            sx.fillRect(0, 0, 128, 128);
+            const sun = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(sunC), fog: false, depthWrite: false }));
+            sun.position.set(1500, 1200, -2400);
+            sun.scale.set(600, 600, 1);
+            env.add(sun);
+
+            // ----- ground -----
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000),
                 new THREE.MeshLambertMaterial({ map: makeGroundTexture() }));
             ground.rotation.x = -Math.PI / 2;
             ground.receiveShadow = true;
             env.add(ground);
 
-            // runway (takeoff toward -Z)
+            const flatCircle = (cx, cz, r, color, y = 0.015, seg = 36) => {
+                const m = new THREE.Mesh(new THREE.CircleGeometry(r, seg),
+                    new THREE.MeshLambertMaterial({ color }));
+                m.rotation.x = -Math.PI / 2;
+                m.position.set(cx, y, cz);
+                env.add(m);
+                return m;
+            };
+
+            // ----- runway (takeoff toward -Z) + airport -----
             const runway = new THREE.Mesh(new THREE.PlaneGeometry(14, 120),
                 new THREE.MeshLambertMaterial({ color: 0x3c3f44 }));
             runway.rotation.x = -Math.PI / 2;
@@ -1225,27 +1475,130 @@
                 dash.position.set(0, 0.04, z);
                 env.add(dash);
             }
+            {   // your own little hangar (yes, you can crash into it 😅)
+                const hg = new THREE.Group();
+                box(hg, 9, 4.5, 11, 0xd0202a, 0, 2.25, 0);
+                box(hg, 9.6, 0.5, 11.6, 0xf4f4f0, 0, 4.75, 0);
+                box(hg, 3.6, 2.8, 0.3, 0x8899a4, 0, 1.4, -5.5);
+                hg.position.set(-19, 0, 26);
+                env.add(hg);
+                colliders.push({ x: -19, z: 26, r: 7, h: 5.4, cone: false, what: 'hangar' });
+                cyl(env, 0.08, 0.08, 6, 0xd8d8e0, 12, 3, 30, 8);                 // windsock
+                const sock = new THREE.Mesh(new THREE.ConeGeometry(0.5, 2.2, 10), mat(0xff8c1a));
+                sock.rotation.z = Math.PI / 2;
+                sock.position.set(13.2, 5.6, 30);
+                env.add(sock);
+            }
 
-            // lake
-            const lake = new THREE.Mesh(new THREE.CircleGeometry(LAKE.r, 28),
-                new THREE.MeshLambertMaterial({ color: 0x4f9edb }));
-            lake.rotation.x = -Math.PI / 2;
-            lake.position.set(LAKE.x, 0.03, LAKE.z);
-            env.add(lake);
+            // ----- water: two lakes + THE OCEAN out west -----
+            flatCircle(WATERS[0].x, WATERS[0].z, WATERS[0].r, 0x4f9edb, 0.03, 28);
+            flatCircle(WATERS[1].x, WATERS[1].z, WATERS[1].r, 0x4f9edb, 0.03, 28);
+            flatCircle(WATERS[2].x, WATERS[2].z, WATERS[2].r + 45, 0xe8d49a, 0.012, 48);   // beach
+            flatCircle(WATERS[2].x, WATERS[2].z, WATERS[2].r, 0x3579c0, 0.035, 48);
 
+            // ----- desert (with a pyramid!) -----
+            flatCircle(DESERT.x, DESERT.z, DESERT.r, 0xeadb9e);
+            for (let i = 0; i < 14; i++) {
+                const a = rand(0, Math.PI * 2), r = rand(30, DESERT.r - 20);
+                const cx = DESERT.x + Math.cos(a) * r, cz = DESERT.z + Math.sin(a) * r;
+                const g = new THREE.Group();
+                const h = rand(2, 3.6);
+                cyl(g, 0.24, 0.3, h, 0x3f9b46, 0, h / 2, 0, 10);
+                box(g, 0.7, 0.24, 0.24, 0x3f9b46, 0.3, h * 0.55, 0);
+                cyl(g, 0.16, 0.16, 0.9, 0x3f9b46, 0.6, h * 0.55 + 0.45, 0, 8);
+                g.position.set(cx, 0, cz);
+                g.rotation.y = rand(0, Math.PI * 2);
+                env.add(g);
+                colliders.push({ x: cx, z: cz, r: 0.9, h: h + 1, cone: false, what: 'cactus' });
+            }
+            {
+                const pyr = new THREE.Mesh(new THREE.ConeGeometry(60, 75, 4), mat(0xd9b87c));
+                pyr.position.set(DESERT.x + 40, 37.5, DESERT.z - 40);
+                pyr.rotation.y = Math.PI / 4;
+                env.add(pyr);
+                colliders.push({ x: DESERT.x + 40, z: DESERT.z - 40, r: 56, h: 75, cone: true, what: 'pyramid' });
+            }
+
+            // ----- snow zone (snowmen!) -----
+            flatCircle(SNOW.x, SNOW.z, SNOW.r, 0xf4f7fa);
+            for (let i = 0; i < 12; i++) {
+                const a = rand(0, Math.PI * 2), r = rand(20, SNOW.r - 30);
+                const cx = SNOW.x + Math.cos(a) * r, cz = SNOW.z + Math.sin(a) * r;
+                const g = new THREE.Group();
+                const th = rand(1, 1.6);
+                cyl(g, 0.2, 0.28, th, 0x6b4a2b, 0, th / 2, 0, 8);
+                const leaves = new THREE.Mesh(new THREE.ConeGeometry(rand(1.2, 2), rand(2.6, 4.4), 8), mat(0xdceef0));
+                leaves.position.y = th + 1.4;
+                g.add(leaves);
+                g.position.set(cx, 0, cz);
+                env.add(g);
+                colliders.push({ x: cx, z: cz, r: 1.1, h: th + 4.5, cone: false, what: 'tree' });
+            }
+            for (let i = 0; i < 3; i++) {
+                const a = rand(0, Math.PI * 2), r = rand(20, SNOW.r - 60);
+                const cx = SNOW.x + Math.cos(a) * r, cz = SNOW.z + Math.sin(a) * r;
+                const g = new THREE.Group();
+                sph(g, 1.0, 0xffffff, 0, 0.9, 0);
+                sph(g, 0.7, 0xffffff, 0, 2.1, 0);
+                sph(g, 0.5, 0xffffff, 0, 3.0, 0);
+                sph(g, 0.05, 0x222222, -0.16, 3.12, -0.45);
+                sph(g, 0.05, 0x222222, 0.16, 3.12, -0.45);
+                const carrot = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.5, 8), mat(0xf28c28));
+                carrot.rotation.x = -Math.PI / 2;
+                carrot.position.set(0, 3.0, -0.62);
+                g.add(carrot);
+                g.position.set(cx, 0, cz);
+                g.rotation.y = rand(0, Math.PI * 2);
+                env.add(g);
+                colliders.push({ x: cx, z: cz, r: 1.2, h: 3.6, cone: false, what: 'snowman' });
+            }
+            for (const [ox, oz] of [[-70, 60], [80, -50]]) {                     // snowy hills
+                const mh = rand(90, 130), mr = rand(80, 110);
+                const mnt = new THREE.Mesh(new THREE.ConeGeometry(mr, mh, 7), mat(0xe8eef4));
+                mnt.position.set(SNOW.x + ox, mh / 2 - 2, SNOW.z + oz);
+                env.add(mnt);
+                colliders.push({ x: SNOW.x + ox, z: SNOW.z + oz, r: mr * 0.85, h: mh, cone: true, what: 'mountain' });
+            }
+
+            // ----- the city (fly between the skyscrapers... or into them) -----
+            const winTex = makeWindowTexture();
+            const cityTints = [0xffffff, 0xd8e2ec, 0xc8d8d0, 0xe8d8c8, 0xd0c8e0];
+            for (let gx = -2; gx <= 2; gx++) for (let gz = -1; gz <= 2; gz++) {
+                if (Math.random() < 0.15) continue;
+                const cx = CITY.x + gx * 42 + rand(-8, 8);
+                const cz = CITY.z + gz * 42 + rand(-8, 8);
+                const w = rand(9, 15), d = rand(9, 15);
+                const h = (gx === 0 && gz === 0) ? rand(55, 70) : rand(16, 48);
+                const wall = new THREE.MeshLambertMaterial({ map: winTex, color: cityTints[(Math.random() * cityTints.length) | 0] });
+                const roof = new THREE.MeshLambertMaterial({ color: 0x7a828c });
+                const bld = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [wall, wall, roof, roof, wall, wall]);
+                bld.position.set(cx, h / 2, cz);
+                env.add(bld);
+                colliders.push({ x: cx, z: cz, r: Math.max(w, d) * 0.62, h, cone: false, what: 'building' });
+                if (gx === 0 && gz === 0) cyl(env, 0.15, 0.15, 8, 0xd03a2c, cx, h + 4, cz, 8);
+            }
+
+            // ----- placement helper that dodges the runway + special zones -----
             const inCorridor = (x, z) => Math.abs(x) < 30 && z > -150 && z < 150;
+            const nearZone = (x, z, zone, pad) => Math.hypot(x - zone.x, z - zone.z) < zone.r + pad;
             const ringPos = (rMin, rMax) => {
-                for (let tries = 0; tries < 20; tries++) {
+                for (let tries = 0; tries < 24; tries++) {
                     const a = rand(0, Math.PI * 2), r = rand(rMin, rMax);
                     const x = Math.cos(a) * r, z = Math.sin(a) * r;
-                    if (!inCorridor(x, z) && Math.hypot(x - LAKE.x, z - LAKE.z) > LAKE.r + 12) return [x, z];
+                    if (inCorridor(x, z)) continue;
+                    if (WATERS.some(w => nearZone(x, z, w, 14))) continue;
+                    if (nearZone(x, z, DESERT, 10) || nearZone(x, z, SNOW, 10) || nearZone(x, z, CITY, 40)) continue;
+                    return [x, z];
                 }
-                return [rMax, rMax];
+                return null;
             };
 
+            // ----- houses -----
             const housePalette = [0xe8b4b8, 0xf4e1a4, 0xbcd8e8, 0xd8e8bc, 0xe8d0b4, 0xf0f0e8];
-            for (let i = 0; i < 30; i++) {
-                const [x, z] = ringPos(60, 800);
+            for (let i = 0; i < 45; i++) {
+                const spot = ringPos(60, 1100);
+                if (!spot) continue;
+                const [x, z] = spot;
                 const w = rand(4, 7), h = rand(2.6, 4.2), d = rand(4, 7);
                 const g = new THREE.Group();
                 box(g, w, h, d, housePalette[(Math.random() * housePalette.length) | 0], 0, h / 2, 0).castShadow = false;
@@ -1256,49 +1609,126 @@
                 g.position.set(x, 0, z);
                 g.rotation.y = rand(0, Math.PI * 2);
                 env.add(g);
+                colliders.push({ x, z, r: Math.max(w, d) * 0.62, h: h + 2.2, cone: false, what: 'house' });
             }
 
-            for (let i = 0; i < 90; i++) {
-                const [x, z] = ringPos(45, 900);
+            // ----- trees (LOTS of them, instanced so it stays fast) -----
+            const treeSpots = [];
+            for (let i = 0; i < 240; i++) {
+                const spot = ringPos(45, 1200);
+                if (!spot) continue;
+                treeSpots.push({ x: spot[0], z: spot[1], th: rand(1, 1.8), lh: rand(2.4, 4.5), lr: rand(1.1, 2.2), oak: Math.random() < 0.35 });
+            }
+            const dummy = new THREE.Object3D();
+            const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.22, 0.3, 1, 7), mat(0x6b4a2b), Math.max(1, treeSpots.length));
+            const pinesL = treeSpots.filter(t => !t.oak);
+            const oaksL = treeSpots.filter(t => t.oak);
+            const pineLeaves = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 1, 8), mat(0xffffff), Math.max(1, pinesL.length));
+            const oakLeaves = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 9, 7), mat(0xffffff), Math.max(1, oaksL.length));
+            const leafColor = new THREE.Color();
+            treeSpots.forEach((t, i) => {
+                dummy.position.set(t.x, t.th / 2, t.z);
+                dummy.scale.set(1, t.th, 1);
+                dummy.updateMatrix();
+                trunks.setMatrixAt(i, dummy.matrix);
+                colliders.push({ x: t.x, z: t.z, r: 1.0, h: t.th + t.lh, cone: false, what: 'tree' });
+            });
+            pinesL.forEach((t, i) => {
+                dummy.position.set(t.x, t.th + t.lh * 0.42, t.z);
+                dummy.scale.set(t.lr, t.lh, t.lr);
+                dummy.updateMatrix();
+                pineLeaves.setMatrixAt(i, dummy.matrix);
+                pineLeaves.setColorAt(i, leafColor.setHex(i % 3 ? 0x3e8a3e : 0x2f7032));
+            });
+            oaksL.forEach((t, i) => {
+                dummy.position.set(t.x, t.th + t.lr * 0.9, t.z);
+                dummy.scale.set(t.lr * 1.15, t.lr, t.lr * 1.15);
+                dummy.updateMatrix();
+                oakLeaves.setMatrixAt(i, dummy.matrix);
+                oakLeaves.setColorAt(i, leafColor.setHex(i % 2 ? 0x4d9b3f : 0x5fae4a));
+            });
+            trunks.castShadow = pineLeaves.castShadow = oakLeaves.castShadow = true;
+            env.add(trunks, pineLeaves, oakLeaves);
+
+            // ----- mountains: some close enough to CRASH into, plus a big far ring -----
+            const addMountain = (cx, cz, mr, mh, snowy) => {
+                const mnt = new THREE.Mesh(new THREE.ConeGeometry(mr, mh, 7), mat(snowy ? 0xe8eef4 : 0x8b8f96));
+                mnt.position.set(cx, mh / 2 - 4, cz);
+                env.add(mnt);
+                const cap = new THREE.Mesh(new THREE.ConeGeometry(mr * 0.34, mh * 0.3, 7), mat(0xf4f4f8));
+                cap.position.set(cx, mh - mh * 0.15 - 4, cz);
+                env.add(cap);
+                colliders.push({ x: cx, z: cz, r: mr * 0.82, h: mh - 4, cone: true, what: 'mountain' });
+            };
+            for (let i = 0; i < 6; i++) {
+                const a = rand(-0.9, 1.6);   // east-ish / north-east
+                const r = rand(550, 950);
+                const mh = rand(90, 200), mr = rand(90, 200);
+                const cx = Math.cos(a) * r, cz = Math.sin(a) * r;
+                if (WATERS.some(w => nearZone(cx, cz, w, mr)) || nearZone(cx, cz, CITY, mr + 40) || nearZone(cx, cz, DESERT, mr) || nearZone(cx, cz, SNOW, mr)) continue;
+                addMountain(cx, cz, mr, mh, false);
+            }
+            for (let i = 0; i < 11; i++) {
+                const a = (i / 11) * Math.PI * 2 + rand(-0.2, 0.2);
+                if (Math.abs(((a + Math.PI * 3) % (Math.PI * 2)) - Math.PI) < 0.75) continue;   // leave the west open for the ocean
+                const r = rand(1150, 1700);
+                addMountain(Math.cos(a) * r, Math.sin(a) * r, rand(150, 300), rand(140, 300), false);
+            }
+
+            // ----- hot air balloons -----
+            const balloonColors = [0xd03a2c, 0xffb347, 0x7ed957, 0x4f9edb, 0xc47ed9, 0xffe14d];
+            for (let i = 0; i < 6; i++) {
                 const g = new THREE.Group();
-                const th = rand(1, 1.8);
-                cyl(g, 0.22, 0.3, th, 0x6b4a2b, 0, th / 2, 0, 8).castShadow = false;
-                const leaves = new THREE.Mesh(new THREE.ConeGeometry(rand(1.1, 2.2), rand(2.4, 4.5), 8),
-                    mat(i % 3 ? 0x3e8a3e : 0x2f7032));
-                leaves.position.y = th + 1.4;
-                g.add(leaves);
-                g.position.set(x, 0, z);
+                const bl = new THREE.Mesh(new THREE.SphereGeometry(7, 14, 12), mat(balloonColors[i % balloonColors.length]));
+                bl.scale.set(1, 1.15, 1);
+                bl.castShadow = false;
+                g.add(bl);
+                box(g, 2.4, 2, 2.4, 0x8d5524, 0, -10.5, 0).castShadow = false;
+                for (const [rx, rz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]])
+                    cyl(g, 0.05, 0.05, 4, 0x555555, rx * 1.1, -8, rz * 1.1, 5).castShadow = false;
+                const a = rand(0, Math.PI * 2), r = rand(200, 850);
+                g.position.set(Math.cos(a) * r, rand(70, 160), Math.sin(a) * r);
+                g.userData = { v: rand(0.6, 1.6), bob: rand(0, Math.PI * 2) };
+                balloons.push(g);
                 env.add(g);
             }
 
-            for (let i = 0; i < 9; i++) {
-                const a = (i / 9) * Math.PI * 2 + rand(-0.2, 0.2);
-                const r = rand(950, 1400);
-                const mh = rand(110, 260), mr = rand(130, 280);
-                const mnt = new THREE.Mesh(new THREE.ConeGeometry(mr, mh, 7), mat(0x8b8f96));
-                mnt.position.set(Math.cos(a) * r, mh / 2 - 4, Math.sin(a) * r);
-                env.add(mnt);
-                const cap = new THREE.Mesh(new THREE.ConeGeometry(mr * 0.34, mh * 0.3, 7), mat(0xf4f4f8));
-                cap.position.set(Math.cos(a) * r, mh - mh * 0.15 - 4, Math.sin(a) * r);
-                env.add(cap);
-            }
-
-            const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
-            for (let i = 0; i < 22; i++) {
+            // ----- clouds -----
+            const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.88 });
+            for (let i = 0; i < 30; i++) {
                 const g = new THREE.Group();
                 const n = 3 + (Math.random() * 3 | 0);
                 for (let j = 0; j < n; j++) {
-                    const s = new THREE.Mesh(new THREE.SphereGeometry(rand(6, 14), 10, 8), cloudMat);
-                    s.position.set(rand(-14, 14), rand(-3, 3), rand(-8, 8));
+                    const s = new THREE.Mesh(new THREE.SphereGeometry(rand(6, 16), 10, 8), cloudMat);
+                    s.position.set(rand(-16, 16), rand(-3, 3), rand(-9, 9));
                     g.add(s);
                 }
-                const a = rand(0, Math.PI * 2), r = rand(120, 900);
-                g.position.set(Math.cos(a) * r, rand(65, 150), Math.sin(a) * r);
+                const a = rand(0, Math.PI * 2), r = rand(120, 1100);
+                g.position.set(Math.cos(a) * r, rand(70, 190), Math.sin(a) * r);
                 g.userData.v = rand(1, 3);
                 clouds.push(g);
                 env.add(g);
             }
             return env;
+        }
+
+        // ----- crashing into the world -----
+        function checkObstacles() {
+            if (flight.broken || flight.finished) return;
+            const fwd = AXIS_FWD.clone().applyQuaternion(phys.quat);
+            const half = Math.max(0.6, craft.size.z * 0.5);
+            for (let s = -1; s <= 1; s++) {
+                const px = phys.pos.x + fwd.x * half * s;
+                const py = phys.pos.y + fwd.y * half * s;
+                const pz = phys.pos.z + fwd.z * half * s;
+                if (py > 300 || py < 0) continue;
+                for (const c of colliders) {
+                    const dx = px - c.x, dz = pz - c.z;
+                    if (Math.abs(dx) > c.r || Math.abs(dz) > c.r || py > c.h) continue;
+                    const rr = c.cone ? c.r * (1 - py / c.h) : c.r;
+                    if (dx * dx + dz * dz < rr * rr) { triggerCrash(false, c.what); return; }
+                }
+            }
         }
 
         // ================= SMOKE =================
@@ -1411,7 +1841,12 @@
                 [523, 659, 784, 1047, 784, 1047, 1319, 1568].forEach((f, i) => this.beep(f, 0.3, 'triangle', 0.2, i * 0.11));
                 [523, 659, 784, 1047].forEach(f => this.beep(f, 1.2, 'triangle', 0.1, 0.95));
             },
-            splash() { this.beep(300, 0.4, 'sine', 0.25); this.beep(150, 0.5, 'sine', 0.2, 0.08); }
+            splash() { this.beep(300, 0.4, 'sine', 0.25); this.beep(150, 0.5, 'sine', 0.2, 0.08); },
+            boing() { this.beep(180, 0.08, 'square', 0.2); this.beep(320, 0.12, 'square', 0.18, 0.06); this.beep(520, 0.18, 'square', 0.15, 0.12); },
+            zap() { [900, 700, 1100, 1400].forEach((f, i) => this.beep(f, 0.08, 'sawtooth', 0.12, i * 0.04)); },
+            bite() { this.beep(160 + Math.random() * 60, 0.07, 'square', 0.22); this.beep(90, 0.09, 'square', 0.18, 0.05); },
+            quack() { this.beep(280, 0.12, 'sawtooth', 0.2); this.beep(200, 0.15, 'sawtooth', 0.18, 0.1); },
+            chord() { [523, 659, 784].forEach(f => this.beep(f, 0.5, 'triangle', 0.15)); }
         };
         function setMuted(m) {
             Sound.muted = m;
@@ -1456,7 +1891,7 @@
         }
 
         function nextFreeKey() {
-            const used = new Set(design.parts.filter(p => p.type === 'booster').map(p => p.key));
+            const used = new Set(design.parts.filter(p => p.type === 'booster' || p.type === 'prop').map(p => p.key));
             return KEY_ORDER.find(k => !used.has(k)) || null;
         }
 
@@ -1517,7 +1952,7 @@
         function beginTrayDrag(type, ev) {
             if (mode !== 'editor') return;
             Sound.init();
-            if (type === 'booster' && !nextFreeKey()) {
+            if ((type === 'booster' || type === 'prop') && !nextFreeKey()) {
                 toast('Out of booster letters — 34 is the max! 🤯');
                 return;
             }
@@ -1525,7 +1960,8 @@
                 type,
                 pos: [0, 0, 0],
                 normal: [0, 1, 0],
-                key: type === 'booster' ? nextFreeKey() : null
+                key: (type === 'booster' || type === 'prop') ? nextFreeKey() : null,
+                c: type === 'block' ? design.parts.filter(p => p.type === 'block').length % 6 : 0
             };
             const ghost = buildPart(ghostData);
             ghost.traverse((o) => {
@@ -1538,7 +1974,7 @@
             });
             ghost.visible = false;
             scene.add(ghost);
-            drag = { type, ghost, cand: null, key: ghostData.key };
+            drag = { type, ghost, cand: null, key: ghostData.key, c: ghostData.c };
             ev.target.setPointerCapture?.(ev.pointerId);
         }
 
@@ -1549,9 +1985,9 @@
             drag.cand = null;
             drag.ghost.visible = false;
 
-            if (drag.type === 'booster') {
-                // boosters glue to the body OR onto wings
-                const hits = raycaster.intersectObjects([...craft.bodyMeshes, ...craft.wingMeshes], false);
+            if (drag.type === 'booster' || drag.type === 'prop' || drag.type === 'block') {
+                // boosters, propellers and blocks glue to the body, wings, OR other blocks
+                const hits = raycaster.intersectObjects([...craft.bodyMeshes, ...craft.wingMeshes, ...craft.blockMeshes], false);
                 if (hits.length) {
                     const h = hits[0];
                     const n = h.face.normal.clone().transformDirection(h.object.matrixWorld).normalize();
@@ -1619,6 +2055,7 @@
             if (!drag) return;
             if (drag.cand) {
                 const newPart = { id: genId(), type: drag.type, pos: drag.cand.pos, normal: drag.cand.normal, key: drag.key };
+                if (drag.type === 'block') newPart.c = drag.c;
                 if (drag.cand.parent) newPart.parent = drag.cand.parent;
                 design.parts.push(newPart);
                 rebuildCraft();
@@ -1701,13 +2138,26 @@
             if (mode === 'editor' && orbitState && pointers.size === 0) {
                 if (!orbitState.moved && orbitState.removeIndex !== null) {
                     const removed = design.parts[orbitState.removeIndex];
-                    // anything glued onto this part (wing-mounted boosters/wheels) comes off with it
+                    // anything glued onto this part comes off with it — and anything glued
+                    // onto THAT (booster on a block on a block...) comes too
                     const before = design.parts.length;
-                    design.parts = design.parts.filter(p => p !== removed && (!removed.id || p.parent !== removed.id));
+                    const removedIds = new Set(removed.id ? [removed.id] : []);
+                    let grew = true;
+                    while (grew) {
+                        grew = false;
+                        for (const p of design.parts) {
+                            if (p.parent && removedIds.has(p.parent) && p.id && !removedIds.has(p.id)) {
+                                removedIds.add(p.id);
+                                grew = true;
+                            }
+                        }
+                    }
+                    design.parts = design.parts.filter(p => p !== removed && !(p.id && removedIds.has(p.id)));
                     const swept = before - 1 - design.parts.length;
                     rebuildCraft();
                     Sound.unpop();
-                    const label = removed.type === 'booster' ? `Booster ${removed.key} removed` : 'Part removed';
+                    const label = removed.type === 'booster' ? `Booster ${removed.key} removed`
+                        : removed.type === 'prop' ? `Propeller ${removed.key} removed` : 'Part removed';
                     toast(label + (swept > 0 ? ` (with ${swept} part${swept > 1 ? 's' : ''} glued to it!)` : ''));
                 }
                 orbitState = null;
@@ -1742,8 +2192,12 @@
                 name.textContent = `${bodyDef.emoji} ${bodyDef.name}`;
                 const massEl = document.createElement('div');
                 massEl.className = 'bmass';
-                massEl.textContent = `${bodyDef.mass} kg` + (bodyDef.wheelContacts ? ' · has wheels!' : '');
-                opt.append(img, name, massEl);
+                massEl.textContent = `${bodyDef.mass} kg` + (bodyDef.wheelContacts ? ' · has wheels!' : '') + (bodyDef.floats ? ' · floats!' : '');
+                const powEl = document.createElement('div');
+                powEl.className = 'bpower';
+                powEl.textContent = bodyDef.power === 'hotdog' ? '⚡ SECRET POWERS!'
+                    : `⚡ ${bodyDef.power.emoji} ${bodyDef.power.name}`;
+                opt.append(img, name, massEl, powEl);
                 opt.addEventListener('click', () => {
                     if (i !== design.bodyIndex) {
                         design.bodyIndex = i;
@@ -1796,14 +2250,18 @@
         }
 
         function partCounts(d) {
-            const n = { booster: 0, wheel: 0, wing: 0, ctrl: 0 };
+            const n = { booster: 0, prop: 0, wheel: 0, wing: 0, ctrl: 0, block: 0 };
             for (const p of d.parts) {
                 if (p.type === 'booster') n.booster++;
+                else if (p.type === 'prop') n.prop++;
+                else if (p.type === 'block') n.block++;
                 else if (p.type === 'wheel') n.wheel++;
                 else if (p.type === 'aileron' || p.type === 'tail') n.ctrl++;
                 else n.wing++;
             }
-            return `🚀${n.booster} &nbsp;🛞${n.wheel} &nbsp;✈️${n.wing}` + (n.ctrl ? ` &nbsp;🕹️${n.ctrl}` : '');
+            return `🚀${n.booster} &nbsp;🛞${n.wheel} &nbsp;✈️${n.wing}`
+                + (n.prop ? ` &nbsp;🌀${n.prop}` : '') + (n.block ? ` &nbsp;🧱${n.block}` : '')
+                + (n.ctrl ? ` &nbsp;🕹️${n.ctrl}` : '');
         }
 
         function openHangar() {
@@ -1831,6 +2289,7 @@
                 flyBtn.textContent = '🛫 Fly!';
                 flyBtn.onclick = () => {
                     design = ensureIds(JSON.parse(JSON.stringify(entry.design)));
+                    design.name = entry.name;   // the name can carry secret powers!
                     rebuildCraft();
                     closeHangar();
                     startFlight();
@@ -1840,6 +2299,7 @@
                 editBtn.textContent = '✏️ Edit';
                 editBtn.onclick = () => {
                     design = ensureIds(JSON.parse(JSON.stringify(entry.design)));
+                    design.name = entry.name;
                     rebuildCraft();
                     closeHangar();
                     toast(`Loaded <b>${entry.name}</b>!`);
@@ -1885,6 +2345,8 @@
         $('save-cancel').addEventListener('click', () => $('save-dialog').classList.add('hidden'));
         function doSave() {
             const name = $('save-name').value.trim() || 'My Aircraft';
+            design.name = name;   // hot dogs check this for 2.0 / 3.0 / 4.0 powers!
+            saveWorkingDesign();
             const h = loadHangar();
             h.unshift({ id: Date.now() + '-' + ((Math.random() * 1e6) | 0), name, created: Date.now(), design: JSON.parse(JSON.stringify(design)) });
             saveHangar(h);
@@ -1912,10 +2374,287 @@
         const flight = {
             contacts: [], broken: false, finished: false, splash: false,
             airTime: 0, maxAlt: 0, landTimer: 0, grounded: true, lowY: 0,
+            floating: false, wasFloating: false, chute: null, powerDef: null,
             camPos: new THREE.Vector3(), lastHead: new THREE.Vector3(0, 0, -1),
             overlayTimer: null, debris: []
         };
         const activeKeys = new Set();
+
+        // ----- SPACEBAR = every booster and propeller at once! -----
+        let spaceAll = false;
+        function setSpaceAll(on) {
+            if (on === spaceAll) return;
+            if (on && (mode !== 'flight' || flight.broken || flight.chute)) return;
+            spaceAll = on;
+            updateBoosterButtonStates();
+        }
+        function countThrust() {
+            if (!craft) return 0;
+            let n = 0;
+            for (const e of craft.partEntries)
+                if (e.thrustDirLocal && (spaceAll || activeKeys.has(e.key))) n++;
+            return n;
+        }
+
+        // ----- SUPERPOWERS (the + key) — every body has one! -----
+        const powerState = { held: false, cooldown: 0, antigrav: 0, slowfall: 0, eat: null, regen: 0 };
+
+        function getPowerDef() {
+            if (!craft) return null;
+            const bd = craft.bodyDef;
+            if (bd.power === 'hotdog') {
+                // the hot dog's power comes from its NAME: save it as 2.0, 3.0, 4.0...
+                const m = (design.name || '').match(/(\d+)/);
+                const v = m ? parseInt(m[1], 10) : 1;
+                if (v >= 5) return { name: `HYPER BOOST ${v}.0`, emoji: '🌈', type: 'boost', a: 70, color: 'rainbow', snd: 'zap' };
+                if (v === 4) return { name: 'ANTI-GRAVITY', emoji: '🎈', type: 'antigrav', color: 0xc47ed9, snd: 'zap' };
+                if (v === 3) return { name: 'TELEPORT', emoji: '✨', type: 'teleport', d: 130, color: 0xffe14d, snd: 'zap' };
+                if (v === 2) return { name: 'MUSTARD JUMP', emoji: '🌭', type: 'jump', v: 17, color: 0xf2c11e, snd: 'boing' };
+                return { name: 'MEGA BOOST', emoji: '🌭', type: 'boost', a: 48, color: 0xff8c1a, snd: 'zap' };
+            }
+            return bd.power || null;
+        }
+        function powerColor(def) {
+            if (def.color === 'rainbow' || def.color === 'confetti') {
+                const cs = [0xff5544, 0xffb347, 0xffe14d, 0x7ed957, 0x4f9edb, 0xc47ed9];
+                return cs[(Math.random() * cs.length) | 0];
+            }
+            return def.color;
+        }
+        function powerBurst(def, n = 14) {
+            for (let i = 0; i < n; i++)
+                spawnPuff(phys.pos.clone().add(tmpV1.set(rand(-1, 1), rand(-0.5, 1), rand(-1, 1))),
+                    new THREE.Vector3(rand(-3, 3), rand(1, 5), rand(-3, 3)), powerColor(def), rand(0.6, 1.2), rand(0.7, 1.1));
+        }
+        function powerSound(def) { (Sound[def.snd] || Sound.zap).call(Sound); }
+
+        function powerPress() {
+            if (mode !== 'flight' || flight.broken || flight.finished || flight.chute) return;
+            const def = flight.powerDef;
+            if (!def) return;
+            if (def.type === 'boost' || def.type === 'hover') {
+                if (!powerState.held) {
+                    powerState.held = true;
+                    powerSound(def);
+                    toast(`${def.emoji} ${def.name}!!`, 1100);
+                    updateBoosterButtonStates();
+                }
+                return;
+            }
+            if (powerState.cooldown > 0) return;
+            if (def.type === 'jump') {
+                phys.vel.y += def.v;
+                powerState.cooldown = 1.8;
+                powerSound(def);
+                powerBurst(def);
+                toast(`${def.emoji} ${def.name}!!`, 1100);
+            } else if (def.type === 'teleport') {
+                const fwd = AXIS_FWD.clone().applyQuaternion(phys.quat);
+                powerBurst(def, 10);
+                phys.pos.addScaledVector(fwd, def.d);
+                phys.pos.y = Math.max(phys.pos.y, 2.5);
+                syncCraftTransform();
+                powerBurst(def, 10);
+                powerState.cooldown = 2.5;
+                powerSound(def);
+                toast('✨ TELEPORT!!', 1100);
+            } else if (def.type === 'antigrav') {
+                powerState.antigrav = 5;
+                powerState.cooldown = 8;
+                powerSound(def);
+                toast(`${def.emoji} ${def.name}! No gravity for 5 seconds!`, 1800);
+            } else if (def.type === 'slowfall') {
+                powerState.slowfall = 6;
+                powerState.cooldown = 9;
+                powerSound(def);
+                toast(`${def.emoji} ${def.name}! Soooo soft… (6 seconds)`, 1800);
+            } else if (def.type === 'eat') {
+                if (powerState.eat || powerState.regen > 0) return;
+                powerState.eat = { t: 0, idx: 0 };
+                toast('🥖 CHOMP CHOMP CHOMP…', 1500);
+            }
+            gtag('event', 'power_used', { game_name: 'Test Flight', body: craft.bodyDef.name, power: def.name });
+        }
+        function powerRelease() {
+            if (powerState.held) {
+                powerState.held = false;
+                updateBoosterButtonStates();
+            }
+        }
+
+        function updatePowers(dt) {
+            if (powerState.cooldown > 0) powerState.cooldown -= dt;
+            if (powerState.antigrav > 0) powerState.antigrav -= dt;
+            if (powerState.slowfall > 0) powerState.slowfall -= dt;
+            const def = flight.powerDef;
+            if (!def) return;
+            // colored trail while a held power is blasting
+            if (powerState.held && !flight.broken && (def.type === 'boost' || def.type === 'hover') && Math.random() < 0.75) {
+                const fwd = AXIS_FWD.clone().applyQuaternion(phys.quat);
+                const back = phys.pos.clone().addScaledVector(fwd, -Math.max(0.8, craft.size.z * 0.55));
+                spawnPuff(back, fwd.clone().multiplyScalar(-rand(2, 4)).add(tmpV1.set(rand(-0.6, 0.6), rand(-0.6, 0.6), rand(-0.6, 0.6))),
+                    powerColor(def), rand(0.5, 1), rand(0.5, 0.9));
+            }
+            // sparkles while gravity is off
+            if ((powerState.antigrav > 0 || powerState.slowfall > 0) && Math.random() < 0.3)
+                spawnPuff(phys.pos.clone().add(tmpV1.set(rand(-1, 1), rand(-0.5, 1), rand(-1, 1))),
+                    new THREE.Vector3(rand(-0.5, 0.5), rand(0.2, 1), rand(-0.5, 0.5)), powerColor(def), 0.5, 0.8);
+            // the baguette eats itself, chunk by chunk, then turns invisible
+            if (powerState.eat) {
+                powerState.eat.t += dt;
+                if (powerState.eat.t > 0.35) {
+                    powerState.eat.t = 0;
+                    const segs = craft.bodyGroup.userData.eatParts || [];
+                    const seg = segs[powerState.eat.idx];
+                    if (seg) {
+                        seg.visible = false;
+                        Sound.bite();
+                        const wp = seg.getWorldPosition(new THREE.Vector3());
+                        for (let i = 0; i < 5; i++)
+                            spawnPuff(wp, new THREE.Vector3(rand(-2, 2), rand(0.5, 3), rand(-2, 2)), 0xe8b774, 0.35, 0.6);
+                        powerState.eat.idx++;
+                    } else {
+                        powerState.eat = null;
+                        powerState.regen = 6;
+                        toast('👻 INVISIBLE BAGUETTE! Where did it go?!', 2200);
+                    }
+                }
+            }
+            if (powerState.regen > 0) {
+                powerState.regen -= dt;
+                if (powerState.regen <= 0) {
+                    for (const seg of craft.bodyGroup.userData.eatParts || []) seg.visible = true;
+                    Sound.pop();
+                    toast('🥖 It grew back! Bread magic!', 1600);
+                }
+            }
+        }
+
+        // ----- PARACHUTE (the ? key) — bail out and walk around! -----
+        function buildCanopy() {
+            const g = new THREE.Group();
+            const dome = new THREE.Mesh(
+                new THREE.SphereGeometry(1.25, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+                mat(0xd03a2c, { side: THREE.DoubleSide }));
+            dome.position.y = 2.4;
+            dome.castShadow = true;
+            g.add(dome);
+            const stripe = new THREE.Mesh(
+                new THREE.SphereGeometry(1.26, 14, 8, -0.5, 1, 0, Math.PI / 2),
+                mat(0xf4f4f0, { side: THREE.DoubleSide }));
+            stripe.position.y = 2.4;
+            g.add(stripe);
+            for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+                const line = cyl(g, 0.018, 0.018, 1.7, 0x777777, dx * 0.5, 1.55, dz * 0.5, 5);
+                line.rotation.z = -dx * 0.4;
+                line.rotation.x = dz * 0.4;
+                line.castShadow = false;
+            }
+            return g;
+        }
+
+        function deployParachute() {
+            if (mode !== 'flight' || flight.broken || flight.finished || flight.chute) return;
+            Sound.init();
+            const start = new THREE.Vector3();
+            if (craft.pilotGroup) {
+                craft.pilotGroup.getWorldPosition(start);
+                craft.pilotGroup.visible = false;
+            } else {
+                start.copy(phys.pos).add(new THREE.Vector3(0, 1, 0));
+            }
+            const pilot = buildPilot();
+            pilot.position.copy(start);
+            scene.add(pilot);
+            const canopy = buildCanopy();
+            canopy.visible = false;
+            pilot.add(canopy);
+            flight.chute = {
+                pilot, canopy,
+                vel: phys.vel.clone().multiplyScalar(0.55).add(new THREE.Vector3(0, 3, 0)),
+                opened: false, walking: false, t: 0, bob: 0, swimming: false
+            };
+            activeKeys.clear();
+            spaceAll = false;
+            powerState.held = false;
+            updateBoosterButtonStates();
+            // all four arrows now steer the pilot
+            $('arrow-pad').classList.remove('hidden');
+            for (const id of ['ab-up', 'ab-down', 'ab-left', 'ab-right']) $(id).style.display = '';
+            flightHintEl.innerHTML = '🪂 <b>GERONIMOOO!</b> Steer with the arrow keys — when you land, walk around with them!';
+            flightHintEl.style.opacity = 1;
+            setTimeout(() => { flightHintEl.style.opacity = 0; }, 6000);
+            Sound.beep(600, 0.15, 'triangle', 0.2);
+            toast('🪂 GERONIMOOOO!', 1600);
+            gtag('event', 'parachute', { game_name: 'Test Flight', body: craft.bodyDef.name });
+        }
+
+        function clearChute() {
+            if (!flight.chute) return;
+            scene.remove(flight.chute.pilot);
+            disposeObject(flight.chute.pilot);
+            flight.chute = null;
+            if (craft && craft.pilotGroup) craft.pilotGroup.visible = true;
+        }
+
+        function updateChute(dt) {
+            const ch = flight.chute;
+            ch.t += dt;
+            if (!ch.opened && ch.t > 0.55) {
+                ch.opened = true;
+                ch.canopy.visible = true;
+                ch.canopy.scale.setScalar(0.15);
+                Sound.pop();
+            }
+            if (ch.canopy.visible && !ch.walking && ch.canopy.scale.x < 1)
+                ch.canopy.scale.setScalar(Math.min(1, ch.canopy.scale.x + dt * 3));
+
+            const ax = (activeArrows.has('ArrowRight') ? 1 : 0) - (activeArrows.has('ArrowLeft') ? 1 : 0);
+            const az = (activeArrows.has('ArrowDown') ? 1 : 0) - (activeArrows.has('ArrowUp') ? 1 : 0);
+
+            if (!ch.walking) {
+                ch.vel.y -= G * dt;
+                if (ch.opened) {
+                    ch.vel.y += (-3.2 - ch.vel.y) * Math.min(1, dt * 2.5);
+                    ch.vel.x += ax * 9 * dt;
+                    ch.vel.z += az * 9 * dt;
+                    ch.vel.x *= Math.exp(-dt * 0.6);
+                    ch.vel.z *= Math.exp(-dt * 0.6);
+                    ch.pilot.rotation.z = Math.sin(ch.t * 2.2) * 0.08 - ax * 0.2;
+                    ch.pilot.rotation.x = az * 0.15;
+                }
+                ch.pilot.position.addScaledVector(ch.vel, dt);
+                if (ch.pilot.position.y <= 0) {
+                    ch.pilot.position.y = 0;
+                    ch.walking = true;
+                    ch.pilot.rotation.x = ch.pilot.rotation.z = 0;
+                    Sound.success();
+                    confetti(40);
+                    toast('🚶 Safe landing! Walk around with the arrow keys!', 2800);
+                }
+            } else {
+                if (ch.canopy.visible) {
+                    ch.canopy.scale.multiplyScalar(Math.max(0, 1 - dt * 3));
+                    if (ch.canopy.scale.x < 0.05) ch.canopy.visible = false;
+                }
+                const inWater = waterAt(ch.pilot.position.x, ch.pilot.position.z);
+                const spd = inWater ? 1.6 : 4.5;
+                if (ax || az) {
+                    ch.pilot.position.x += ax * spd * dt;
+                    ch.pilot.position.z += az * spd * dt;
+                    ch.pilot.rotation.y = Math.atan2(ax, az) + Math.PI;
+                    ch.bob += dt * 11;
+                    ch.pilot.position.y = inWater ? -0.35 : Math.abs(Math.sin(ch.bob)) * 0.13;
+                } else {
+                    ch.pilot.position.y = inWater ? -0.35 : 0;
+                }
+                if (inWater && !ch.swimming) {
+                    ch.swimming = true;
+                    Sound.splash();
+                    toast('🏊 Splash! You can swim too!', 2000);
+                } else if (!inWater) ch.swimming = false;
+            }
+        }
 
         function syncCraftTransform() {
             craft.group.quaternion.copy(phys.quat);
@@ -1933,7 +2672,7 @@
             flightEnv.visible = true;
             editorEnv.visible = false;
             scene.background = new THREE.Color(0x87c8f0);
-            scene.fog = new THREE.Fog(0x9fd3f2, 300, 1700);
+            scene.fog = new THREE.Fog(0xcfeaf7, 350, 2600);
             setShadowBox(16);
             resetFlight();
 
@@ -1941,22 +2680,32 @@
             flightUI.classList.remove('hidden');
             buildBoosterButtons();
             updateArrowPad();
-            const nBoosters = design.parts.filter(p => p.type === 'booster').length;
+            const thrustParts = design.parts.filter(p => p.type === 'booster' || p.type === 'prop');
+            const nThrust = thrustParts.length;
             const steerHint = (craft.aileronCount > 0 || craft.tailCount > 0)
                 ? (craft.tailCount > 0
                     ? ' Steer with the arrow keys — hold ⬇ to pull the nose UP, like a real pilot!'
                     : ' Steer with ⬅➡ once you\'re moving!') : '';
-            flightHintEl.innerHTML = nBoosters === 0
-                ? '😅 No boosters! Go back to the editor and drag some 🚀 on!'
-                : (nBoosters === 1
-                    ? `Hold <b>${design.parts.find(p => p.type === 'booster').key}</b> (key or button) to blast off! 🚀 Then land gently on your wheels.${steerHint}`
+            let hint = nThrust === 0
+                ? '😅 No boosters or propellers! Go back to the editor and drag some 🚀 on!'
+                : (nThrust === 1
+                    ? `Hold <b>${thrustParts[0].key}</b> (key or button) to blast off! 🚀 Then land gently on your wheels.${steerHint}`
                     : `Hold your booster keys to blast off! 🚀 Then land gently on your wheels.${steerHint}`);
+            const extras = [];
+            if (nThrust >= 2) extras.push('<b>SPACE</b> = ALL at once!');
+            if (flight.powerDef) extras.push(`<b>+</b> = ${flight.powerDef.emoji} <b>${flight.powerDef.name}</b>`);
+            extras.push('<b>?</b> = 🪂');
+            hint += `<br><span style="font-size:13px;color:#777">${extras.join(' &nbsp;·&nbsp; ')}`
+                + (craft.bodyDef.power === 'hotdog' ? '<br>psst… SAVE it named “Hot Dog 2.0” (or 3.0, or 4.0…) for SECRET powers! 🤫' : '')
+                + '</span>';
+            flightHintEl.innerHTML = hint;
             flightHintEl.style.opacity = 1;
-            setTimeout(() => { flightHintEl.style.opacity = 0; }, 6000);
-            gtag('event', 'flight_start', { game_name: 'Test Flight', body: craft.bodyDef.name, boosters: nBoosters });
+            setTimeout(() => { flightHintEl.style.opacity = 0; }, 9000);
+            gtag('event', 'flight_start', { game_name: 'Test Flight', body: craft.bodyDef.name, boosters: nThrust });
         }
 
         function resetFlight() {
+            clearChute();
             rebuildCraft();
             for (const d of flight.debris) { scene.remove(d.mesh); disposeObject(d.mesh); }
             flight.debris = [];
@@ -1967,11 +2716,22 @@
             flight.airTime = 0;
             flight.maxAlt = 0;
             flight.landTimer = 0;
+            flight.floating = false;
+            flight.wasFloating = false;
+            flight.powerDef = getPowerDef();
+            powerState.held = false;
+            powerState.cooldown = 0;
+            powerState.antigrav = 0;
+            powerState.slowfall = 0;
+            powerState.eat = null;
+            powerState.regen = 0;
+            spaceAll = false;
             clearTimeout(flight.overlayTimer);
             bigOverlay.classList.add('hidden');
             $('flash').style.opacity = 0;
             activeKeys.clear();
             activeArrows.clear();
+            if (mode === 'flight') updateArrowPad();
             updateBoosterButtonStates();
             updateArrowBtnStates();
 
@@ -1995,6 +2755,9 @@
         function endFlight() {
             mode = 'editor';
             Sound.setThrust(0);
+            clearChute();
+            spaceAll = false;
+            powerState.held = false;
             activeKeys.clear();
             activeArrows.clear();
             if (flightEnv) flightEnv.visible = false;
@@ -2018,9 +2781,19 @@
         // ----- booster buttons / keys -----
         function buildBoosterButtons() {
             boosterBtnsEl.innerHTML = '';
-            const boosters = design.parts.filter(p => p.type === 'booster');
-            boosters.sort((a, b) => KEY_ORDER.indexOf(a.key) - KEY_ORDER.indexOf(b.key));
-            for (const b of boosters) {
+            const thrustParts = design.parts.filter(p => p.type === 'booster' || p.type === 'prop');
+            thrustParts.sort((a, b) => KEY_ORDER.indexOf(a.key) - KEY_ORDER.indexOf(b.key));
+            if (thrustParts.length >= 2) {
+                const all = document.createElement('button');
+                all.className = 'bbtn all-btn';
+                all.textContent = '⎵ ALL!';
+                all.title = 'Fire EVERYTHING at once (spacebar)';
+                all.addEventListener('pointerdown', (e) => { e.preventDefault(); setSpaceAll(true); });
+                for (const evName of ['pointerup', 'pointerleave', 'pointercancel'])
+                    all.addEventListener(evName, () => setSpaceAll(false));
+                boosterBtnsEl.appendChild(all);
+            }
+            for (const b of thrustParts) {
                 const btn = document.createElement('button');
                 btn.className = 'bbtn';
                 btn.textContent = b.key;
@@ -2031,14 +2804,34 @@
                 btn.addEventListener('pointercancel', () => releaseKey(b.key));
                 boosterBtnsEl.appendChild(btn);
             }
+            if (flight.powerDef) {
+                const pb = document.createElement('button');
+                pb.className = 'bbtn power-btn';
+                pb.id = 'power-btn';
+                pb.textContent = '➕';
+                pb.title = `Superpower: ${flight.powerDef.name} (+ key)`;
+                pb.addEventListener('pointerdown', (e) => { e.preventDefault(); powerPress(); });
+                for (const evName of ['pointerup', 'pointerleave', 'pointercancel'])
+                    pb.addEventListener(evName, () => powerRelease());
+                boosterBtnsEl.appendChild(pb);
+            }
+            const cb = document.createElement('button');
+            cb.className = 'bbtn chute-btn';
+            cb.textContent = '🪂';
+            cb.title = 'Bail out with the parachute! (? key)';
+            cb.addEventListener('pointerdown', (e) => { e.preventDefault(); deployParachute(); });
+            boosterBtnsEl.appendChild(cb);
         }
         function updateBoosterButtonStates() {
-            for (const btn of boosterBtnsEl.children)
-                btn.classList.toggle('pressed', activeKeys.has(btn.dataset.key));
-            Sound.setThrust(mode === 'flight' && !flight.broken ? activeKeys.size : 0);
+            for (const btn of boosterBtnsEl.children) {
+                if (btn.dataset.key) btn.classList.toggle('pressed', spaceAll || activeKeys.has(btn.dataset.key));
+                else if (btn.classList.contains('all-btn')) btn.classList.toggle('pressed', spaceAll);
+                else if (btn.id === 'power-btn') btn.classList.toggle('pressed', powerState.held);
+            }
+            Sound.setThrust(mode === 'flight' && !flight.broken && !flight.chute ? countThrust() : 0);
         }
         function pressKey(k) {
-            if (mode !== 'flight' || flight.broken) return;
+            if (mode !== 'flight' || flight.broken || flight.chute) return;
             activeKeys.add(k);
             updateBoosterButtonStates();
         }
@@ -2050,6 +2843,7 @@
         // ----- arrow keys: ailerons (left/right) + elevator (up/down) -----
         const activeArrows = new Set();
         function getControls() {
+            if (flight.chute) return { roll: 0, pitch: 0 };   // the pilot left — arrows steer THEM now
             return {
                 roll: (activeArrows.has('ArrowRight') ? 1 : 0) - (activeArrows.has('ArrowLeft') ? 1 : 0),
                 // airplane-style stick: pull DOWN to bring the nose UP
@@ -2095,7 +2889,21 @@
                 if (!e.repeat && !flight.broken) { activeArrows.add(e.key); updateArrowBtnStates(); }
                 return;
             }
-            if (mode !== 'flight' || e.repeat) return;
+            if (mode !== 'flight') return;
+            if (e.key === ' ') {                                   // SPACEBAR: all boosters at once!
+                e.preventDefault();
+                if (!e.repeat) { Sound.init(); setSpaceAll(true); }
+                return;
+            }
+            if (e.key === '+' || e.key === '=') {                  // + : SUPERPOWER!
+                if (!e.repeat) { Sound.init(); powerPress(); }
+                return;
+            }
+            if (e.key === '?' || e.key === '/') {                  // ? : parachute!
+                if (!e.repeat) { Sound.init(); deployParachute(); }
+                return;
+            }
+            if (e.repeat) return;
             const k = e.key.toUpperCase();
             if (KEY_ORDER.includes(k)) { Sound.init(); pressKey(k); }
         });
@@ -2105,12 +2913,16 @@
                 updateArrowBtnStates();
                 return;
             }
+            if (e.key === ' ') { setSpaceAll(false); return; }
+            if (e.key === '+' || e.key === '=') { powerRelease(); return; }
             const k = e.key.toUpperCase();
             if (KEY_ORDER.includes(k)) releaseKey(k);
         });
         addEventListener('blur', () => {
             activeKeys.clear();
             activeArrows.clear();
+            spaceAll = false;
+            powerState.held = false;
             updateBoosterButtonStates();
             updateArrowBtnStates();
         });
@@ -2120,7 +2932,9 @@
         const tmpQ = new THREE.Quaternion();
 
         function substep(h) {
-            const F = tmpV1.set(0, -G * phys.m, 0);
+            // superpowers can turn gravity down (comfy couch) or OFF (anti-gravity!)
+            const gScale = powerState.antigrav > 0 ? 0 : (powerState.slowfall > 0 ? 0.22 : 1);
+            const F = tmpV1.set(0, -G * phys.m * gScale, 0);
             const T = tmpV2.set(0, 0, 0);
             const fwd = AXIS_FWD.clone().applyQuaternion(phys.quat);
             const up = WORLD_UP.clone().applyQuaternion(phys.quat);
@@ -2151,7 +2965,8 @@
                     }
                 }
                 for (const e of craft.partEntries) {
-                    if (e.data.type === 'booster' && activeKeys.has(e.key)) {
+                    if (e.thrustDirLocal && (spaceAll || activeKeys.has(e.key))) {
+                        // boosters push, propellers pull — the thrust direction already knows which
                         const f = e.thrustDirLocal.clone().applyQuaternion(phys.quat).multiplyScalar(THRUST);
                         F.add(f);
                         const r = e.posLocal.clone().sub(craft.comLocal).applyQuaternion(phys.quat);
@@ -2162,6 +2977,16 @@
                         const r = e.posLocal.clone().sub(craft.comLocal).applyQuaternion(phys.quat);
                         T.add(tmpV3.copy(r).cross(f));
                         F.addScaledVector(wingAero.vHat, -wingAero.Dmag);   // induced + profile drag
+                    }
+                }
+                // held superpowers: mega boosts and superhero hovering
+                if (powerState.held && flight.powerDef) {
+                    const def = flight.powerDef;
+                    if (def.type === 'boost') {
+                        F.addScaledVector(fwd, phys.m * def.a);
+                    } else if (def.type === 'hover') {
+                        F.addScaledVector(WORLD_UP, phys.m * G * 1.5);
+                        F.addScaledVector(fwd, phys.m * 6);
                     }
                 }
                 const ctrl = getControls();
@@ -2193,6 +3018,7 @@
             }
 
             F.addScaledVector(phys.vel, -DRAG_Q * phys.vel.length());
+            if (powerState.slowfall > 0) F.addScaledVector(phys.vel, -0.5 * phys.m);   // comfy air resistance
 
             phys.vel.addScaledVector(F, h / phys.m);
             phys.angVel.addScaledVector(T, h / phys.I);
@@ -2204,11 +3030,12 @@
             const dq = new THREE.Quaternion(w.x * h * 0.5, w.y * h * 0.5, w.z * h * 0.5, 0).multiply(phys.quat);
             phys.quat.set(phys.quat.x + dq.x, phys.quat.y + dq.y, phys.quat.z + dq.z, phys.quat.w + dq.w).normalize();
 
-            resolveContacts();
+            resolveContacts(h);
         }
 
-        function resolveContacts() {
+        function resolveContacts(h) {
             let maxPen = 0, grounded = false, minY = Infinity;
+            let submerged = 0, buoy = 0;
             const fwd = AXIS_FWD.clone().applyQuaternion(phys.quat);
             const fwdG = tmpV3.set(fwd.x, 0, fwd.z);
             if (fwdG.lengthSq() > 0.01) fwdG.normalize(); else fwdG.set(0, 0, -1);
@@ -2218,6 +3045,16 @@
                 const py = phys.pos.y + r.y;
                 minY = Math.min(minY, py);
                 if (py >= 0) continue;
+
+                const px = phys.pos.x + r.x, pz = phys.pos.z + r.z;
+                const water = waterAt(px, pz);
+                if (water && craft.bodyDef.floats) {
+                    // boats (and ducks and bathtubs) FLOAT instead of splashing!
+                    submerged++;
+                    buoy += clamp(-py * 2.5, 0, 1);
+                    continue;
+                }
+
                 grounded = true;
                 maxPen = Math.max(maxPen, -py);
 
@@ -2225,8 +3062,7 @@
                 const vn = vP.y;
 
                 if (!flight.broken && !flight.finished) {
-                    const px = phys.pos.x + r.x, pz = phys.pos.z + r.z;
-                    if (Math.hypot(px - LAKE.x, pz - LAKE.z) < LAKE.r) { triggerCrash(true); }
+                    if (water) { triggerCrash(true); }
                     else if (vn < -(c.wheel ? CRASH_WHEEL_V : CRASH_BODY_V)) { triggerCrash(false); }
                 }
 
@@ -2260,10 +3096,26 @@
                 }
             }
             if (maxPen > 0) phys.pos.y += maxPen * 0.85;
+
+            // buoyancy: bob on the water like a rubber ducky in a tub
+            flight.floating = submerged > 0;
+            if (flight.floating) {
+                const f = clamp(buoy / 2, 0, 1.6);
+                phys.vel.y += h * G * (1.15 + 0.9 * f) * f;
+                phys.vel.y *= Math.exp(-h * 4 * f);
+                phys.vel.x *= Math.exp(-h * 0.9 * f);
+                phys.vel.z *= Math.exp(-h * 0.9 * f);
+                phys.angVel.multiplyScalar(Math.exp(-h * 2.5 * f));
+                const upW = WORLD_UP.clone().applyQuaternion(phys.quat);
+                const axis = new THREE.Vector3().crossVectors(upW, WORLD_UP);
+                phys.angVel.addScaledVector(axis, h * 8 * f);
+                grounded = true;   // floating counts as landing!
+            }
+
             flight.grounded = grounded;
             flight.lowY = minY;
 
-            if (grounded && activeKeys.size === 0 && phys.vel.length() < 0.3 && phys.angVel.length() < 0.4) {
+            if (grounded && countThrust() === 0 && phys.vel.length() < 0.3 && phys.angVel.length() < 0.4) {
                 phys.vel.multiplyScalar(0.9);
                 phys.angVel.multiplyScalar(0.85);
             }
@@ -2273,6 +3125,8 @@
             const sub = 3, h = dt / sub;
             for (let s = 0; s < sub; s++) substep(h);
             syncCraftTransform();
+            checkObstacles();
+            updatePowers(dt);
 
             // control-surface animation
             const ctrl = getControls();
@@ -2287,11 +3141,20 @@
                 }
             }
 
-            // flames + exhaust smoke
+            // flames + exhaust smoke + spinning propellers
             for (const e of craft.partEntries) {
-                if (e.data.type !== 'booster') continue;
+                if (!e.thrustDirLocal) continue;
+                const on = (spaceAll || activeKeys.has(e.key)) && !flight.broken && !flight.chute;
+                if (e.isProp) {
+                    e.group.userData.spinner.rotation.y += dt * (on ? 45 : 1.5);
+                    if (on && Math.random() < 0.25) {
+                        const wp = new THREE.Vector3(0, 0.55, 0);
+                        e.group.localToWorld(wp);
+                        spawnPuff(wp, tmpV1.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)), 0xeeeeee, 0.3, 0.4);
+                    }
+                    continue;
+                }
                 const flame = e.group.userData.flame;
-                const on = activeKeys.has(e.key) && !flight.broken;
                 flame.visible = on;
                 if (on) {
                     const s = 0.85 + Math.random() * 0.5;
@@ -2305,8 +3168,20 @@
                 }
             }
 
+            // splash when you touch down on water
+            if (flight.floating && !flight.wasFloating && Math.abs(phys.vel.y) > 2) {
+                Sound.splash();
+                for (let i = 0; i < 10; i++)
+                    spawnPuff(phys.pos.clone().add(tmpV1.set(rand(-1.5, 1.5), 0.2, rand(-1.5, 1.5))),
+                        new THREE.Vector3(rand(-2, 2), rand(2, 5), rand(-2, 2)), 0x8fd3ff, rand(0.6, 1.2), rand(0.6, 1));
+            }
+            flight.wasFloating = flight.floating;
+
+            // parachute pilot
+            if (flight.chute) updateChute(dt);
+
             // flying / landing detection
-            if (!flight.broken && !flight.finished) {
+            if (!flight.broken && !flight.finished && !flight.chute) {
                 const alt = Math.max(0, flight.lowY);
                 if (alt > 3) {
                     if (flight.airTime === 0) toast('🛫 Liftoff!!', 1500);
@@ -2342,18 +3217,32 @@
             }
         }
 
-        function triggerCrash(splash) {
+        const CRASH_MSGS = {
+            mountain: 'You crashed into a MOUNTAIN! 🏔️',
+            tree: 'You crashed into a tree! 🌳',
+            house: "You crashed into somebody's house! Oops! 🏠",
+            building: 'You crashed into a skyscraper! 🏙️',
+            cactus: 'Ouch ouch ouch!! A cactus?! 🌵',
+            pyramid: 'You crashed into the pyramid! 🐫',
+            snowman: 'You flattened a snowman! ⛄',
+            hangar: 'You crashed into your own hangar! 😅'
+        };
+        function triggerCrash(splash, what) {
             if (flight.broken || flight.finished) return;
             flight.broken = true;
             flight.splash = splash;
             Sound.setThrust(0);
             if (splash) Sound.splash(); else Sound.crash();
             activeKeys.clear();
+            spaceAll = false;
+            powerState.held = false;
             updateBoosterButtonStates();
 
-            $('flash').style.background = splash ? '#4f9edb' : '#ff5544';
-            $('flash').style.opacity = 0.5;
-            setTimeout(() => { $('flash').style.opacity = 0; }, 120);
+            if (!flight.chute) {
+                $('flash').style.background = splash ? '#4f9edb' : '#ff5544';
+                $('flash').style.opacity = 0.5;
+                setTimeout(() => { $('flash').style.opacity = 0; }, 120);
+            }
 
             // parts pop off!
             for (const e of craft.partEntries) {
@@ -2378,15 +3267,17 @@
                 spawnPuff(phys.pos.clone().add(tmpV1.set(rand(-1, 1), rand(-0.5, 1), rand(-1, 1))),
                     new THREE.Vector3(rand(-3, 3), rand(1, 5), rand(-3, 3)), puffColor, rand(0.8, 1.6), rand(0.8, 1.4));
 
-            flight.overlayTimer = setTimeout(() => {
-                $('big-card').classList.remove('gold');
-                bigTitle.textContent = splash ? '💦 SPLASH!' : '💥 CRASH!';
-                bigSub.textContent = splash
-                    ? 'You landed in the lake! Aircraft are not fish.'
-                    : 'Back to the drawing board!';
-                bigOverlay.classList.remove('hidden');
-            }, 1400);
-            gtag('event', splash ? 'flight_splash' : 'flight_crash', { game_name: 'Test Flight', body: craft.bodyDef.name });
+            if (!flight.chute) {
+                flight.overlayTimer = setTimeout(() => {
+                    $('big-card').classList.remove('gold');
+                    bigTitle.textContent = splash ? '💦 SPLASH!' : '💥 CRASH!';
+                    bigSub.textContent = splash
+                        ? 'You landed in the water! Aircraft are not fish.'
+                        : (CRASH_MSGS[what] || 'Back to the drawing board!');
+                    bigOverlay.classList.remove('hidden');
+                }, 1400);
+            }
+            gtag('event', splash ? 'flight_splash' : 'flight_crash', { game_name: 'Test Flight', body: craft.bodyDef.name, hit: what || 'ground' });
         }
 
         function triggerSuccess() {
@@ -2402,6 +3293,11 @@
                 confetti(130);
                 setTimeout(() => confetti(130), 900);
                 fireworks();
+            } else if (flight.floating) {
+                Sound.success();
+                bigTitle.textContent = '🌊 SPLASH LANDING!';
+                bigSub.innerHTML = `You flew <b>${Math.round(flight.maxAlt)} m</b> high and landed right on the water like a real sea-plane! ⛵`;
+                confetti(90);
             } else {
                 Sound.success();
                 bigTitle.textContent = '🎉 GREAT LANDING!';
@@ -2444,6 +3340,18 @@
 
         // ----- flight camera + HUD -----
         function updateFlightCamera(dt) {
+            if (flight.chute) {
+                const ch = flight.chute;
+                const p = ch.pilot.position;
+                const desired = tmpV1.set(p.x, p.y + (ch.walking ? 2.4 : 3.2), p.z + (ch.walking ? 6.5 : 8));
+                flight.camPos.lerp(desired, 1 - Math.exp(-3 * dt));
+                flight.camPos.y = Math.max(flight.camPos.y, 1.0);
+                camera.position.copy(flight.camPos);
+                camera.lookAt(p.x, p.y + 1, p.z);
+                sunLight.position.set(p.x + 12, p.y + 26, p.z + 16);
+                sunLight.target.position.copy(p);
+                return;
+            }
             const fwd = AXIS_FWD.clone().applyQuaternion(phys.quat);
             const head = tmpV1.set(fwd.x, 0, fwd.z);
             if (head.lengthSq() > 0.04) flight.lastHead.copy(head.normalize());
@@ -2464,6 +3372,12 @@
             hudTimer -= dt;
             if (hudTimer > 0) return;
             hudTimer = 0.1;
+            if (flight.chute) {
+                hudEl.innerHTML = flight.chute.walking
+                    ? '🚶 exploring the world!'
+                    : `🪂 ⬆ ${Math.max(0, Math.round(flight.chute.pilot.position.y))} m`;
+                return;
+            }
             const alt = Math.max(0, Math.round(flight.lowY));
             const spd = Math.round(phys.vel.length());
             hudEl.innerHTML = `⬆ ${alt} m &nbsp;&nbsp; 💨 ${spd} m/s`;
@@ -2488,9 +3402,16 @@
                 stepPhysics(dt);
                 updateFlightCamera(dt);
                 updateHUD(dt);
+                if (skyDome) skyDome.position.copy(camera.position);
                 for (const c of clouds) {
                     c.position.x += c.userData.v * dt;
                     if (c.position.x > 1300) c.position.x = -1300;
+                }
+                for (const b of balloons) {
+                    b.userData.bob += dt;
+                    b.position.x += b.userData.v * dt;
+                    b.position.y += Math.sin(b.userData.bob * 0.6) * dt * 1.5;
+                    if (b.position.x > 1200) b.position.x = -1200;
                 }
             }
             updateSmoke(dt);
@@ -2498,7 +3419,11 @@
         }
 
         // hidden debug handle (like the other games' secret dev affordances)
-        window.__tf = { get phys() { return phys; }, get flight() { return flight; }, get design() { return design; } };
+        window.__tf = {
+            get phys() { return phys; }, get flight() { return flight; }, get design() { return design; },
+            get powerState() { return powerState; }, get colliders() { return colliders; },
+            step(dt = 1 / 60, n = 1) { if (mode === 'flight') for (let i = 0; i < n; i++) stepPhysics(dt); }
+        };
 
         // ================= BOOT =================
         loadWorkingDesign();
