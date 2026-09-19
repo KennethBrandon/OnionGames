@@ -1263,6 +1263,135 @@
                     }
                     return g;
                 }
+            },
+            {
+                name: 'Giant Onion', emoji: '🧅', mass: 3,
+                power: { name: 'STINK BOOST', emoji: '🧅', type: 'boost', a: 38, color: 0x7ed957, snd: 'zap' },
+                build() {
+                    const g = new THREE.Group();
+                    sph(g, 0.85, 0xc9a0dc, 0, 0.82, 0, 1, 0.95, 1);               // the mighty onion
+                    sph(g, 0.72, 0xdbc0ea, 0, 0.82, 0, 1.06, 0.8, 0.55);          // layer sheen
+                    const root = cyl(g, 0.12, 0.2, 0.16, 0xe8dcc8, 0, 0.06, 0, 10);
+                    root.castShadow = false;
+                    for (const a of [-0.35, 0, 0.35]) {                           // sprout
+                        const s = cyl(g, 0.035, 0.05, 0.5, 0x5faa4a, a * 0.3, 1.85, 0, 6);
+                        s.rotation.z = a;
+                    }
+                    return g;
+                }
+            },
+            {
+                name: 'Ice Cream', emoji: '🍦', mass: 2.5,
+                power: { name: 'SPRINKLE BLAST', emoji: '🍦', type: 'jump', v: 15, color: 'confetti', snd: 'boing' },
+                build() {
+                    const g = new THREE.Group();
+                    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.5, 12), mat(0xd9a05b));
+                    cone.rotation.x = -Math.PI / 2;                               // cone lying down, tip at the back
+                    cone.position.set(0, 0.5, 0.55);
+                    cone.castShadow = true;
+                    g.add(cone);
+                    sph(g, 0.52, 0xf0909a, 0, 0.55, -0.35);                       // strawberry scoop
+                    sph(g, 0.42, 0xfff4e8, 0, 0.72, -0.95);                       // vanilla scoop
+                    sph(g, 0.12, 0xd0202a, 0, 1.08, -1.1);                        // cherry!
+                    return g;
+                }
+            },
+            {
+                name: 'Toaster', emoji: '🍞', mass: 4,
+                power: { name: 'TOAST POP', emoji: '🍞', type: 'jump', v: 16, color: 0xe8b774, snd: 'boing' },
+                build() {
+                    const g = new THREE.Group();
+                    box(g, 1.15, 0.75, 0.75, 0xd8d8e0, 0, 0.48, 0);               // shiny body
+                    box(g, 0.4, 0.04, 0.1, 0x2b2b2b, -0.25, 0.87, 0);             // slots
+                    box(g, 0.4, 0.04, 0.1, 0x2b2b2b, 0.25, 0.87, 0);
+                    const t1 = box(g, 0.36, 0.42, 0.07, 0xe8b774, -0.25, 1.05, 0);   // toast!
+                    t1.rotation.z = 0.08;
+                    const t2 = box(g, 0.36, 0.36, 0.07, 0xd9a05b, 0.25, 1.02, 0);
+                    t2.rotation.z = -0.1;
+                    box(g, 0.06, 0.14, 0.05, 0xd03a2c, -0.62, 0.62, -0.2);        // lever
+                    for (const [x, z] of [[-0.45, -0.28], [0.45, -0.28], [-0.45, 0.28], [0.45, 0.28]])
+                        cyl(g, 0.06, 0.06, 0.12, 0x555a62, x, 0.06, z, 8);
+                    return g;
+                }
+            },
+            {
+                name: 'Turbo Snail', emoji: '🐌', mass: 2.5,
+                power: { name: 'TURBO SNAIL', emoji: '🐌', type: 'boost', a: 44, color: 0xa8e86a, snd: 'zap' },
+                build() {
+                    const g = new THREE.Group();
+                    sph(g, 0.4, 0xa8c860, 0, 0.32, -0.3, 1, 0.8, 2.2);            // slimy body
+                    sph(g, 0.3, 0xa8c860, 0, 0.5, -1.05, 1, 1, 1);                // head
+                    for (const sx of [-0.12, 0.12]) {                             // eye stalks
+                        cyl(g, 0.03, 0.03, 0.4, 0xa8c860, sx, 0.9, -1.15, 6);
+                        sph(g, 0.07, 0x2b2b2b, sx, 1.12, -1.15);
+                    }
+                    sph(g, 0.58, 0xc0824a, 0, 0.75, 0.35);                        // shell
+                    sph(g, 0.34, 0x8d5524, 0.0, 0.85, 0.5);                       // shell swirl
+                    return g;
+                }
+            },
+            {
+                name: 'Giant Shoe', emoji: '👟', mass: 3.5,
+                power: { name: 'MEGA STOMP', emoji: '👟', type: 'jump', v: 17, color: 0xff8c8c, snd: 'boing' },
+                build() {
+                    const g = new THREE.Group();
+                    box(g, 0.9, 0.2, 2.2, 0xf4f4f0, 0, 0.12, 0);                  // sole
+                    box(g, 0.85, 0.5, 1.35, 0xd0202a, 0, 0.45, 0.3);              // body
+                    sph(g, 0.42, 0xf4f4f0, 0, 0.38, -0.75, 1.05, 0.7, 1.1);       // toe cap
+                    box(g, 0.86, 0.42, 0.1, 0xd0202a, 0, 0.85, 0.95);             // heel tab
+                    for (let i = 0; i < 3; i++)
+                        box(g, 0.5, 0.05, 0.08, 0xf4f4f0, 0, 0.62 + i * 0.09, -0.15 + i * 0.22).castShadow = false;
+                    return g;
+                }
+            },
+            {
+                name: 'Watermelon', emoji: '🍉', mass: 5, floats: true,
+                power: { name: 'SEED SPITTER', emoji: '🍉', type: 'boost', a: 36, color: 0x2b2b2b, snd: 'quack' },
+                build() {
+                    const g = new THREE.Group();
+                    sph(g, 0.8, 0x2f7032, 0, 0.62, 0, 1.05, 0.78, 1.45);          // melon boat
+                    sph(g, 0.74, 0xf0909a, 0, 0.72, 0, 0.95, 0.55, 1.35);         // juicy pink top
+                    for (const [sx, sz] of [[-0.3, -0.5], [0.25, -0.2], [-0.15, 0.3], [0.3, 0.6], [0, -0.85]])
+                        sph(g, 0.05, 0x2b2b2b, sx, 1.02, sz);                     // seeds
+                    return g;
+                }
+            },
+            {
+                name: 'Skateboard', emoji: '🛹', mass: 2,
+                wheelContacts: [[-0.2, 0, -0.6], [0.2, 0, -0.6], [-0.2, 0, 0.6], [0.2, 0, 0.6]],
+                bottomClearance: 0.1,
+                power: { name: 'KICKFLIP', emoji: '🛹', type: 'jump', v: 15, color: 0x8fd3ff, snd: 'boing' },
+                build() {
+                    const g = new THREE.Group();
+                    box(g, 0.55, 0.06, 1.7, 0x8fd3ff, 0, 0.26, 0);                // deck
+                    const nose = box(g, 0.55, 0.06, 0.32, 0x8fd3ff, 0, 0.32, -0.95);
+                    nose.rotation.x = -0.4;
+                    const tail = box(g, 0.55, 0.06, 0.32, 0x8fd3ff, 0, 0.32, 0.95);
+                    tail.rotation.x = 0.4;
+                    box(g, 0.4, 0.08, 0.12, 0xb8b8c0, 0, 0.18, -0.6);             // trucks
+                    box(g, 0.4, 0.08, 0.12, 0xb8b8c0, 0, 0.18, 0.6);
+                    for (const [x, z] of [[-0.2, -0.6], [0.2, -0.6], [-0.2, 0.6], [0.2, 0.6]]) {
+                        const w = cyl(g, 0.09, 0.09, 0.08, 0xffe14d, x, 0.09, z, 10);
+                        w.rotation.z = Math.PI / 2;
+                    }
+                    return g;
+                }
+            },
+            {
+                name: 'Cloud', emoji: '☁️', mass: 1.5,
+                power: { name: 'THUNDER BOLT', emoji: '⚡', type: 'boost', a: 40, color: 0xffe14d, snd: 'zap' },
+                build() {
+                    const g = new THREE.Group();
+                    sph(g, 0.55, 0xffffff, 0, 0.55, 0);
+                    sph(g, 0.42, 0xffffff, -0.55, 0.45, 0.15);
+                    sph(g, 0.45, 0xffffff, 0.5, 0.5, -0.1);
+                    sph(g, 0.38, 0xffffff, 0.1, 0.75, 0.45);
+                    sph(g, 0.4, 0xffffff, -0.15, 0.7, -0.45);
+                    const bolt = box(g, 0.14, 0.5, 0.05, 0xffe14d, 0.1, -0.1, 0); // little lightning bolt
+                    bolt.rotation.z = 0.3;
+                    bolt.castShadow = false;
+                    return g;
+                }
             }
         ];
 
@@ -1496,14 +1625,6 @@
             const size = bbox.getSize(new THREE.Vector3());
             const center = bbox.getCenter(new THREE.Vector3());
 
-            // there has to be a human somewhere on the body!
-            let pilotGroup = null;
-            if (!bodyDef.isHuman) {
-                pilotGroup = buildPilot();
-                pilotGroup.position.set(center.x, bbox.max.y - 0.02, center.z);
-                bodyGroup.add(pilotGroup);
-            }
-
             // invisible helper for wheel/wing drops
             const bboxMesh = new THREE.Mesh(
                 new THREE.BoxGeometry(size.x, size.y, size.z),
@@ -1560,7 +1681,7 @@
             const fs = full.getSize(new THREE.Vector3());
             const inertia = Math.max(0.6, m * (fs.x * fs.x + fs.y * fs.y + fs.z * fs.z) / 9);
 
-            return { group, bodyGroup, bodyMeshes, bboxMesh, wingMeshes, blockMeshes, pilotGroup, bbox, size, center, partEntries, wingCount, aileronCount, tailCount, wheels, guns, mass: m, comLocal: com, inertia, bodyDef };
+            return { group, bodyGroup, bodyMeshes, bboxMesh, wingMeshes, blockMeshes, bbox, size, center, partEntries, wingCount, aileronCount, tailCount, wheels, guns, mass: m, comLocal: com, inertia, bodyDef };
         }
 
         // contact points in craft-local space
