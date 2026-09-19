@@ -526,7 +526,7 @@
 
         <div id="editor-hint" class="sketch">
             1️⃣ Tap <b>Bodies</b> to pick a body &nbsp; 2️⃣ Drag on 🚀 🌀 🛞 🧱 and wings &nbsp; 3️⃣ Press <b>Start!</b><br>
-            <span style="font-size:13px;color:#777">(Tap a glued part to take it off. Drag empty space to spin the view. Every body has a ➕ SUPERPOWER in flight!)</span>
+            <span style="font-size:13px;color:#777">(Tap a glued part to take it off. DRAG a glued part to move it! Drag empty space to spin the view. Every body has a ➕ SUPERPOWER in flight!)</span>
         </div>
 
         <div id="tray">
@@ -2323,7 +2323,28 @@
 
         function endTrayDrag() {
             if (!drag) return;
-            if (drag.cand) {
+            if (drag.move) {
+                // dropping a part we picked up off the craft
+                const part = drag.move.part;
+                if (drag.cand) {
+                    const delta = [drag.cand.pos[0] - part.pos[0], drag.cand.pos[1] - part.pos[1], drag.cand.pos[2] - part.pos[2]];
+                    part.pos = drag.cand.pos;
+                    part.normal = drag.cand.normal;
+                    if (drag.cand.parent && drag.cand.parent !== part.id) part.parent = drag.cand.parent;
+                    else delete part.parent;
+                    for (const ch of drag.move.children)   // everything glued on it rides along
+                        ch.pos = [ch.pos[0] + delta[0], ch.pos[1] + delta[1], ch.pos[2] + delta[2]];
+                    design.parts.push(part);
+                    rebuildCraft();
+                    Sound.pop();
+                    toast('👍 Moved!', 1100);
+                } else {
+                    design.parts.push(part);   // missed the body — put it back where it was
+                    rebuildCraft();
+                    Sound.unpop();
+                    toast('Put it back! (drop it ON the body to move it)', 1600);
+                }
+            } else if (drag.cand) {
                 const newPart = { id: genId(), type: drag.type, pos: drag.cand.pos, normal: drag.cand.normal, key: drag.key };
                 if (drag.type === 'block') newPart.c = drag.c;
                 if (drag.cand.parent) newPart.parent = drag.cand.parent;
@@ -2336,6 +2357,34 @@
             scene.remove(drag.ghost);
             disposeObject(drag.ghost);
             drag = null;
+        }
+
+        // Grab a glued part and slide it somewhere new (a plain tap still removes it).
+        function beginMoveDrag(index) {
+            const part = design.parts[index];
+            if (!part) return;
+            const childIds = new Set(part.id ? [part.id] : []);
+            let grew = true;
+            while (grew) {
+                grew = false;
+                for (const p of design.parts)
+                    if (p.parent && childIds.has(p.parent) && p.id && !childIds.has(p.id)) { childIds.add(p.id); grew = true; }
+            }
+            childIds.delete(part.id);
+            const children = design.parts.filter(p => p.id && childIds.has(p.id));
+            design.parts = design.parts.filter(p => p !== part);   // lift it off while dragging
+            rebuildCraft();
+            const ghost = buildPart(part);
+            ghost.traverse((o) => {
+                if (o.material) {
+                    o.material = o.material.clone();
+                    o.material.transparent = true;
+                    o.material.opacity = Math.min(0.55, o.material.opacity || 1);
+                }
+                o.castShadow = false;
+            });
+            scene.add(ghost);
+            drag = { type: part.type, ghost, cand: null, key: part.key, c: part.c || 0, move: { part, children } };
         }
 
         for (const tile of document.querySelectorAll('.tile[data-type]')) {
@@ -2390,10 +2439,28 @@
                     if (orbitState) orbitState.moved = true;
                     return;
                 }
+                if (drag && drag.move) {
+                    // dragging a glued part around the craft
+                    updateTrayDrag(ev.clientX, ev.clientY);
+                    prev.x = ev.clientX;
+                    prev.y = ev.clientY;
+                    return;
+                }
                 if (orbitState) {
                     const dx = ev.clientX - prev.x, dy = ev.clientY - prev.y;
-                    if (Math.abs(ev.clientX - orbitState.sx) + Math.abs(ev.clientY - orbitState.sy) > 7) orbitState.moved = true;
-                    if (orbitState.moved) {
+                    if (!orbitState.moved && Math.abs(ev.clientX - orbitState.sx) + Math.abs(ev.clientY - orbitState.sy) > 7) {
+                        orbitState.moved = true;
+                        if (orbitState.removeIndex !== null) {
+                            // started dragging ON a part → pick it up instead of spinning the view
+                            beginMoveDrag(orbitState.removeIndex);
+                            orbitState = null;
+                            updateTrayDrag(ev.clientX, ev.clientY);
+                            prev.x = ev.clientX;
+                            prev.y = ev.clientY;
+                            return;
+                        }
+                    }
+                    if (orbitState && orbitState.moved) {
                         orbit.theta -= dx * 0.006;
                         orbit.phi = clamp(orbit.phi - dy * 0.005, 0.3, 1.5);
                         updateEditorCamera();
@@ -2405,6 +2472,11 @@
         });
         function pointerEnd(ev) {
             pointers.delete(ev.pointerId);
+            if (mode === 'editor' && drag && drag.move && pointers.size === 0) {
+                endTrayDrag();
+                orbitState = null;
+                return;
+            }
             if (mode === 'editor' && orbitState && pointers.size === 0) {
                 if (!orbitState.moved && orbitState.removeIndex !== null) {
                     const removed = design.parts[orbitState.removeIndex];
@@ -4012,6 +4084,7 @@
             get phys() { return phys; }, get flight() { return flight; }, get design() { return design; },
             get powerState() { return powerState; }, get colliders() { return colliders; },
             get battle() { return battle; }, get bullets() { return bullets; }, get balloons() { return balloons; },
+            get camera() { return camera; },
             step(dt = 1 / 60, n = 1) { if (mode === 'flight') for (let i = 0; i < n; i++) stepPhysics(dt); }
         };
 
