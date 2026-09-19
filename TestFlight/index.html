@@ -3217,7 +3217,7 @@
             const extras = [];
             if (nThrust >= 2) extras.push('<b>SPACE</b> = ALL at once!');
             if (flight.powerDef) extras.push(`<b>+</b> = ${flight.powerDef.emoji} <b>${flight.powerDef.name}</b>`);
-            if (craft.guns.length) extras.push('<b>ENTER</b> = 🔫 FIRE!');
+            if (craft.guns.length) extras.push('<b>−</b> = 🔫 FIRE!');
             extras.push('<b>?</b> = 🪂');
             hint += `<br><span style="font-size:13px;color:#777">${extras.join(' &nbsp;·&nbsp; ')}`
                 + (craft.bodyDef.power === 'hotdog' ? '<br>psst… SAVE it named “Hot Dog 2.0” (or 3.0, or 4.0…) for SECRET powers! 🤫' : '')
@@ -3349,7 +3349,7 @@
                 const fb = document.createElement('button');
                 fb.className = 'bbtn fire-btn';
                 fb.textContent = '🔫';
-                fb.title = 'FIRE! (Enter key)';
+                fb.title = 'FIRE! (- key, or Enter)';
                 fb.addEventListener('pointerdown', (e) => { e.preventDefault(); gunHeld = true; if (gunCooldown <= 0) fireGuns(); });
                 for (const evName of ['pointerup', 'pointerleave', 'pointercancel'])
                     fb.addEventListener(evName, () => { gunHeld = false; });
@@ -3456,7 +3456,7 @@
                 if (!e.repeat) { Sound.init(); deployParachute(); }
                 return;
             }
-            if (e.key === 'Enter') {                               // ENTER: FIRE THE BLASTERS!
+            if (e.key === 'Enter' || e.key === '-' || e.key === '_') {   // MINUS (or Enter): FIRE THE BLASTERS!
                 if (!e.repeat) { Sound.init(); gunHeld = true; if (gunCooldown <= 0) fireGuns(); }
                 return;
             }
@@ -3472,7 +3472,7 @@
             }
             if (e.key === ' ') { setSpaceAll(false); return; }
             if (e.key === '+' || e.key === '=') { powerRelease(); return; }
-            if (e.key === 'Enter') { gunHeld = false; return; }
+            if (e.key === 'Enter' || e.key === '-' || e.key === '_') { gunHeld = false; return; }
             const k = e.key.toUpperCase();
             if (KEY_ORDER.includes(k)) releaseKey(k);
         });
