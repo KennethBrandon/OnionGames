@@ -255,7 +255,42 @@
             background: #dff1ff;
             font-size: 22px;
         }
+        .bbtn.fire-btn {
+            background: #ffd6d0;
+            font-size: 22px;
+        }
         .bpower { font-size: 11px; color: #b8860b; font-weight: bold; }
+
+        /* ---------- flight mode picker ---------- */
+        #mode-dialog {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(30, 30, 30, 0.25);
+            z-index: 58;
+        }
+        #mode-card { padding: 22px 30px 26px 30px; text-align: center; max-width: 88vw; }
+        #mode-card h2 { margin: 0 0 16px 0; font-size: 26px; }
+        #mode-card .mode-btn {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 22px;
+            font-weight: bold;
+            padding: 14px 26px;
+            margin: 10px 0;
+        }
+        #mode-card .mode-btn span {
+            display: block;
+            font-size: 13px;
+            font-weight: normal;
+            color: #777;
+            margin-top: 3px;
+        }
+        #mode-free { background: #d1f7c4; }
+        #mode-battle { background: #ffd6d0; }
 
         /* ---------- arrow pad (ailerons + elevator) ---------- */
         #arrow-pad {
@@ -526,6 +561,11 @@
                     <span class="label">Blocks</span>
                     <span class="sub">stack & build!</span>
                 </div>
+                <div id="tile-gun" class="tile sketch sketch-b" data-type="gun">
+                    <span class="icon">🔫</span>
+                    <span class="label">Blasters</span>
+                    <span class="sub">pew pew pew!</span>
+                </div>
                 <div id="tile-wingL" class="tile sketch sketch-b" data-type="wingL">
                     <svg width="52" height="26" viewBox="0 0 52 26">
                         <path d="M50 4 L14 8 L2 20 L48 22 Z" fill="#eee" stroke="#2b2b2b" stroke-width="2.5" stroke-linejoin="round" />
@@ -618,6 +658,15 @@
         </div>
     </div>
 
+    <!-- ============ FLIGHT MODE PICKER ============ -->
+    <div id="mode-dialog" class="hidden">
+        <div id="mode-card" class="sketch">
+            <h2>How do you want to fly?</h2>
+            <button id="mode-free" class="sketch mode-btn">🛫 Free Flight<br><span>explore the HUGE world — find all 5 airstrips!</span></button>
+            <button id="mode-battle" class="sketch sketch-b mode-btn">🤖 ROBOT BATTLE<br><span>shoot down 3 robot planes before they get you — bring 🔫 blasters!</span></button>
+        </div>
+    </div>
+
     <!-- ============ SAVE DIALOG ============ -->
     <div id="save-dialog" class="hidden">
         <div id="save-card" class="sketch">
@@ -651,16 +700,30 @@
         const DRAG_Q = 0.02;        // parasitic drag (low, so diving trades altitude for real speed)
         const CRASH_BODY_V = 6.0;   // body hits ground faster than this = crash
         const CRASH_WHEEL_V = 10.0; // wheels are tougher
-        const PART_MASS = { booster: 0.25, wheel: 0.35, wingL: 0.5, wingR: 0.5, aileron: 0.3, tail: 0.4, prop: 0.25, block: 0.2 };
+        const PART_MASS = { booster: 0.25, wheel: 0.35, wingL: 0.5, wingR: 0.5, aileron: 0.3, tail: 0.4, prop: 0.25, block: 0.2, gun: 0.3 };
         // water you can splash into (or float on, if your body floats!)
         const WATERS = [
             { x: 260, z: -320, r: 68 },        // the classic lake
             { x: -260, z: 210, r: 60 },        // second lake
-            { x: -2400, z: -150, r: 1250 }     // the OCEAN, way out west
+            { x: -2400, z: -150, r: 1250 },    // the OCEAN, way out west
+            { x: 1400, z: -600, r: 95 },
+            { x: -900, z: 950, r: 80 },
+            { x: 2300, z: 900, r: 120 },
+            { x: 3800, z: -2200, r: 160 }
         ];
-        const DESERT = { x: 780, z: 620, r: 270 };
-        const SNOW = { x: -840, z: -700, r: 250 };
-        const CITY = { x: 0, z: -850, r: 160 };
+        const DESERTS = [{ x: 780, z: 620, r: 270 }, { x: 3400, z: 1700, r: 420 }];
+        const SNOWS = [{ x: -840, z: -700, r: 250 }, { x: -2700, z: -2900, r: 450 }];
+        const CITIES = [{ x: 0, z: -850, r: 160 }, { x: 2600, z: -1900, r: 200 }, { x: -2100, z: 2400, r: 180 }];
+        const VOLCANO = { x: 1900, z: -2700, r: 260, h: 340 };
+        const ISLAND = { x: -2300, z: 700, r: 110 };   // out in the ocean!
+        // airstrips — land on ANY of them for the big celebration
+        const RUNWAYS = [
+            { x: 0, z: 0, name: 'Home Airstrip' },
+            { x: 780, z: 1060, name: 'Desert Airstrip' },
+            { x: -840, z: -1120, name: 'Snow Airstrip' },
+            { x: -2300, z: 700, name: 'Island Airstrip' },
+            { x: 2600, z: -1480, name: 'City Airport' }
+        ];
         function waterAt(x, z) {
             for (const w of WATERS) {
                 const dx = x - w.x, dz = z - w.z;
@@ -688,7 +751,7 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf7f5ee);
 
-        const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.3, 6500);
+        const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.3, 16000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(innerWidth, innerHeight);
         renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -1026,6 +1089,122 @@
                     cyl(g, 0.63, 0.63, 0.03, 0x1c1c22, 0, 1.0, 0, 24);            // top
                     return g;
                 }
+            },
+            {
+                name: 'Banana', emoji: '🍌', mass: 2,
+                power: { name: 'PEEL OUT', emoji: '🍌', type: 'boost', a: 34, color: 0xffe14d, snd: 'zap' },
+                build() {
+                    const g = new THREE.Group();
+                    for (let i = 0; i < 6; i++) {                                 // curved segments
+                        const t = i / 5 - 0.5;
+                        sph(g, 0.3, 0xffd21f, 0, 0.42 + 1.3 * t * t, t * 2.3, 1, 0.95, 1.3);
+                    }
+                    sph(g, 0.09, 0x6b4a2b, 0, 0.78, -1.32);                       // stem tips
+                    sph(g, 0.09, 0x6b4a2b, 0, 0.78, 1.32);
+                    return g;
+                }
+            },
+            {
+                name: 'Shopping Cart', emoji: '🛒', mass: 3,
+                wheelContacts: [[-0.4, 0, -0.55], [0.4, 0, -0.55], [-0.4, 0, 0.55], [0.4, 0, 0.55]],
+                bottomClearance: 0.14,
+                power: { name: 'TURBO CART', emoji: '🛒', type: 'boost', a: 36, color: 0x8fd3ff, snd: 'zap' },
+                build() {
+                    const g = new THREE.Group();
+                    const m0 = 0xb8c4cc;
+                    box(g, 0.9, 0.06, 1.3, m0, 0, 0.42, 0);                       // basket floor
+                    box(g, 0.06, 0.5, 1.3, m0, -0.47, 0.68, 0);                   // sides
+                    box(g, 0.06, 0.5, 1.3, m0, 0.47, 0.68, 0);
+                    box(g, 0.95, 0.5, 0.06, m0, 0, 0.68, -0.64);
+                    box(g, 0.95, 0.5, 0.06, m0, 0, 0.68, 0.64);
+                    const bar = cyl(g, 0.045, 0.045, 0.95, 0xd03a2c, 0, 1.12, 0.85, 8);
+                    bar.rotation.z = Math.PI / 2;                                 // red handle
+                    for (const sx of [-0.44, 0.44]) {
+                        const post = cyl(g, 0.035, 0.035, 0.5, m0, sx, 0.95, 0.76, 6);
+                        post.rotation.x = 0.45;
+                    }
+                    for (const [x, z] of [[-0.4, -0.55], [0.4, -0.55], [-0.4, 0.55], [0.4, 0.55]]) {
+                        const w = cyl(g, 0.1, 0.1, 0.08, 0x222222, x, 0.12, z, 10);
+                        w.rotation.z = Math.PI / 2;
+                    }
+                    return g;
+                }
+            },
+            {
+                name: 'Bed', emoji: '🛏️', mass: 5,
+                power: { name: 'DREAM FLOAT', emoji: '💤', type: 'slowfall', color: 0xc4d8f0, snd: 'chord' },
+                build() {
+                    const g = new THREE.Group();
+                    box(g, 1.2, 0.22, 2.3, 0x8d5524, 0, 0.36, 0);                 // frame
+                    box(g, 1.1, 0.2, 2.2, 0xf4f4f0, 0, 0.56, 0);                  // mattress
+                    box(g, 1.12, 0.12, 1.25, 0x6a9bd8, 0, 0.68, 0.45);            // blanket
+                    box(g, 0.72, 0.16, 0.45, 0xfffefb, 0, 0.72, -0.78);           // pillow
+                    box(g, 1.2, 0.6, 0.08, 0x8d5524, 0, 0.62, -1.16);             // headboard
+                    for (const [x, z] of [[-0.52, -1.05], [0.52, -1.05], [-0.52, 1.05], [0.52, 1.05]])
+                        box(g, 0.1, 0.26, 0.1, 0x6b4a2b, x, 0.13, z);
+                    return g;
+                }
+            },
+            {
+                name: 'UFO', emoji: '🛸', mass: 4,
+                power: { name: 'TRACTOR HOVER', emoji: '🛸', type: 'hover', color: 0x7ef0d0, snd: 'zap' },
+                build() {
+                    const g = new THREE.Group();
+                    sph(g, 0.9, 0x9aa4b0, 0, 0.42, 0, 1.35, 0.3, 1.35);           // saucer
+                    sph(g, 0.4, 0x9fe8ff, 0, 0.6, 0, 1, 0.8, 1);                  // glass dome
+                    for (let i = 0; i < 6; i++) {                                 // rim lights
+                        const a = (i / 6) * Math.PI * 2;
+                        sph(g, 0.09, [0xff5544, 0xffe14d, 0x7ed957][i % 3], Math.cos(a) * 1.05, 0.42, Math.sin(a) * 1.05);
+                    }
+                    for (const a of [0.5, 2.6, 4.7]) {                            // stubby legs
+                        cyl(g, 0.04, 0.04, 0.4, 0x555a62, Math.cos(a) * 0.6, 0.2, Math.sin(a) * 0.6, 6);
+                    }
+                    return g;
+                }
+            },
+            {
+                name: 'Pencil', emoji: '✏️', mass: 2,
+                power: { name: 'ROCKET WRITE', emoji: '✏️', type: 'boost', a: 40, color: 0xffb347, snd: 'zap' },
+                build() {
+                    const g = new THREE.Group();
+                    const body = cyl(g, 0.22, 0.22, 2.0, 0xf2c11e, 0, 0.34, 0, 6);
+                    body.rotation.x = Math.PI / 2;                                // lying flat, forward -Z
+                    const wood = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.45, 6), mat(0xe8c890));
+                    wood.rotation.x = -Math.PI / 2;
+                    wood.position.set(0, 0.34, -1.22);
+                    wood.castShadow = true;
+                    g.add(wood);
+                    const lead = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.16, 6), mat(0x2b2b2b));
+                    lead.rotation.x = -Math.PI / 2;
+                    lead.position.set(0, 0.34, -1.42);
+                    g.add(lead);
+                    const band = cyl(g, 0.23, 0.23, 0.12, 0xb8b8c0, 0, 0.34, 1.02, 8);
+                    band.rotation.x = Math.PI / 2;                                // metal band
+                    const eraser = cyl(g, 0.21, 0.21, 0.22, 0xf0909a, 0, 0.34, 1.16, 8);
+                    eraser.rotation.x = Math.PI / 2;
+                    return g;
+                }
+            },
+            {
+                name: 'Pizza Slice', emoji: '🍕', mass: 2.5,
+                power: { name: 'CHEESE JUMP', emoji: '🧀', type: 'jump', v: 14, color: 0xffe14d, snd: 'boing' },
+                build() {
+                    const g = new THREE.Group();
+                    const s = new THREE.Shape();                                  // triangle, tip forward
+                    s.moveTo(0, 1.35); s.lineTo(-0.82, -0.8); s.lineTo(0.82, -0.8); s.closePath();
+                    const slice = new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth: 0.14, bevelEnabled: false }), mat(0xf2c94c));
+                    slice.rotation.x = -Math.PI / 2;                              // shape +Y becomes forward (-Z)
+                    slice.position.y = 0.3;
+                    slice.castShadow = true;
+                    g.add(slice);
+                    const crust = box(g, 1.64, 0.26, 0.3, 0xd9a05b, 0, 0.4, 0.92);
+                    crust.rotation.x = 0.1;
+                    for (const [px, pz] of [[0, -0.7], [-0.3, 0.1], [0.32, 0.3], [0.05, 0.55]]) {
+                        const pep = cyl(g, 0.15, 0.15, 0.04, 0xc0503a, px, 0.46, pz, 12);
+                        pep.castShadow = false;
+                    }
+                    return g;
+                }
             }
         ];
 
@@ -1121,6 +1300,18 @@
             const color = BLOCK_COLORS[colorIdx % BLOCK_COLORS.length];
             box(g, 0.52, 0.52, 0.52, color, 0, 0.26, 0);
             cyl(g, 0.13, 0.13, 0.1, color, 0, 0.55, 0, 14);                      // stud on top
+            return g;
+        }
+
+        // Blaster: glue it anywhere — it always shoots straight ahead. PEW PEW!
+        function buildGun() {
+            const g = new THREE.Group();
+            box(g, 0.2, 0.18, 0.34, 0x555a62, 0, 0.12, 0.04);                    // body
+            const barrel = cyl(g, 0.05, 0.05, 0.44, 0x2b2b2b, 0, 0.15, -0.32, 10);
+            barrel.rotation.x = Math.PI / 2;
+            const muzzle = cyl(g, 0.075, 0.075, 0.09, 0xff8c1a, 0, 0.15, -0.52, 10);
+            muzzle.rotation.x = Math.PI / 2;
+            box(g, 0.07, 0.08, 0.14, 0x555a62, 0, 0.02, 0.1);                    // mount
             return g;
         }
 
@@ -1221,6 +1412,7 @@
             if (data.type === 'booster') g = buildBooster(data.key);
             else if (data.type === 'prop') g = buildProp(data.key);
             else if (data.type === 'block') g = buildBlock(data.c || 0);
+            else if (data.type === 'gun') g = buildGun();
             else if (data.type === 'wheel') g = buildWheel();
             else if (data.type === 'aileron') g = buildAileron();
             else if (data.type === 'tail') g = buildTail();
@@ -1294,6 +1486,7 @@
             const aileronCount = design.parts.filter(p => p.type === 'aileron').length;
             const tailCount = design.parts.filter(p => p.type === 'tail').length;
             const wheels = partEntries.filter(e => e.data.type === 'wheel');
+            const guns = partEntries.filter(e => e.data.type === 'gun');
 
             // mass + center of mass
             let m = bodyDef.mass;
@@ -1309,7 +1502,7 @@
             const fs = full.getSize(new THREE.Vector3());
             const inertia = Math.max(0.6, m * (fs.x * fs.x + fs.y * fs.y + fs.z * fs.z) / 9);
 
-            return { group, bodyGroup, bodyMeshes, bboxMesh, wingMeshes, blockMeshes, pilotGroup, bbox, size, center, partEntries, wingCount, aileronCount, tailCount, wheels, mass: m, comLocal: com, inertia, bodyDef };
+            return { group, bodyGroup, bodyMeshes, bboxMesh, wingMeshes, blockMeshes, pilotGroup, bbox, size, center, partEntries, wingCount, aileronCount, tailCount, wheels, guns, mass: m, comLocal: com, inertia, bodyDef };
         }
 
         // contact points in craft-local space
@@ -1392,7 +1585,7 @@
             x.globalAlpha = 1;
             const tex = new THREE.CanvasTexture(c);
             tex.wrapS = tex.wrapT = THREE.MirroredRepeatWrapping;
-            tex.repeat.set(4, 4);
+            tex.repeat.set(10, 10);
             tex.anisotropy = 4;
             return tex;
         }
@@ -1418,7 +1611,7 @@
 
             // ----- sky dome + sun (way nicer than a flat color!) -----
             skyDome = new THREE.Mesh(
-                new THREE.SphereGeometry(4200, 20, 12),
+                new THREE.SphereGeometry(8500, 20, 12),
                 new THREE.ShaderMaterial({
                     side: THREE.BackSide, depthWrite: false, fog: false,
                     uniforms: {
@@ -1441,12 +1634,12 @@
             sx.fillStyle = sgrd;
             sx.fillRect(0, 0, 128, 128);
             const sun = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(sunC), fog: false, depthWrite: false }));
-            sun.position.set(1500, 1200, -2400);
-            sun.scale.set(600, 600, 1);
+            sun.position.set(4200, 3200, -6400);
+            sun.scale.set(1600, 1600, 1);
             env.add(sun);
 
-            // ----- ground -----
-            const ground = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000),
+            // ----- ground (HUGE — five times the world!) -----
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(24000, 24000),
                 new THREE.MeshLambertMaterial({ map: makeGroundTexture() }));
             ground.rotation.x = -Math.PI / 2;
             ground.receiveShadow = true;
@@ -1461,21 +1654,23 @@
                 return m;
             };
 
-            // ----- runway (takeoff toward -Z) + airport -----
-            const runway = new THREE.Mesh(new THREE.PlaneGeometry(14, 120),
-                new THREE.MeshLambertMaterial({ color: 0x3c3f44 }));
-            runway.rotation.x = -Math.PI / 2;
-            runway.position.y = 0.02;
-            runway.receiveShadow = true;
-            env.add(runway);
-            for (let z = -52; z <= 52; z += 10) {
-                const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 3.4),
-                    new THREE.MeshLambertMaterial({ color: 0xf0f0e8 }));
-                dash.rotation.x = -Math.PI / 2;
-                dash.position.set(0, 0.04, z);
-                env.add(dash);
+            // ----- airstrips everywhere (find and land on all 5!) -----
+            for (const rw of RUNWAYS) {
+                const strip = new THREE.Mesh(new THREE.PlaneGeometry(14, 120),
+                    new THREE.MeshLambertMaterial({ color: 0x3c3f44 }));
+                strip.rotation.x = -Math.PI / 2;
+                strip.position.set(rw.x, 0.04, rw.z);
+                strip.receiveShadow = true;
+                env.add(strip);
+                for (let z = -52; z <= 52; z += 10) {
+                    const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 3.4),
+                        new THREE.MeshLambertMaterial({ color: 0xf0f0e8 }));
+                    dash.rotation.x = -Math.PI / 2;
+                    dash.position.set(rw.x, 0.055, rw.z + z);
+                    env.add(dash);
+                }
             }
-            {   // your own little hangar (yes, you can crash into it 😅)
+            {   // your own little hangar + windsock at the Home Airstrip
                 const hg = new THREE.Group();
                 box(hg, 9, 4.5, 11, 0xd0202a, 0, 2.25, 0);
                 box(hg, 9.6, 0.5, 11.6, 0xf4f4f0, 0, 4.75, 0);
@@ -1483,143 +1678,195 @@
                 hg.position.set(-19, 0, 26);
                 env.add(hg);
                 colliders.push({ x: -19, z: 26, r: 7, h: 5.4, cone: false, what: 'hangar' });
-                cyl(env, 0.08, 0.08, 6, 0xd8d8e0, 12, 3, 30, 8);                 // windsock
+                cyl(env, 0.08, 0.08, 6, 0xd8d8e0, 12, 3, 30, 8);
                 const sock = new THREE.Mesh(new THREE.ConeGeometry(0.5, 2.2, 10), mat(0xff8c1a));
                 sock.rotation.z = Math.PI / 2;
                 sock.position.set(13.2, 5.6, 30);
                 env.add(sock);
             }
 
-            // ----- water: two lakes + THE OCEAN out west -----
-            flatCircle(WATERS[0].x, WATERS[0].z, WATERS[0].r, 0x4f9edb, 0.03, 28);
-            flatCircle(WATERS[1].x, WATERS[1].z, WATERS[1].r, 0x4f9edb, 0.03, 28);
-            flatCircle(WATERS[2].x, WATERS[2].z, WATERS[2].r + 45, 0xe8d49a, 0.012, 48);   // beach
-            flatCircle(WATERS[2].x, WATERS[2].z, WATERS[2].r, 0x3579c0, 0.035, 48);
-
-            // ----- desert (with a pyramid!) -----
-            flatCircle(DESERT.x, DESERT.z, DESERT.r, 0xeadb9e);
-            for (let i = 0; i < 14; i++) {
-                const a = rand(0, Math.PI * 2), r = rand(30, DESERT.r - 20);
-                const cx = DESERT.x + Math.cos(a) * r, cz = DESERT.z + Math.sin(a) * r;
-                const g = new THREE.Group();
-                const h = rand(2, 3.6);
-                cyl(g, 0.24, 0.3, h, 0x3f9b46, 0, h / 2, 0, 10);
-                box(g, 0.7, 0.24, 0.24, 0x3f9b46, 0.3, h * 0.55, 0);
-                cyl(g, 0.16, 0.16, 0.9, 0x3f9b46, 0.6, h * 0.55 + 0.45, 0, 8);
-                g.position.set(cx, 0, cz);
-                g.rotation.y = rand(0, Math.PI * 2);
-                env.add(g);
-                colliders.push({ x: cx, z: cz, r: 0.9, h: h + 1, cone: false, what: 'cactus' });
+            // ----- water: lakes everywhere + THE OCEAN out west -----
+            for (const w of WATERS) {
+                if (w.r > 500) {   // the ocean gets a beach
+                    flatCircle(w.x, w.z, w.r + 45, 0xe8d49a, 0.012, 48);
+                    flatCircle(w.x, w.z, w.r, 0x3579c0, 0.035, 48);
+                } else {
+                    flatCircle(w.x, w.z, w.r, 0x4f9edb, 0.03, 28);
+                }
             }
-            {
-                const pyr = new THREE.Mesh(new THREE.ConeGeometry(60, 75, 4), mat(0xd9b87c));
-                pyr.position.set(DESERT.x + 40, 37.5, DESERT.z - 40);
+            {   // the island (with its own airstrip and palm trees!)
+                flatCircle(ISLAND.x, ISLAND.z, ISLAND.r, 0xe8d49a, 0.038, 32);
+                for (const [ox, oz] of [[-70, -40], [60, -60], [-50, 70]]) {
+                    const px = ISLAND.x + ox, pz = ISLAND.z + oz;
+                    const trunk = cyl(env, 0.14, 0.2, 3.2, 0x8d5524, px, 1.6 + 0.04, pz, 7);
+                    trunk.rotation.z = 0.12;
+                    for (let i = 0; i < 5; i++) {
+                        const a = (i / 5) * Math.PI * 2;
+                        const leaf = box(env, 1.5, 0.05, 0.4, 0x3e8a3e, px + Math.cos(a) * 0.7, 3.3, pz + Math.sin(a) * 0.7);
+                        leaf.rotation.y = -a;
+                        leaf.rotation.z = 0.35;
+                    }
+                    colliders.push({ x: px, z: pz, r: 0.8, h: 3.6, cone: false, what: 'tree' });
+                }
+            }
+
+            // ----- deserts (with pyramids!) -----
+            DESERTS.forEach((D, di) => {
+                flatCircle(D.x, D.z, D.r, 0xeadb9e);
+                const nCacti = di === 0 ? 14 : 20;
+                for (let i = 0; i < nCacti; i++) {
+                    const a = rand(0, Math.PI * 2), r = rand(30, D.r - 20);
+                    const cx = D.x + Math.cos(a) * r, cz = D.z + Math.sin(a) * r;
+                    const g = new THREE.Group();
+                    const h = rand(2, 3.6);
+                    cyl(g, 0.24, 0.3, h, 0x3f9b46, 0, h / 2, 0, 10);
+                    box(g, 0.7, 0.24, 0.24, 0x3f9b46, 0.3, h * 0.55, 0);
+                    cyl(g, 0.16, 0.16, 0.9, 0x3f9b46, 0.6, h * 0.55 + 0.45, 0, 8);
+                    g.position.set(cx, 0, cz);
+                    g.rotation.y = rand(0, Math.PI * 2);
+                    env.add(g);
+                    colliders.push({ x: cx, z: cz, r: 0.9, h: h + 1, cone: false, what: 'cactus' });
+                }
+                const pr = di === 0 ? 60 : 115, ph = di === 0 ? 75 : 150;   // the far desert has a GIANT pyramid
+                const pyr = new THREE.Mesh(new THREE.ConeGeometry(pr, ph, 4), mat(0xd9b87c));
+                pyr.position.set(D.x + 40, ph / 2, D.z - 40);
                 pyr.rotation.y = Math.PI / 4;
                 env.add(pyr);
-                colliders.push({ x: DESERT.x + 40, z: DESERT.z - 40, r: 56, h: 75, cone: true, what: 'pyramid' });
+                colliders.push({ x: D.x + 40, z: D.z - 40, r: pr * 0.95, h: ph, cone: true, what: 'pyramid' });
+            });
+
+            // ----- snow zones (snowmen!) -----
+            for (const S of SNOWS) {
+                flatCircle(S.x, S.z, S.r, 0xf4f7fa);
+                const nPine = S.r > 300 ? 18 : 12;
+                for (let i = 0; i < nPine; i++) {
+                    const a = rand(0, Math.PI * 2), r = rand(20, S.r - 30);
+                    const cx = S.x + Math.cos(a) * r, cz = S.z + Math.sin(a) * r;
+                    const g = new THREE.Group();
+                    const th = rand(1, 1.6);
+                    cyl(g, 0.2, 0.28, th, 0x6b4a2b, 0, th / 2, 0, 8);
+                    const leaves = new THREE.Mesh(new THREE.ConeGeometry(rand(1.2, 2), rand(2.6, 4.4), 8), mat(0xdceef0));
+                    leaves.position.y = th + 1.4;
+                    g.add(leaves);
+                    g.position.set(cx, 0, cz);
+                    env.add(g);
+                    colliders.push({ x: cx, z: cz, r: 1.1, h: th + 4.5, cone: false, what: 'tree' });
+                }
+                for (let i = 0; i < (S.r > 300 ? 5 : 3); i++) {
+                    const a = rand(0, Math.PI * 2), r = rand(20, S.r - 60);
+                    const cx = S.x + Math.cos(a) * r, cz = S.z + Math.sin(a) * r;
+                    const g = new THREE.Group();
+                    sph(g, 1.0, 0xffffff, 0, 0.9, 0);
+                    sph(g, 0.7, 0xffffff, 0, 2.1, 0);
+                    sph(g, 0.5, 0xffffff, 0, 3.0, 0);
+                    sph(g, 0.05, 0x222222, -0.16, 3.12, -0.45);
+                    sph(g, 0.05, 0x222222, 0.16, 3.12, -0.45);
+                    const carrot = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.5, 8), mat(0xf28c28));
+                    carrot.rotation.x = -Math.PI / 2;
+                    carrot.position.set(0, 3.0, -0.62);
+                    g.add(carrot);
+                    g.position.set(cx, 0, cz);
+                    g.rotation.y = rand(0, Math.PI * 2);
+                    env.add(g);
+                    colliders.push({ x: cx, z: cz, r: 1.2, h: 3.6, cone: false, what: 'snowman' });
+                }
+                for (const [ox, oz] of [[-70, 60], [80, -50]]) {
+                    const mh = rand(90, 130), mr = rand(80, 110);
+                    const mnt = new THREE.Mesh(new THREE.ConeGeometry(mr, mh, 7), mat(0xe8eef4));
+                    mnt.position.set(S.x + ox, mh / 2 - 2, S.z + oz);
+                    env.add(mnt);
+                    colliders.push({ x: S.x + ox, z: S.z + oz, r: mr * 0.85, h: mh, cone: true, what: 'mountain' });
+                }
             }
 
-            // ----- snow zone (snowmen!) -----
-            flatCircle(SNOW.x, SNOW.z, SNOW.r, 0xf4f7fa);
-            for (let i = 0; i < 12; i++) {
-                const a = rand(0, Math.PI * 2), r = rand(20, SNOW.r - 30);
-                const cx = SNOW.x + Math.cos(a) * r, cz = SNOW.z + Math.sin(a) * r;
-                const g = new THREE.Group();
-                const th = rand(1, 1.6);
-                cyl(g, 0.2, 0.28, th, 0x6b4a2b, 0, th / 2, 0, 8);
-                const leaves = new THREE.Mesh(new THREE.ConeGeometry(rand(1.2, 2), rand(2.6, 4.4), 8), mat(0xdceef0));
-                leaves.position.y = th + 1.4;
-                g.add(leaves);
-                g.position.set(cx, 0, cz);
-                env.add(g);
-                colliders.push({ x: cx, z: cz, r: 1.1, h: th + 4.5, cone: false, what: 'tree' });
-            }
-            for (let i = 0; i < 3; i++) {
-                const a = rand(0, Math.PI * 2), r = rand(20, SNOW.r - 60);
-                const cx = SNOW.x + Math.cos(a) * r, cz = SNOW.z + Math.sin(a) * r;
-                const g = new THREE.Group();
-                sph(g, 1.0, 0xffffff, 0, 0.9, 0);
-                sph(g, 0.7, 0xffffff, 0, 2.1, 0);
-                sph(g, 0.5, 0xffffff, 0, 3.0, 0);
-                sph(g, 0.05, 0x222222, -0.16, 3.12, -0.45);
-                sph(g, 0.05, 0x222222, 0.16, 3.12, -0.45);
-                const carrot = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.5, 8), mat(0xf28c28));
-                carrot.rotation.x = -Math.PI / 2;
-                carrot.position.set(0, 3.0, -0.62);
-                g.add(carrot);
-                g.position.set(cx, 0, cz);
-                g.rotation.y = rand(0, Math.PI * 2);
-                env.add(g);
-                colliders.push({ x: cx, z: cz, r: 1.2, h: 3.6, cone: false, what: 'snowman' });
-            }
-            for (const [ox, oz] of [[-70, 60], [80, -50]]) {                     // snowy hills
-                const mh = rand(90, 130), mr = rand(80, 110);
-                const mnt = new THREE.Mesh(new THREE.ConeGeometry(mr, mh, 7), mat(0xe8eef4));
-                mnt.position.set(SNOW.x + ox, mh / 2 - 2, SNOW.z + oz);
-                env.add(mnt);
-                colliders.push({ x: SNOW.x + ox, z: SNOW.z + oz, r: mr * 0.85, h: mh, cone: true, what: 'mountain' });
+            // ----- THE VOLCANO -----
+            {
+                const cone = new THREE.Mesh(new THREE.ConeGeometry(VOLCANO.r, VOLCANO.h, 8), mat(0x4a3f3c));
+                cone.position.set(VOLCANO.x, VOLCANO.h / 2 - 6, VOLCANO.z);
+                env.add(cone);
+                const lava = new THREE.Mesh(new THREE.CylinderGeometry(VOLCANO.r * 0.22, VOLCANO.r * 0.3, 14, 8),
+                    new THREE.MeshBasicMaterial({ color: 0xff5a1a }));
+                lava.position.set(VOLCANO.x, VOLCANO.h - 12, VOLCANO.z);
+                env.add(lava);
+                colliders.push({ x: VOLCANO.x, z: VOLCANO.z, r: VOLCANO.r * 0.85, h: VOLCANO.h - 6, cone: true, what: 'volcano' });
             }
 
-            // ----- the city (fly between the skyscrapers... or into them) -----
+            // ----- cities (three of them — fly between the skyscrapers!) -----
             const winTex = makeWindowTexture();
             const cityTints = [0xffffff, 0xd8e2ec, 0xc8d8d0, 0xe8d8c8, 0xd0c8e0];
-            for (let gx = -2; gx <= 2; gx++) for (let gz = -1; gz <= 2; gz++) {
-                if (Math.random() < 0.15) continue;
-                const cx = CITY.x + gx * 42 + rand(-8, 8);
-                const cz = CITY.z + gz * 42 + rand(-8, 8);
-                const w = rand(9, 15), d = rand(9, 15);
-                const h = (gx === 0 && gz === 0) ? rand(55, 70) : rand(16, 48);
-                const wall = new THREE.MeshLambertMaterial({ map: winTex, color: cityTints[(Math.random() * cityTints.length) | 0] });
-                const roof = new THREE.MeshLambertMaterial({ color: 0x7a828c });
-                const bld = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [wall, wall, roof, roof, wall, wall]);
-                bld.position.set(cx, h / 2, cz);
-                env.add(bld);
-                colliders.push({ x: cx, z: cz, r: Math.max(w, d) * 0.62, h, cone: false, what: 'building' });
-                if (gx === 0 && gz === 0) cyl(env, 0.15, 0.15, 8, 0xd03a2c, cx, h + 4, cz, 8);
+            for (const C of CITIES) {
+                for (let gx = -2; gx <= 2; gx++) for (let gz = -1; gz <= 2; gz++) {
+                    if (Math.random() < 0.15) continue;
+                    const cx = C.x + gx * 42 + rand(-8, 8);
+                    const cz = C.z + gz * 42 + rand(-8, 8);
+                    const w = rand(9, 15), d = rand(9, 15);
+                    const h = (gx === 0 && gz === 0) ? rand(55, 70) : rand(16, 48);
+                    const wall = new THREE.MeshLambertMaterial({ map: winTex, color: cityTints[(Math.random() * cityTints.length) | 0] });
+                    const roof = new THREE.MeshLambertMaterial({ color: 0x7a828c });
+                    const bld = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [wall, wall, roof, roof, wall, wall]);
+                    bld.position.set(cx, h / 2, cz);
+                    env.add(bld);
+                    colliders.push({ x: cx, z: cz, r: Math.max(w, d) * 0.62, h, cone: false, what: 'building' });
+                    if (gx === 0 && gz === 0) cyl(env, 0.15, 0.15, 8, 0xd03a2c, cx, h + 4, cz, 8);
+                }
             }
 
-            // ----- placement helper that dodges the runway + special zones -----
+            // ----- placement helper that dodges runways + special zones -----
+            const nearRunway = (x, z) => RUNWAYS.some(rw => Math.abs(x - rw.x) < 26 && Math.abs(z - rw.z) < 95);
             const inCorridor = (x, z) => Math.abs(x) < 30 && z > -150 && z < 150;
             const nearZone = (x, z, zone, pad) => Math.hypot(x - zone.x, z - zone.z) < zone.r + pad;
             const ringPos = (rMin, rMax) => {
                 for (let tries = 0; tries < 24; tries++) {
                     const a = rand(0, Math.PI * 2), r = rand(rMin, rMax);
                     const x = Math.cos(a) * r, z = Math.sin(a) * r;
-                    if (inCorridor(x, z)) continue;
+                    if (inCorridor(x, z) || nearRunway(x, z)) continue;
                     if (WATERS.some(w => nearZone(x, z, w, 14))) continue;
-                    if (nearZone(x, z, DESERT, 10) || nearZone(x, z, SNOW, 10) || nearZone(x, z, CITY, 40)) continue;
+                    if (DESERTS.some(D => nearZone(x, z, D, 10))) continue;
+                    if (SNOWS.some(S => nearZone(x, z, S, 10))) continue;
+                    if (CITIES.some(C => nearZone(x, z, C, 40))) continue;
+                    if (nearZone(x, z, VOLCANO, 30)) continue;
                     return [x, z];
                 }
                 return null;
             };
 
-            // ----- houses -----
+            // ----- houses (instanced so a bigger world stays fast) -----
             const housePalette = [0xe8b4b8, 0xf4e1a4, 0xbcd8e8, 0xd8e8bc, 0xe8d0b4, 0xf0f0e8];
-            for (let i = 0; i < 45; i++) {
-                const spot = ringPos(60, 1100);
+            const houseSpots = [];
+            for (let i = 0; i < 90; i++) {
+                const spot = ringPos(60, 2600);
                 if (!spot) continue;
-                const [x, z] = spot;
-                const w = rand(4, 7), h = rand(2.6, 4.2), d = rand(4, 7);
-                const g = new THREE.Group();
-                box(g, w, h, d, housePalette[(Math.random() * housePalette.length) | 0], 0, h / 2, 0).castShadow = false;
-                const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(w, d) * 0.75, rand(1.5, 2.6), 4), mat(0xa0522d));
-                roof.position.y = h + 0.8;
-                roof.rotation.y = Math.PI / 4;
-                g.add(roof);
-                g.position.set(x, 0, z);
-                g.rotation.y = rand(0, Math.PI * 2);
-                env.add(g);
-                colliders.push({ x, z, r: Math.max(w, d) * 0.62, h: h + 2.2, cone: false, what: 'house' });
+                houseSpots.push({ x: spot[0], z: spot[1], w: rand(4, 7), h: rand(2.6, 4.2), d: rand(4, 7), rot: rand(0, Math.PI * 2), c: housePalette[(Math.random() * housePalette.length) | 0] });
             }
+            const dummy = new THREE.Object3D();
+            const hColor = new THREE.Color();
+            const houseBox = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat(0xffffff), Math.max(1, houseSpots.length));
+            const houseRoof = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 1, 4), mat(0xa0522d), Math.max(1, houseSpots.length));
+            houseSpots.forEach((hs, i) => {
+                dummy.position.set(hs.x, hs.h / 2, hs.z);
+                dummy.scale.set(hs.w, hs.h, hs.d);
+                dummy.rotation.set(0, hs.rot, 0);
+                dummy.updateMatrix();
+                houseBox.setMatrixAt(i, dummy.matrix);
+                houseBox.setColorAt(i, hColor.setHex(hs.c));
+                const roofH = 2;
+                dummy.position.set(hs.x, hs.h + roofH / 2 - 0.1, hs.z);
+                dummy.scale.set(Math.max(hs.w, hs.d) * 0.75, roofH, Math.max(hs.w, hs.d) * 0.75);
+                dummy.rotation.set(0, hs.rot + Math.PI / 4, 0);
+                dummy.updateMatrix();
+                houseRoof.setMatrixAt(i, dummy.matrix);
+                colliders.push({ x: hs.x, z: hs.z, r: Math.max(hs.w, hs.d) * 0.62, h: hs.h + 2.2, cone: false, what: 'house' });
+            });
+            houseBox.castShadow = houseRoof.castShadow = true;
+            env.add(houseBox, houseRoof);
 
-            // ----- trees (LOTS of them, instanced so it stays fast) -----
+            // ----- trees (HUNDREDS, instanced so it stays fast) -----
             const treeSpots = [];
-            for (let i = 0; i < 240; i++) {
-                const spot = ringPos(45, 1200);
+            for (let i = 0; i < 550; i++) {
+                const spot = ringPos(45, 3600);
                 if (!spot) continue;
                 treeSpots.push({ x: spot[0], z: spot[1], th: rand(1, 1.8), lh: rand(2.4, 4.5), lr: rand(1.1, 2.2), oak: Math.random() < 0.35 });
             }
-            const dummy = new THREE.Object3D();
             const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.22, 0.3, 1, 7), mat(0x6b4a2b), Math.max(1, treeSpots.length));
             const pinesL = treeSpots.filter(t => !t.oak);
             const oaksL = treeSpots.filter(t => t.oak);
@@ -1629,6 +1876,7 @@
             treeSpots.forEach((t, i) => {
                 dummy.position.set(t.x, t.th / 2, t.z);
                 dummy.scale.set(1, t.th, 1);
+                dummy.rotation.set(0, 0, 0);
                 dummy.updateMatrix();
                 trunks.setMatrixAt(i, dummy.matrix);
                 colliders.push({ x: t.x, z: t.z, r: 1.0, h: t.th + t.lh, cone: false, what: 'tree' });
@@ -1650,7 +1898,7 @@
             trunks.castShadow = pineLeaves.castShadow = oakLeaves.castShadow = true;
             env.add(trunks, pineLeaves, oakLeaves);
 
-            // ----- mountains: some close enough to CRASH into, plus a big far ring -----
+            // ----- mountains: near ones, scattered mid ones, and a giant far ring -----
             const addMountain = (cx, cz, mr, mh, snowy) => {
                 const mnt = new THREE.Mesh(new THREE.ConeGeometry(mr, mh, 7), mat(snowy ? 0xe8eef4 : 0x8b8f96));
                 mnt.position.set(cx, mh / 2 - 4, cz);
@@ -1660,24 +1908,36 @@
                 env.add(cap);
                 colliders.push({ x: cx, z: cz, r: mr * 0.82, h: mh - 4, cone: true, what: 'mountain' });
             };
+            const mountainFits = (cx, cz, mr) =>
+                !WATERS.some(w => nearZone(cx, cz, w, mr)) &&
+                !CITIES.some(C => nearZone(cx, cz, C, mr + 40)) &&
+                !DESERTS.some(D => nearZone(cx, cz, D, mr)) &&
+                !SNOWS.some(S => nearZone(cx, cz, S, mr)) &&
+                !RUNWAYS.some(rw => Math.hypot(cx - rw.x, cz - rw.z) < mr + 120) &&
+                !nearZone(cx, cz, VOLCANO, mr + 60);
             for (let i = 0; i < 6; i++) {
-                const a = rand(-0.9, 1.6);   // east-ish / north-east
+                const a = rand(-0.9, 1.6);
                 const r = rand(550, 950);
                 const mh = rand(90, 200), mr = rand(90, 200);
                 const cx = Math.cos(a) * r, cz = Math.sin(a) * r;
-                if (WATERS.some(w => nearZone(cx, cz, w, mr)) || nearZone(cx, cz, CITY, mr + 40) || nearZone(cx, cz, DESERT, mr) || nearZone(cx, cz, SNOW, mr)) continue;
-                addMountain(cx, cz, mr, mh, false);
+                if (mountainFits(cx, cz, mr)) addMountain(cx, cz, mr, mh, false);
             }
-            for (let i = 0; i < 11; i++) {
-                const a = (i / 11) * Math.PI * 2 + rand(-0.2, 0.2);
-                if (Math.abs(((a + Math.PI * 3) % (Math.PI * 2)) - Math.PI) < 0.75) continue;   // leave the west open for the ocean
-                const r = rand(1150, 1700);
-                addMountain(Math.cos(a) * r, Math.sin(a) * r, rand(150, 300), rand(140, 300), false);
+            for (let i = 0; i < 14; i++) {
+                const a = rand(0, Math.PI * 2);
+                const r = rand(1800, 5200);
+                const mh = rand(120, 320), mr = rand(120, 320);
+                const cx = Math.cos(a) * r, cz = Math.sin(a) * r;
+                if (mountainFits(cx, cz, mr)) addMountain(cx, cz, mr, mh, Math.random() < 0.25);
+            }
+            for (let i = 0; i < 16; i++) {   // the far ring: the edge of the world
+                const a = (i / 16) * Math.PI * 2 + rand(-0.12, 0.12);
+                const r = rand(6800, 7800);
+                addMountain(Math.cos(a) * r, Math.sin(a) * r, rand(400, 700), rand(320, 560), true);
             }
 
-            // ----- hot air balloons -----
+            // ----- hot air balloons (watch out — you can pop on them!) -----
             const balloonColors = [0xd03a2c, 0xffb347, 0x7ed957, 0x4f9edb, 0xc47ed9, 0xffe14d];
-            for (let i = 0; i < 6; i++) {
+            for (let i = 0; i < 12; i++) {
                 const g = new THREE.Group();
                 const bl = new THREE.Mesh(new THREE.SphereGeometry(7, 14, 12), mat(balloonColors[i % balloonColors.length]));
                 bl.scale.set(1, 1.15, 1);
@@ -1686,16 +1946,16 @@
                 box(g, 2.4, 2, 2.4, 0x8d5524, 0, -10.5, 0).castShadow = false;
                 for (const [rx, rz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]])
                     cyl(g, 0.05, 0.05, 4, 0x555555, rx * 1.1, -8, rz * 1.1, 5).castShadow = false;
-                const a = rand(0, Math.PI * 2), r = rand(200, 850);
-                g.position.set(Math.cos(a) * r, rand(70, 160), Math.sin(a) * r);
-                g.userData = { v: rand(0.6, 1.6), bob: rand(0, Math.PI * 2) };
+                const a = rand(0, Math.PI * 2), r = rand(300, 3200);
+                g.position.set(Math.cos(a) * r, rand(70, 200), Math.sin(a) * r);
+                g.userData = { v: rand(0.6, 1.6), bob: rand(0, Math.PI * 2), respawn: 0 };
                 balloons.push(g);
                 env.add(g);
             }
 
             // ----- clouds -----
             const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.88 });
-            for (let i = 0; i < 30; i++) {
+            for (let i = 0; i < 36; i++) {
                 const g = new THREE.Group();
                 const n = 3 + (Math.random() * 3 | 0);
                 for (let j = 0; j < n; j++) {
@@ -1703,8 +1963,8 @@
                     s.position.set(rand(-16, 16), rand(-3, 3), rand(-9, 9));
                     g.add(s);
                 }
-                const a = rand(0, Math.PI * 2), r = rand(120, 1100);
-                g.position.set(Math.cos(a) * r, rand(70, 190), Math.sin(a) * r);
+                const a = rand(0, Math.PI * 2), r = rand(120, 4200);
+                g.position.set(Math.cos(a) * r, rand(70, 260), Math.sin(a) * r);
                 g.userData.v = rand(1, 3);
                 clouds.push(g);
                 env.add(g);
@@ -1721,13 +1981,19 @@
                 const px = phys.pos.x + fwd.x * half * s;
                 const py = phys.pos.y + fwd.y * half * s;
                 const pz = phys.pos.z + fwd.z * half * s;
-                if (py > 300 || py < 0) continue;
+                if (py > 600 || py < 0) continue;
                 for (const c of colliders) {
                     const dx = px - c.x, dz = pz - c.z;
                     if (Math.abs(dx) > c.r || Math.abs(dz) > c.r || py > c.h) continue;
                     const rr = c.cone ? c.r * (1 - py / c.h) : c.r;
                     if (dx * dx + dz * dz < rr * rr) { triggerCrash(false, c.what); return; }
                 }
+            }
+            // hot air balloons are soft, squishy, and 100% deadly
+            for (const bal of balloons) {
+                if (!bal.visible) continue;
+                const dx = phys.pos.x - bal.position.x, dy = phys.pos.y - bal.position.y, dz = phys.pos.z - bal.position.z;
+                if (dx * dx + dy * dy + dz * dz < 81) { triggerCrash(false, 'balloon'); return; }
             }
         }
 
@@ -1846,7 +2112,9 @@
             zap() { [900, 700, 1100, 1400].forEach((f, i) => this.beep(f, 0.08, 'sawtooth', 0.12, i * 0.04)); },
             bite() { this.beep(160 + Math.random() * 60, 0.07, 'square', 0.22); this.beep(90, 0.09, 'square', 0.18, 0.05); },
             quack() { this.beep(280, 0.12, 'sawtooth', 0.2); this.beep(200, 0.15, 'sawtooth', 0.18, 0.1); },
-            chord() { [523, 659, 784].forEach(f => this.beep(f, 0.5, 'triangle', 0.15)); }
+            chord() { [523, 659, 784].forEach(f => this.beep(f, 0.5, 'triangle', 0.15)); },
+            pew() { this.beep(1150, 0.06, 'square', 0.1); this.beep(720, 0.07, 'square', 0.08, 0.03); },
+            boom() { this.beep(75, 0.4, 'sawtooth', 0.25); this.beep(115, 0.3, 'triangle', 0.2, 0.05); }
         };
         function setMuted(m) {
             Sound.muted = m;
@@ -1985,14 +2253,16 @@
             drag.cand = null;
             drag.ghost.visible = false;
 
-            if (drag.type === 'booster' || drag.type === 'prop' || drag.type === 'block') {
-                // boosters, propellers and blocks glue to the body, wings, OR other blocks
+            if (drag.type === 'booster' || drag.type === 'prop' || drag.type === 'block' || drag.type === 'gun') {
+                // boosters, propellers, blocks and blasters glue to the body, wings, OR other blocks
                 const hits = raycaster.intersectObjects([...craft.bodyMeshes, ...craft.wingMeshes, ...craft.blockMeshes], false);
                 if (hits.length) {
                     const h = hits[0];
                     const n = h.face.normal.clone().transformDirection(h.object.matrixWorld).normalize();
                     drag.ghost.position.copy(h.point);
-                    drag.ghost.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+                    // blasters always aim straight ahead; everything else sticks out along the surface
+                    if (drag.type === 'gun') drag.ghost.quaternion.identity();
+                    else drag.ghost.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
                     drag.ghost.visible = true;
                     const pi = partIndexFromObject(h.object);
                     drag.cand = { pos: h.point.toArray(), normal: n.toArray(), parent: pi !== null ? design.parts[pi].id : undefined };
@@ -2250,18 +2520,19 @@
         }
 
         function partCounts(d) {
-            const n = { booster: 0, prop: 0, wheel: 0, wing: 0, ctrl: 0, block: 0 };
+            const n = { booster: 0, prop: 0, wheel: 0, wing: 0, ctrl: 0, block: 0, gun: 0 };
             for (const p of d.parts) {
                 if (p.type === 'booster') n.booster++;
                 else if (p.type === 'prop') n.prop++;
                 else if (p.type === 'block') n.block++;
+                else if (p.type === 'gun') n.gun++;
                 else if (p.type === 'wheel') n.wheel++;
                 else if (p.type === 'aileron' || p.type === 'tail') n.ctrl++;
                 else n.wing++;
             }
             return `🚀${n.booster} &nbsp;🛞${n.wheel} &nbsp;✈️${n.wing}`
                 + (n.prop ? ` &nbsp;🌀${n.prop}` : '') + (n.block ? ` &nbsp;🧱${n.block}` : '')
-                + (n.ctrl ? ` &nbsp;🕹️${n.ctrl}` : '');
+                + (n.gun ? ` &nbsp;🔫${n.gun}` : '') + (n.ctrl ? ` &nbsp;🕹️${n.ctrl}` : '');
         }
 
         function openHangar() {
@@ -2292,7 +2563,7 @@
                     design.name = entry.name;   // the name can carry secret powers!
                     rebuildCraft();
                     closeHangar();
-                    startFlight();
+                    openModeDialog();
                 };
                 const editBtn = document.createElement('button');
                 editBtn.className = 'sketch sketch-b';
@@ -2656,15 +2927,261 @@
             }
         }
 
+        // ----- BLASTERS (Enter key) — pew pew at balloons and robots! -----
+        let gunHeld = false;
+        let gunCooldown = 0;
+        const bullets = [];
+        const bulletPool = [];
+
+        function spawnBullet(pos, vel, from) {
+            let b = bulletPool.pop();
+            if (!b) {
+                b = {
+                    mesh: new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6),
+                        new THREE.MeshBasicMaterial({ color: 0xffe14d })),
+                    vel: new THREE.Vector3(), life: 0, from: 'player'
+                };
+            }
+            b.mesh.material.color.set(from === 'bot' ? 0xff4433 : 0xffe14d);
+            b.mesh.position.copy(pos);
+            b.vel.copy(vel);
+            b.life = 3;
+            b.from = from;
+            scene.add(b.mesh);
+            bullets.push(b);
+        }
+
+        function fireGuns() {
+            if (mode !== 'flight' || !craft.guns.length || flight.broken || flight.finished || flight.chute) return;
+            const fwd = AXIS_FWD.clone().applyQuaternion(phys.quat);
+            for (const e of craft.guns) {
+                const wp = new THREE.Vector3(0, 0.15, -0.6);
+                e.group.localToWorld(wp);
+                spawnBullet(wp, fwd.clone().multiplyScalar(85).add(phys.vel), 'player');
+            }
+            Sound.pew();
+            gunCooldown = 0.22;
+        }
+
+        function clearBullets() {
+            for (const b of bullets) { scene.remove(b.mesh); bulletPool.push(b); }
+            bullets.length = 0;
+        }
+
+        function popBalloon(bal) {
+            bal.visible = false;
+            bal.userData.respawn = 25;
+            Sound.boom();
+            for (let i = 0; i < 14; i++)
+                spawnPuff(bal.position.clone().add(tmpV1.set(rand(-3, 3), rand(-3, 3), rand(-3, 3))),
+                    new THREE.Vector3(rand(-4, 4), rand(-2, 4), rand(-4, 4)), powerColor({ color: 'confetti' }), rand(0.8, 1.6), rand(0.8, 1.2));
+            toast('🎈 POP!!', 1200);
+            gtag('event', 'balloon_pop', { game_name: 'Test Flight' });
+        }
+
+        function updateBullets(dt) {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                b.life -= dt;
+                b.vel.y -= 2.5 * dt;
+                b.mesh.position.addScaledVector(b.vel, dt);
+                let dead = b.life <= 0 || b.mesh.position.y < 0;
+                if (!dead && b.from === 'player') {
+                    for (const bal of balloons) {
+                        if (!bal.visible) continue;
+                        if (b.mesh.position.distanceTo(bal.position) < 8.5) {
+                            popBalloon(bal);
+                            dead = true;
+                            break;
+                        }
+                    }
+                    if (!dead && battle.active) {
+                        for (const bot of battle.bots) {
+                            if (bot.dead) continue;
+                            if (b.mesh.position.distanceTo(bot.pos) < 4.5) {
+                                hitBot(bot);
+                                dead = true;
+                                break;
+                            }
+                        }
+                    }
+                } else if (!dead && b.from === 'bot' && !flight.broken && !flight.finished && !flight.chute) {
+                    const hitR = clamp(craft.size.length() * 0.35, 1.0, 2.6);
+                    if (b.mesh.position.distanceTo(phys.pos) < hitR) {
+                        playerHit();
+                        dead = true;
+                    }
+                }
+                if (dead) {
+                    if (b.mesh.position.y < 0.15)
+                        spawnPuff(b.mesh.position.clone().setY(0.2), new THREE.Vector3(0, 1, 0), 0xcccccc, 0.4, 0.4);
+                    scene.remove(b.mesh);
+                    bullets.splice(i, 1);
+                    bulletPool.push(b);
+                }
+            }
+        }
+
+        // ----- ROBOT BATTLE mode -----
+        const battle = { active: false, bots: [], hp: 3, won: false };
+
+        function buildBotPlane() {
+            // robot planes fly nose-first along +Z so lookAt() steers them
+            const g = new THREE.Group();
+            const gray = 0x6a7078, dark = 0x4a4e55;
+            box(g, 0.55, 0.5, 1.9, gray, 0, 0, 0);                               // fuselage
+            box(g, 3.0, 0.09, 0.7, dark, 0, 0.1, -0.1);                          // wings
+            box(g, 1.1, 0.08, 0.4, dark, 0, 0.25, -0.95);                        // tail wing
+            box(g, 0.07, 0.5, 0.4, 0xd03a2c, 0, 0.45, -0.95);                    // fin
+            sph(g, 0.17, 0xff3b30, 0, 0.12, 0.98);                               // evil red eye
+            cyl(g, 0.03, 0.03, 0.45, 0x2b2b2b, 0, 0.5, -0.4, 5);                 // antenna
+            const spinner = new THREE.Group();
+            spinner.position.set(0, 0, 1.05);
+            for (const a of [0, Math.PI / 2]) {
+                const blade = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.06, 0.1), mat(0x2b2b2b));
+                blade.rotation.z = a;
+                blade.castShadow = true;
+                spinner.add(blade);
+            }
+            g.add(spinner);
+            g.userData.spinner = spinner;
+            return g;
+        }
+
+        function spawnBots(n = 3) {
+            clearBots();
+            for (let i = 0; i < n; i++) {
+                const a = (i / n) * Math.PI * 2 + 0.5;
+                const group = buildBotPlane();
+                const pos = new THREE.Vector3(phys.pos.x + Math.cos(a) * 350, rand(70, 130), phys.pos.z + Math.sin(a) * 350);
+                group.position.copy(pos);
+                scene.add(group);
+                battle.bots.push({
+                    group, pos, vel: new THREE.Vector3(rand(-20, 20), 0, rand(-20, 20)),
+                    hp: 2, dead: false, gone: false, shootT: rand(2.5, 5), orbitDir: i % 2 ? 1 : -1
+                });
+            }
+        }
+        function clearBots() {
+            for (const b of battle.bots) { if (!b.gone) { scene.remove(b.group); disposeObject(b.group); } }
+            battle.bots = [];
+        }
+
+        function hitBot(bot) {
+            bot.hp--;
+            Sound.boom();
+            for (let i = 0; i < 6; i++)
+                spawnPuff(bot.pos.clone().add(tmpV1.set(rand(-1, 1), rand(-1, 1), rand(-1, 1))),
+                    new THREE.Vector3(rand(-2, 2), rand(0, 3), rand(-2, 2)), 0xffb347, 0.7, 0.6);
+            if (bot.hp <= 0) {
+                bot.dead = true;
+                bot.vel.multiplyScalar(0.4);
+                const left = battle.bots.filter(b => !b.dead).length;
+                toast(left ? `🤖 Robot down!! ${left} left!` : '🤖 Robot down!!', 1600);
+            } else {
+                toast('🎯 Direct hit!', 900);
+            }
+        }
+
+        function playerHit() {
+            battle.hp--;
+            Sound.boom();
+            $('flash').style.background = '#ff5544';
+            $('flash').style.opacity = 0.35;
+            setTimeout(() => { $('flash').style.opacity = 0; }, 150);
+            if (battle.hp <= 0) {
+                triggerCrash(false, 'shot');
+                gtag('event', 'battle_lose', { game_name: 'Test Flight' });
+            } else {
+                toast(`⚠️ You got hit!! ${'❤️'.repeat(battle.hp)} left!`, 1600);
+            }
+        }
+
+        function battleVictory() {
+            flight.finished = true;
+            Sound.fanfare();
+            $('big-card').classList.add('gold');
+            bigTitle.textContent = '🏆 ALL ROBOTS DOWN!!!';
+            bigSub.innerHTML = 'You are the ACE of the skies! 🛩️🎖️';
+            bigOverlay.classList.remove('hidden');
+            confetti(130);
+            setTimeout(() => confetti(130), 900);
+            fireworks();
+            gtag('event', 'battle_win', { game_name: 'Test Flight' });
+        }
+
+        function updateBattle(dt) {
+            if (!battle.active) return;
+            let alive = 0;
+            for (const bot of battle.bots) {
+                if (bot.gone) continue;
+                if (bot.dead) {
+                    bot.vel.y -= G * dt;
+                    bot.pos.addScaledVector(bot.vel, dt);
+                    bot.group.position.copy(bot.pos);
+                    bot.group.rotation.x += 3 * dt;
+                    bot.group.rotation.z += 4 * dt;
+                    if (Math.random() < 0.4)
+                        spawnPuff(bot.pos.clone(), new THREE.Vector3(0, 1, 0), 0x555555, 0.8, 0.9);
+                    if (bot.pos.y <= 0) {
+                        for (let i = 0; i < 12; i++)
+                            spawnPuff(bot.pos.clone().setY(0.5), new THREE.Vector3(rand(-3, 3), rand(1, 4), rand(-3, 3)), 0x555555, 1.2, 1.2);
+                        Sound.boom();
+                        scene.remove(bot.group);
+                        disposeObject(bot.group);
+                        bot.gone = true;
+                    }
+                    continue;
+                }
+                alive++;
+                // steering: orbit the player, keep a fighting distance
+                const toP = tmpV1.copy(phys.pos).sub(bot.pos);
+                const dist = toP.length();
+                toP.normalize();
+                const side = tmpV2.crossVectors(toP, WORLD_UP).multiplyScalar(bot.orbitDir);
+                const desired = tmpV3.set(0, 0, 0);
+                if (dist > 300) desired.copy(toP);
+                else if (dist < 100) desired.copy(toP).negate().addScaledVector(side, 0.7);
+                else desired.copy(side).addScaledVector(toP, 0.25);
+                desired.normalize().multiplyScalar(34);
+                const targetY = clamp(phys.pos.y + 10, 40, 260);
+                desired.y = clamp((targetY - bot.pos.y) * 0.4, -12, 12);
+                bot.vel.lerp(desired, Math.min(1, dt * 1.1));
+                bot.pos.addScaledVector(bot.vel, dt);
+                bot.pos.y = Math.max(bot.pos.y, 25);
+                bot.group.position.copy(bot.pos);
+                if (bot.vel.lengthSq() > 1)
+                    bot.group.lookAt(tmpV1.copy(bot.pos).add(bot.vel));
+                bot.group.userData.spinner.rotation.z += dt * 30;
+                // shooting (they play fair: slow-ish, with some wobble)
+                bot.shootT -= dt;
+                if (bot.shootT <= 0 && dist < 420 && !flight.broken && !flight.finished && !flight.chute) {
+                    bot.shootT = rand(2.4, 4.2);
+                    const lead = tmpV1.copy(phys.pos).addScaledVector(phys.vel, dist / 70);
+                    const dir = lead.sub(bot.pos).normalize();
+                    dir.x += rand(-0.05, 0.05); dir.y += rand(-0.05, 0.05); dir.z += rand(-0.05, 0.05);
+                    const muzzle = bot.pos.clone().addScaledVector(dir, 2.4);
+                    spawnBullet(muzzle, dir.multiplyScalar(70), 'bot');
+                    Sound.pew();
+                }
+            }
+            if (alive === 0 && battle.bots.length && !battle.won) {
+                battle.won = true;
+                battle.active = false;
+                battleVictory();
+            }
+        }
+
         function syncCraftTransform() {
             craft.group.quaternion.copy(phys.quat);
             craft.group.position.copy(phys.pos)
                 .sub(craft.comLocal.clone().applyQuaternion(phys.quat));
         }
 
-        function startFlight() {
+        function startFlight(battleMode = false) {
             Sound.init();
             mode = 'flight';
+            flight.battleMode = battleMode;
             if (!flightEnv) {
                 flightEnv = buildFlightEnv();
                 scene.add(flightEnv);
@@ -2672,7 +3189,7 @@
             flightEnv.visible = true;
             editorEnv.visible = false;
             scene.background = new THREE.Color(0x87c8f0);
-            scene.fog = new THREE.Fog(0xcfeaf7, 350, 2600);
+            scene.fog = new THREE.Fog(0xcfeaf7, 400, 4200);
             setShadowBox(16);
             resetFlight();
 
@@ -2691,9 +3208,16 @@
                 : (nThrust === 1
                     ? `Hold <b>${thrustParts[0].key}</b> (key or button) to blast off! 🚀 Then land gently on your wheels.${steerHint}`
                     : `Hold your booster keys to blast off! 🚀 Then land gently on your wheels.${steerHint}`);
+            if (battleMode) {
+                hint = (craft.guns.length
+                    ? '🤖 <b>ROBOT BATTLE!</b> Shoot down all 3 robots before they get you!'
+                    : '🤖 <b>ROBOT BATTLE!</b> Uh oh — no 🔫 blasters on board! Dodge like crazy… or go glue some on!')
+                    + '<br>' + hint;
+            }
             const extras = [];
             if (nThrust >= 2) extras.push('<b>SPACE</b> = ALL at once!');
             if (flight.powerDef) extras.push(`<b>+</b> = ${flight.powerDef.emoji} <b>${flight.powerDef.name}</b>`);
+            if (craft.guns.length) extras.push('<b>ENTER</b> = 🔫 FIRE!');
             extras.push('<b>?</b> = 🪂');
             hint += `<br><span style="font-size:13px;color:#777">${extras.join(' &nbsp;·&nbsp; ')}`
                 + (craft.bodyDef.power === 'hotdog' ? '<br>psst… SAVE it named “Hot Dog 2.0” (or 3.0, or 4.0…) for SECRET powers! 🤫' : '')
@@ -2750,12 +3274,29 @@
             flight.camPos.copy(phys.pos).add(new THREE.Vector3(0, 3.2, 10));
             camera.position.copy(flight.camPos);
             camera.lookAt(phys.pos);
+
+            clearBullets();
+            gunHeld = false;
+            gunCooldown = 0;
+            battle.won = false;
+            battle.hp = 3;
+            if (flight.battleMode && mode === 'flight') {
+                spawnBots(3);
+                battle.active = true;
+            } else {
+                clearBots();
+                battle.active = false;
+            }
         }
 
         function endFlight() {
             mode = 'editor';
             Sound.setThrust(0);
             clearChute();
+            clearBots();
+            clearBullets();
+            battle.active = false;
+            gunHeld = false;
             spaceAll = false;
             powerState.held = false;
             activeKeys.clear();
@@ -2803,6 +3344,16 @@
                 btn.addEventListener('pointerleave', () => releaseKey(b.key));
                 btn.addEventListener('pointercancel', () => releaseKey(b.key));
                 boosterBtnsEl.appendChild(btn);
+            }
+            if (craft.guns.length) {
+                const fb = document.createElement('button');
+                fb.className = 'bbtn fire-btn';
+                fb.textContent = '🔫';
+                fb.title = 'FIRE! (Enter key)';
+                fb.addEventListener('pointerdown', (e) => { e.preventDefault(); gunHeld = true; if (gunCooldown <= 0) fireGuns(); });
+                for (const evName of ['pointerup', 'pointerleave', 'pointercancel'])
+                    fb.addEventListener(evName, () => { gunHeld = false; });
+                boosterBtnsEl.appendChild(fb);
             }
             if (flight.powerDef) {
                 const pb = document.createElement('button');
@@ -2866,7 +3417,7 @@
             const a = btn.dataset.arrow;
             btn.addEventListener('pointerdown', (e) => {
                 e.preventDefault();
-                if (mode !== 'flight' || flight.broken) return;
+                if (mode !== 'flight' || (flight.broken && !flight.chute)) return;
                 activeArrows.add(a);
                 updateArrowBtnStates();
             });
@@ -2879,6 +3430,7 @@
         addEventListener('keydown', (e) => {
             if (e.metaKey || e.ctrlKey || e.altKey) return;
             if (e.key === 'Escape') {
+                if (!$('mode-dialog').classList.contains('hidden')) { $('mode-dialog').classList.add('hidden'); return; }
                 if (!$('body-picker').classList.contains('hidden')) { $('body-picker').classList.add('hidden'); return; }
                 if (!$('hangar').classList.contains('hidden')) { closeHangar(); return; }
                 if (mode === 'flight') endFlight();
@@ -2886,7 +3438,8 @@
             }
             if (mode === 'flight' && e.key.startsWith('Arrow')) {
                 e.preventDefault();
-                if (!e.repeat && !flight.broken) { activeArrows.add(e.key); updateArrowBtnStates(); }
+                // the pilot under a parachute can ALWAYS steer/walk, even if the plane crashed
+                if (!e.repeat && (!flight.broken || flight.chute)) { activeArrows.add(e.key); updateArrowBtnStates(); }
                 return;
             }
             if (mode !== 'flight') return;
@@ -2903,6 +3456,10 @@
                 if (!e.repeat) { Sound.init(); deployParachute(); }
                 return;
             }
+            if (e.key === 'Enter') {                               // ENTER: FIRE THE BLASTERS!
+                if (!e.repeat) { Sound.init(); gunHeld = true; if (gunCooldown <= 0) fireGuns(); }
+                return;
+            }
             if (e.repeat) return;
             const k = e.key.toUpperCase();
             if (KEY_ORDER.includes(k)) { Sound.init(); pressKey(k); }
@@ -2915,6 +3472,7 @@
             }
             if (e.key === ' ') { setSpaceAll(false); return; }
             if (e.key === '+' || e.key === '=') { powerRelease(); return; }
+            if (e.key === 'Enter') { gunHeld = false; return; }
             const k = e.key.toUpperCase();
             if (KEY_ORDER.includes(k)) releaseKey(k);
         });
@@ -2923,6 +3481,7 @@
             activeArrows.clear();
             spaceAll = false;
             powerState.held = false;
+            gunHeld = false;
             updateBoosterButtonStates();
             updateArrowBtnStates();
         });
@@ -3127,6 +3686,10 @@
             syncCraftTransform();
             checkObstacles();
             updatePowers(dt);
+            gunCooldown -= dt;
+            if (gunHeld && gunCooldown <= 0) fireGuns();
+            updateBullets(dt);
+            updateBattle(dt);
 
             // control-surface animation
             const ctrl = getControls();
@@ -3225,7 +3788,10 @@
             cactus: 'Ouch ouch ouch!! A cactus?! 🌵',
             pyramid: 'You crashed into the pyramid! 🐫',
             snowman: 'You flattened a snowman! ⛄',
-            hangar: 'You crashed into your own hangar! 😅'
+            hangar: 'You crashed into your own hangar! 😅',
+            balloon: 'You flew into a hot air balloon! 🎈💥',
+            volcano: 'You crashed into the VOLCANO! 🌋',
+            shot: 'The robots shot you down! 🤖 Glue on more 🔫 blasters and get revenge!'
         };
         function triggerCrash(splash, what) {
             if (flight.broken || flight.finished) return;
@@ -3284,12 +3850,14 @@
             flight.finished = true;
             Sound.setThrust(0);
             // landing back on the airstrip earns the BIG celebration
-            const onRunway = Math.abs(phys.pos.x) <= 7.5 && Math.abs(phys.pos.z) <= 61;
-            $('big-card').classList.toggle('gold', onRunway);
+            let onRunway = null;
+            for (const rw of RUNWAYS)
+                if (Math.abs(phys.pos.x - rw.x) <= 7.5 && Math.abs(phys.pos.z - rw.z) <= 61) { onRunway = rw; break; }
+            $('big-card').classList.toggle('gold', !!onRunway);
             if (onRunway) {
                 Sound.fanfare();
                 bigTitle.textContent = '🏆 RUNWAY LANDING!!!';
-                bigSub.innerHTML = `You flew <b>${Math.round(flight.maxAlt)} m</b> high and came back to the airstrip like a REAL pilot! ✈️`;
+                bigSub.innerHTML = `You flew <b>${Math.round(flight.maxAlt)} m</b> high and landed at the <b>${onRunway.name}</b> like a REAL pilot! ✈️`;
                 confetti(130);
                 setTimeout(() => confetti(130), 900);
                 fireworks();
@@ -3305,7 +3873,7 @@
                 confetti(80);
             }
             bigOverlay.classList.remove('hidden');
-            gtag('event', 'flight_success', { game_name: 'Test Flight', body: craft.bodyDef.name, max_alt: Math.round(flight.maxAlt), runway: onRunway });
+            gtag('event', 'flight_success', { game_name: 'Test Flight', body: craft.bodyDef.name, max_alt: Math.round(flight.maxAlt), runway: onRunway ? onRunway.name : 'none' });
         }
 
         function fireworks() {
@@ -3380,11 +3948,23 @@
             }
             const alt = Math.max(0, Math.round(flight.lowY));
             const spd = Math.round(phys.vel.length());
-            hudEl.innerHTML = `⬆ ${alt} m &nbsp;&nbsp; 💨 ${spd} m/s`;
+            const battleBit = battle.active
+                ? `${'❤️'.repeat(Math.max(0, battle.hp))} &nbsp;🤖×${battle.bots.filter(b => !b.dead).length} &nbsp;&nbsp;`
+                : '';
+            hudEl.innerHTML = `${battleBit}⬆ ${alt} m &nbsp;&nbsp; 💨 ${spd} m/s`;
         }
 
         // ----- flight buttons -----
-        $('start-btn').addEventListener('click', () => { Sound.init(); startFlight(); });
+        function openModeDialog() {
+            Sound.init();
+            $('mode-dialog').classList.remove('hidden');
+        }
+        $('start-btn').addEventListener('click', openModeDialog);
+        $('mode-free').addEventListener('click', () => { $('mode-dialog').classList.add('hidden'); startFlight(false); });
+        $('mode-battle').addEventListener('click', () => { $('mode-dialog').classList.add('hidden'); startFlight(true); });
+        $('mode-dialog').addEventListener('pointerdown', (e) => {
+            if (e.target === $('mode-dialog')) $('mode-dialog').classList.add('hidden');
+        });
         $('editor-btn').addEventListener('click', endFlight);
         $('retry-btn').addEventListener('click', resetFlight);
         $('big-retry').addEventListener('click', resetFlight);
@@ -3405,13 +3985,22 @@
                 if (skyDome) skyDome.position.copy(camera.position);
                 for (const c of clouds) {
                     c.position.x += c.userData.v * dt;
-                    if (c.position.x > 1300) c.position.x = -1300;
+                    if (c.position.x > 4400) c.position.x = -4400;
                 }
                 for (const b of balloons) {
+                    if (!b.visible) {   // popped balloons drift back in later
+                        b.userData.respawn -= dt;
+                        if (b.userData.respawn <= 0) {
+                            const a = rand(0, Math.PI * 2), r = rand(300, 3200);
+                            b.position.set(Math.cos(a) * r, rand(70, 200), Math.sin(a) * r);
+                            b.visible = true;
+                        }
+                        continue;
+                    }
                     b.userData.bob += dt;
                     b.position.x += b.userData.v * dt;
                     b.position.y += Math.sin(b.userData.bob * 0.6) * dt * 1.5;
-                    if (b.position.x > 1200) b.position.x = -1200;
+                    if (b.position.x > 3400) b.position.x = -3400;
                 }
             }
             updateSmoke(dt);
@@ -3422,6 +4011,7 @@
         window.__tf = {
             get phys() { return phys; }, get flight() { return flight; }, get design() { return design; },
             get powerState() { return powerState; }, get colliders() { return colliders; },
+            get battle() { return battle; }, get bullets() { return bullets; }, get balloons() { return balloons; },
             step(dt = 1 / 60, n = 1) { if (mode === 'flight') for (let i = 0; i < n; i++) stepPhysics(dt); }
         };
 
