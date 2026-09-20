@@ -1924,7 +1924,32 @@
         let skyDome = null;
         const clouds = [];
         const balloons = [];
+        const turbines = [];
+        const birds = [];
+        let lakeTex = null, oceanTex = null;   // animated so the water actually moves
         let colliders = [];   // stuff you can CRASH into: mountains, trees, houses, skyscrapers...
+
+        function makeWaterTexture(base, light) {
+            const c = document.createElement('canvas');
+            c.width = c.height = 256;
+            const x = c.getContext('2d');
+            x.fillStyle = base;
+            x.fillRect(0, 0, 256, 256);
+            x.strokeStyle = light;
+            x.lineWidth = 2;
+            x.globalAlpha = 0.32;
+            for (let i = 0; i < 70; i++) {                                     // little wave streaks
+                const sx = rand(-20, 256), sy = rand(0, 256);
+                x.beginPath();
+                x.moveTo(sx, sy);
+                x.bezierCurveTo(sx + rand(10, 30), sy + rand(-7, 7), sx + rand(30, 55), sy + rand(-7, 7), sx + rand(55, 85), sy + rand(-4, 4));
+                x.stroke();
+            }
+            x.globalAlpha = 1;
+            const tex = new THREE.CanvasTexture(c);
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
 
         function makeGroundTexture() {
             const c = document.createElement('canvas');
@@ -1958,6 +1983,28 @@
                 if (Math.random() < 0.5) { x.moveTo(0, rand(0, 2048)); x.lineTo(2048, rand(0, 2048)); }
                 else { x.moveTo(rand(0, 2048), 0); x.lineTo(rand(0, 2048), 2048); }
                 x.stroke();
+            }
+            for (let i = 0; i < 40; i++) {                                       // soft hill shading (fake relief)
+                const hx = rand(0, 2048), hy = rand(0, 2048), hr = rand(80, 260);
+                let grd = x.createRadialGradient(hx - hr * 0.3, hy - hr * 0.3, hr * 0.1, hx, hy, hr);
+                grd.addColorStop(0, 'rgba(255,255,235,0.10)');
+                grd.addColorStop(1, 'rgba(255,255,235,0)');
+                x.fillStyle = grd;
+                x.beginPath(); x.arc(hx, hy, hr, 0, Math.PI * 2); x.fill();
+                grd = x.createRadialGradient(hx + hr * 0.35, hy + hr * 0.35, hr * 0.1, hx, hy, hr);
+                grd.addColorStop(0, 'rgba(15,35,10,0.10)');
+                grd.addColorStop(1, 'rgba(15,35,10,0)');
+                x.fillStyle = grd;
+                x.beginPath(); x.arc(hx, hy, hr, 0, Math.PI * 2); x.fill();
+            }
+            x.globalAlpha = 0.12;                                                // plowed crop rows
+            x.strokeStyle = '#4a7a38';
+            x.lineWidth = 2;
+            for (let i = 0; i < 26; i++) {
+                const fx = rand(0, 1850), fy = rand(0, 1850), fw = rand(80, 220), fh = rand(80, 220);
+                for (let yy = fy; yy < fy + fh; yy += 7) {
+                    x.beginPath(); x.moveTo(fx, yy); x.lineTo(fx + fw, yy); x.stroke();
+                }
             }
             x.globalAlpha = 0.06;                                                // fine grain
             for (let i = 0; i < 2600; i++) {
@@ -2061,10 +2108,10 @@
             ground.receiveShadow = true;
             env.add(ground);
 
-            const flatCircle = (cx, cz, r, color, y = 0.015, seg = 36, water = false) => {
-                // water is shiny and reflects the sun; land is matte
-                const matl = water
-                    ? new THREE.MeshStandardMaterial({ color, roughness: 0.12, metalness: 0.55 })
+            const flatCircle = (cx, cz, r, color, y = 0.015, seg = 36, waterMap = null) => {
+                // water is shiny, rippled and reflects the sun; land is matte
+                const matl = waterMap
+                    ? new THREE.MeshStandardMaterial({ color: 0xffffff, map: waterMap, roughness: 0.12, metalness: 0.5 })
                     : new THREE.MeshLambertMaterial({ color });
                 const m = new THREE.Mesh(new THREE.CircleGeometry(r, seg), matl);
                 m.rotation.x = -Math.PI / 2;
@@ -2098,12 +2145,16 @@
             }
 
             // ----- water: lakes everywhere + THE OCEAN out west -----
+            lakeTex = makeWaterTexture('#4795d4', '#9fd4f0');
+            lakeTex.repeat.set(5, 5);
+            oceanTex = makeWaterTexture('#2f6fb5', '#7fb8e0');
+            oceanTex.repeat.set(34, 34);
             for (const w of WATERS) {
                 if (w.r > 500) {   // the ocean gets a beach
                     flatCircle(w.x, w.z, w.r + 45, 0xe8d49a, 0.012, 48);
-                    flatCircle(w.x, w.z, w.r, 0x3579c0, 0.035, 48, true);
+                    flatCircle(w.x, w.z, w.r, 0xffffff, 0.035, 48, oceanTex);
                 } else {
-                    flatCircle(w.x, w.z, w.r, 0x4f9edb, 0.03, 28, true);
+                    flatCircle(w.x, w.z, w.r, 0xffffff, 0.03, 28, lakeTex);
                 }
             }
             {   // the island (with its own airstrip and palm trees!)
@@ -2365,14 +2416,61 @@
                 env.add(g);
             }
 
-            // ----- clouds -----
-            const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.88 });
+            // ----- wind turbines (they really spin — and yes, you can crash into them) -----
+            for (let i = 0; i < 7; i++) {
+                const spot = ringPos(160, 1600);
+                if (!spot) continue;
+                const g = new THREE.Group();
+                cyl(g, 0.35, 0.6, 22, 0xe8e8ec, 0, 11, 0, 8);                  // tower
+                box(g, 1.2, 1.2, 2.2, 0xd8d8e0, 0, 22.4, 0.5);                 // nacelle
+                const rotor = new THREE.Group();
+                rotor.position.set(0, 22.4, -0.75);
+                for (const a of [0, 2.094, 4.189]) {
+                    const bladeGeo = new THREE.BoxGeometry(0.55, 9, 0.14);
+                    bladeGeo.translate(0, 4.6, 0);
+                    const blade = new THREE.Mesh(bladeGeo, mat(0xf4f4f0));
+                    blade.rotation.z = a;
+                    blade.castShadow = true;
+                    rotor.add(blade);
+                }
+                g.add(rotor);
+                g.userData = { rotor, spin: rand(0.7, 1.3) };
+                g.position.set(spot[0], 0, spot[1]);
+                g.rotation.y = rand(-0.5, 0.5);
+                env.add(g);
+                turbines.push(g);
+                colliders.push({ x: spot[0], z: spot[1], r: 1.3, h: 23, cone: false, what: 'turbine' });
+            }
+
+            // ----- birds! two little flocks circling the countryside -----
+            for (let f = 0; f < 2; f++) {
+                const cx = f ? -520 : 320, cz = f ? 340 : -420;
+                for (let i = 0; i < 5; i++) {
+                    const b = new THREE.Group();
+                    const wl = box(b, 0.55, 0.03, 0.18, 0x3a3a40, -0.28, 0, 0);
+                    const wr = box(b, 0.55, 0.03, 0.18, 0x3a3a40, 0.28, 0, 0);
+                    sph(b, 0.09, 0x3a3a40, 0, 0, -0.02);
+                    b.traverse(o => { o.castShadow = false; });
+                    b.userData = {
+                        cx: cx + rand(-30, 30), cz: cz + rand(-30, 30),
+                        r: rand(50, 120), alt: rand(38, 70),
+                        a: rand(0, Math.PI * 2), speed: rand(0.25, 0.4),
+                        flap: rand(0, 6), wl, wr
+                    };
+                    birds.push(b);
+                    env.add(b);
+                }
+            }
+
+            // ----- clouds (cottony: flat bottoms, soft self-glow) -----
+            const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x8895a5, transparent: true, opacity: 0.92 });
             for (let i = 0; i < (IS_MOBILE ? 20 : 36); i++) {
                 const g = new THREE.Group();
-                const n = 3 + (Math.random() * 3 | 0);
+                const n = 4 + (Math.random() * 3 | 0);
                 for (let j = 0; j < n; j++) {
                     const s = new THREE.Mesh(new THREE.SphereGeometry(rand(6, 16), 10, 8), cloudMat);
-                    s.position.set(rand(-16, 16), rand(-3, 3), rand(-9, 9));
+                    s.position.set(rand(-18, 18), rand(0, 4), rand(-10, 10));
+                    s.scale.y = rand(0.5, 0.65);
                     g.add(s);
                 }
                 const a = rand(0, Math.PI * 2), r = rand(120, 4200);
@@ -4293,6 +4391,7 @@
             snowman: 'You flattened a snowman! ⛄',
             hangar: 'You crashed into your own hangar! 😅',
             balloon: 'You flew into a hot air balloon! 🎈💥',
+            turbine: 'You flew into a wind turbine! 🌬️💥',
             volcano: 'You crashed into the VOLCANO! 🌋',
             shot: 'The robots shot you down! 🤖 Glue on more 🔫 blasters and get revenge!'
         };
@@ -4505,6 +4604,19 @@
                     b.position.y += Math.sin(b.userData.bob * 0.6) * dt * 1.5;
                     if (b.position.x > 3400) b.position.x = -3400;
                 }
+                for (const t of turbines) t.userData.rotor.rotation.z += dt * t.userData.spin;
+                for (const b of birds) {
+                    const u = b.userData;
+                    u.a += dt * u.speed;
+                    u.flap += dt * 9;
+                    b.position.set(u.cx + Math.cos(u.a) * u.r, u.alt + Math.sin(u.a * 3) * 3, u.cz + Math.sin(u.a) * u.r);
+                    b.rotation.y = Math.PI - u.a;
+                    const fl = Math.sin(u.flap) * 0.55;
+                    u.wl.rotation.z = fl;
+                    u.wr.rotation.z = -fl;
+                }
+                if (lakeTex) { lakeTex.offset.x += dt * 0.012; lakeTex.offset.y += dt * 0.007; }
+                if (oceanTex) { oceanTex.offset.x += dt * 0.02; oceanTex.offset.y += dt * 0.011; }
             }
             updateSmoke(dt);
             renderer.render(scene, camera);
@@ -4515,7 +4627,7 @@
             get phys() { return phys; }, get flight() { return flight; }, get design() { return design; },
             get powerState() { return powerState; }, get colliders() { return colliders; },
             get battle() { return battle; }, get bullets() { return bullets; }, get balloons() { return balloons; },
-            get camera() { return camera; },
+            get camera() { return camera; }, get turbines() { return turbines; }, get birds() { return birds; },
             step(dt = 1 / 60, n = 1) { if (mode === 'flight') for (let i = 0; i < n; i++) stepPhysics(dt); }
         };
 
