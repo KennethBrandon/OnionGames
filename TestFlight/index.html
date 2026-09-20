@@ -815,14 +815,39 @@
         renderer.setPixelRatio(Math.min(devicePixelRatio, IS_MOBILE ? 1.5 : 2));
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = IS_MOBILE ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+        // filmic tone mapping = the single biggest "looks real" switch
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.18;
         container.appendChild(renderer.domElement);
 
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x998877, 1.05);
+        const hemiLight = new THREE.HemisphereLight(0xcfe4ff, 0x8a7a5f, 0.7);
         scene.add(hemiLight);
-        const sunLight = new THREE.DirectionalLight(0xfff4e0, 1.7);
+        const sunLight = new THREE.DirectionalLight(0xfff0d8, 2.3);
         sunLight.position.set(6, 12, 8);
         sunLight.castShadow = true;
-        sunLight.shadow.mapSize.set(IS_MOBILE ? 512 : 1024, IS_MOBILE ? 512 : 1024);
+        sunLight.shadow.mapSize.set(IS_MOBILE ? 640 : 2048, IS_MOBILE ? 640 : 2048);
+        sunLight.shadow.bias = -0.0004;
+        sunLight.shadow.radius = 4;
+
+        // soft image-based ambient light so nothing looks flat-shaded
+        {
+            const envScene = new THREE.Scene();
+            const envSky = new THREE.Mesh(new THREE.SphereGeometry(50, 16, 10),
+                new THREE.MeshBasicMaterial({ side: THREE.BackSide, color: 0xa8c8e8 }));
+            envScene.add(envSky);
+            const envGround = new THREE.Mesh(new THREE.CircleGeometry(45, 16),
+                new THREE.MeshBasicMaterial({ color: 0x8a8468 }));
+            envGround.rotation.x = -Math.PI / 2;
+            envGround.position.y = -10;
+            envScene.add(envGround);
+            const envSun = new THREE.Mesh(new THREE.SphereGeometry(7, 10, 8),
+                new THREE.MeshBasicMaterial({ color: 0xfff6e0 }));
+            envSun.position.set(22, 28, 16);
+            envScene.add(envSun);
+            const pmrem = new THREE.PMREMGenerator(renderer);
+            scene.environment = pmrem.fromScene(envScene, 0.06).texture;
+            pmrem.dispose();
+        }
         sunLight.shadow.camera.near = 0.5;
         sunLight.shadow.camera.far = 80;
         setShadowBox(8);
@@ -846,7 +871,7 @@
         const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
         function mat(color, opts = {}) {
-            return new THREE.MeshStandardMaterial({ color, roughness: 0.82, metalness: 0.05, ...opts });
+            return new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.06, ...opts });
         }
         function box(g, w, h, d, color, x, y, z, opts = {}) {
             const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, opts));
@@ -1737,9 +1762,9 @@
             const c = document.createElement('canvas');
             c.width = c.height = 2048;
             const x = c.getContext('2d');
-            x.fillStyle = '#7fb35c';
+            x.fillStyle = '#6dab4e';
             x.fillRect(0, 0, 2048, 2048);
-            const fieldColors = ['#8cbf62', '#a5c95c', '#c9c05f', '#77aa55', '#b8d078', '#d9c982', '#9fbf6a', '#86b96e'];
+            const fieldColors = ['#7cb654', '#9cc350', '#c2b854', '#659e49', '#aac96a', '#d1c072', '#8fb75c', '#76b060'];
             for (let i = 0; i < 130; i++) {
                 x.fillStyle = fieldColors[(Math.random() * fieldColors.length) | 0];
                 x.globalAlpha = rand(0.5, 0.95);
@@ -1752,6 +1777,11 @@
                 x.arc(rand(0, 2048), rand(0, 2048), rand(30, 110), 0, Math.PI * 2);
                 x.fill();
             }
+            x.globalAlpha = 0.25;                                                // hedgerows around fields
+            x.strokeStyle = '#3f6030';
+            x.lineWidth = 3;
+            for (let i = 0; i < 60; i++)
+                x.strokeRect(rand(0, 1950), rand(0, 1950), rand(60, 280), rand(60, 280));
             x.globalAlpha = 0.8;
             x.strokeStyle = '#b0aca2';
             for (let i = 0; i < 12; i++) {                                       // roads
@@ -1761,11 +1791,42 @@
                 else { x.moveTo(rand(0, 2048), 0); x.lineTo(rand(0, 2048), 2048); }
                 x.stroke();
             }
+            x.globalAlpha = 0.06;                                                // fine grain
+            for (let i = 0; i < 2600; i++) {
+                x.fillStyle = Math.random() < 0.5 ? '#ffffff' : '#1e3a14';
+                x.fillRect(rand(0, 2046), rand(0, 2046), 2, 2);
+            }
             x.globalAlpha = 1;
             const tex = new THREE.CanvasTexture(c);
             tex.wrapS = tex.wrapT = THREE.MirroredRepeatWrapping;
             tex.repeat.set(10, 10);
             tex.anisotropy = 4;
+            return tex;
+        }
+
+        function makeRunwayTexture() {
+            const c = document.createElement('canvas');
+            c.width = 128; c.height = 1024;
+            const x = c.getContext('2d');
+            x.fillStyle = '#3a3d42';
+            x.fillRect(0, 0, 128, 1024);
+            for (let i = 0; i < 900; i++) {                                    // asphalt speckle
+                x.fillStyle = Math.random() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.16)';
+                x.fillRect(rand(0, 126), rand(0, 1022), 2, 2);
+            }
+            x.fillStyle = '#e8e8e0';
+            x.fillRect(4, 8, 5, 1008);                                         // edge lines
+            x.fillRect(119, 8, 5, 1008);
+            for (let i = 0; i < 6; i++) {                                      // threshold bars
+                x.fillRect(14 + i * 18, 12, 10, 46);
+                x.fillRect(14 + i * 18, 966, 10, 46);
+            }
+            for (let yy = 150; yy < 880; yy += 70) x.fillRect(59, yy, 10, 38); // centerline
+            x.font = 'bold 46px sans-serif';                                   // runway number
+            x.textAlign = 'center';
+            x.fillText('01', 64, 128);
+            const tex = new THREE.CanvasTexture(c);
+            tex.anisotropy = 8;
             return tex;
         }
 
@@ -1794,11 +1855,19 @@
                 new THREE.ShaderMaterial({
                     side: THREE.BackSide, depthWrite: false, fog: false,
                     uniforms: {
-                        top: { value: new THREE.Color(0x3f8fe0) },
-                        bottom: { value: new THREE.Color(0xcfeaf7) }
+                        top: { value: new THREE.Color(0x3584d8) },
+                        bottom: { value: new THREE.Color(0xcfe8f7) },
+                        sunDir: { value: new THREE.Vector3(4200, 3200, -6400).normalize() }
                     },
-                    vertexShader: 'varying float vY; void main(){ vY = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-                    fragmentShader: 'uniform vec3 top; uniform vec3 bottom; varying float vY; void main(){ gl_FragColor = vec4(mix(bottom, top, clamp(vY * 1.7, 0.0, 1.0)), 1.0); }'
+                    vertexShader: 'varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+                    fragmentShader: 'uniform vec3 top; uniform vec3 bottom; uniform vec3 sunDir; varying vec3 vDir;\n'
+                        + 'void main(){\n'
+                        + '  vec3 d = normalize(vDir);\n'
+                        + '  vec3 col = mix(bottom, top, clamp(d.y * 1.7, 0.0, 1.0));\n'
+                        + '  float sa = max(dot(d, sunDir), 0.0);\n'
+                        + '  col += vec3(1.0, 0.88, 0.65) * (pow(sa, 350.0) * 0.9 + pow(sa, 12.0) * 0.14);\n'
+                        + '  gl_FragColor = vec4(col, 1.0);\n'
+                        + '}'
                 }));
             skyDome.renderOrder = -10;
             env.add(skyDome);
@@ -1824,9 +1893,12 @@
             ground.receiveShadow = true;
             env.add(ground);
 
-            const flatCircle = (cx, cz, r, color, y = 0.015, seg = 36) => {
-                const m = new THREE.Mesh(new THREE.CircleGeometry(r, seg),
-                    new THREE.MeshLambertMaterial({ color }));
+            const flatCircle = (cx, cz, r, color, y = 0.015, seg = 36, water = false) => {
+                // water is shiny and reflects the sun; land is matte
+                const matl = water
+                    ? new THREE.MeshStandardMaterial({ color, roughness: 0.12, metalness: 0.55 })
+                    : new THREE.MeshLambertMaterial({ color });
+                const m = new THREE.Mesh(new THREE.CircleGeometry(r, seg), matl);
                 m.rotation.x = -Math.PI / 2;
                 m.position.set(cx, y, cz);
                 env.add(m);
@@ -1834,20 +1906,13 @@
             };
 
             // ----- airstrips everywhere (find and land on all 5!) -----
+            const runwayMat = new THREE.MeshLambertMaterial({ map: makeRunwayTexture() });
             for (const rw of RUNWAYS) {
-                const strip = new THREE.Mesh(new THREE.PlaneGeometry(14, 120),
-                    new THREE.MeshLambertMaterial({ color: 0x3c3f44 }));
+                const strip = new THREE.Mesh(new THREE.PlaneGeometry(14, 120), runwayMat);
                 strip.rotation.x = -Math.PI / 2;
                 strip.position.set(rw.x, 0.04, rw.z);
                 strip.receiveShadow = true;
                 env.add(strip);
-                for (let z = -52; z <= 52; z += 10) {
-                    const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 3.4),
-                        new THREE.MeshLambertMaterial({ color: 0xf0f0e8 }));
-                    dash.rotation.x = -Math.PI / 2;
-                    dash.position.set(rw.x, 0.055, rw.z + z);
-                    env.add(dash);
-                }
             }
             {   // your own little hangar + windsock at the Home Airstrip
                 const hg = new THREE.Group();
@@ -1868,9 +1933,9 @@
             for (const w of WATERS) {
                 if (w.r > 500) {   // the ocean gets a beach
                     flatCircle(w.x, w.z, w.r + 45, 0xe8d49a, 0.012, 48);
-                    flatCircle(w.x, w.z, w.r, 0x3579c0, 0.035, 48);
+                    flatCircle(w.x, w.z, w.r, 0x3579c0, 0.035, 48, true);
                 } else {
-                    flatCircle(w.x, w.z, w.r, 0x4f9edb, 0.03, 28);
+                    flatCircle(w.x, w.z, w.r, 0x4f9edb, 0.03, 28, true);
                 }
             }
             {   // the island (with its own airstrip and palm trees!)
@@ -3441,7 +3506,7 @@
             flightEnv.visible = true;
             editorEnv.visible = false;
             scene.background = new THREE.Color(0x87c8f0);
-            scene.fog = new THREE.Fog(0xcfeaf7, 400, 4200);
+            scene.fog = new THREE.Fog(0xcfe8f7, 550, 4200);
             setShadowBox(16);
             resetFlight();
 
