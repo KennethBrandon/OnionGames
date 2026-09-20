@@ -1624,7 +1624,7 @@
             },
             {
                 name: 'Submarine', emoji: '⚓', mass: 5, floats: true,
-                power: { name: 'DIVE DASH', emoji: '🫧', type: 'boost', a: 36, color: 0x8fd3ff, snd: 'splash' },
+                power: { name: 'DIVE DASH', emoji: '🫧', type: 'dive', a: 30, color: 0x8fd3ff, snd: 'splash' },
                 build() {
                     const g = new THREE.Group();
                     const hull = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 1.6, 6, 14), mat(0xffd21f));
@@ -2292,7 +2292,7 @@
             const flatCircle = (cx, cz, r, color, y = 0.015, seg = 36, waterMap = null) => {
                 // water is shiny, rippled and reflects the sun; land is matte
                 const matl = waterMap
-                    ? new THREE.MeshStandardMaterial({ color: 0xffffff, map: waterMap, roughness: 0.12, metalness: 0.5 })
+                    ? new THREE.MeshStandardMaterial({ color: 0xffffff, map: waterMap, roughness: 0.12, metalness: 0.5, transparent: true, opacity: 0.88 })
                     : new THREE.MeshLambertMaterial({ color });
                 const m = new THREE.Mesh(new THREE.CircleGeometry(r, seg), matl);
                 m.rotation.x = -Math.PI / 2;
@@ -2816,7 +2816,26 @@
         }
 
         // ================= DESIGN STATE + STORAGE =================
-        let design = { bodyIndex: 0, parts: [] };
+        // brand-new players start with a REAL airplane, ready to fly
+        const STARTER_PLANE = {
+            name: 'Starter Plane',
+            bodyIndex: 31,   // the Rocket
+            parts: [
+                { id: 'sp-prop', type: 'prop', pos: [0, 0.55, -1.52], normal: [0, 0, -1], key: 'A' },
+                { id: 'sp-b1', type: 'booster', pos: [-0.22, 0.55, 1.0], normal: [0, 0, 1], key: 'B' },
+                { id: 'sp-b2', type: 'booster', pos: [0.22, 0.55, 1.0], normal: [0, 0, 1], key: 'C' },
+                { id: 'sp-wl', type: 'wingL', pos: [-0.34, 0.62, -0.1], normal: [-1, 0, 0], key: null },
+                { id: 'sp-wr', type: 'wingR', pos: [0.34, 0.62, -0.1], normal: [1, 0, 0], key: null },
+                { id: 'sp-ail', type: 'aileron', pos: [0.34, 0.75, 0.5], normal: [1, 0, 0], key: null },
+                { id: 'sp-tail', type: 'tail', pos: [0, 0.8, 0.95], normal: [0, 0, 1], key: null },
+                { id: 'sp-g1', type: 'gun', pos: [-1.0, 0.55, -0.3], normal: [0, -1, 0], parent: 'sp-wl' },
+                { id: 'sp-g2', type: 'gun', pos: [1.0, 0.55, -0.3], normal: [0, -1, 0], parent: 'sp-wr' },
+                { id: 'sp-w1', type: 'wheel', pos: [-0.3, 0.3, -0.6], normal: [0, -1, 0], key: null },
+                { id: 'sp-w2', type: 'wheel', pos: [0.3, 0.3, -0.6], normal: [0, -1, 0], key: null },
+                { id: 'sp-w3', type: 'wheel', pos: [0, 0.3, 0.85], normal: [0, -1, 0], key: null }
+            ]
+        };
+        let design = JSON.parse(JSON.stringify(STARTER_PLANE));
 
         const genId = () => Date.now().toString(36) + '-' + ((Math.random() * 1e6) | 0);
         // older saves have no part ids — give them some so wing attachments work
@@ -3467,11 +3486,13 @@
             if (mode !== 'flight' || flight.broken || flight.finished || flight.chute) return;
             const def = flight.powerDef;
             if (!def) return;
-            if (def.type === 'boost' || def.type === 'hover') {
+            if (def.type === 'boost' || def.type === 'hover' || def.type === 'dive') {
                 if (!powerState.held) {
                     powerState.held = true;
                     powerSound(def);
-                    toast(`${def.emoji} ${def.name}!!`, 1100);
+                    toast(def.type === 'dive' && flight.floating
+                        ? '🫧 DIVE DIVE DIVE! Periscope up!'
+                        : `${def.emoji} ${def.name}!!`, 1300);
                     updateBoosterButtonStates();
                 }
                 return;
@@ -3524,9 +3545,10 @@
             const def = flight.powerDef;
             if (!def) return;
             // colored trail while a held power is blasting
-            if (powerState.held && !flight.broken && (def.type === 'boost' || def.type === 'hover') && Math.random() < 0.75) {
+            if (powerState.held && !flight.broken && (def.type === 'boost' || def.type === 'hover' || def.type === 'dive') && Math.random() < 0.75) {
                 const fwd = AXIS_FWD.clone().applyQuaternion(phys.quat);
                 const back = phys.pos.clone().addScaledVector(fwd, -Math.max(0.8, craft.size.z * 0.55));
+                if (def.type === 'dive' && phys.pos.y < 0.5) back.y = 0.15;   // bubbles pop at the surface
                 spawnPuff(back, fwd.clone().multiplyScalar(-rand(2, 4)).add(tmpV1.set(rand(-0.6, 0.6), rand(-0.6, 0.6), rand(-0.6, 0.6))),
                     powerColor(def), rand(0.5, 1), rand(0.5, 0.9));
             }
@@ -4344,7 +4366,10 @@
                         const liftDir = new THREE.Vector3().crossVectors(rightW, vHat);
                         if (liftDir.lengthSq() > 1e-4) {
                             liftDir.normalize();
-                            const Lmag = clamp(WING_K * s2 * cl, -2.2 * phys.m * G, 2.2 * phys.m * G);
+                            let Lmag = clamp(WING_K * s2 * cl, -2.2 * phys.m * G, 2.2 * phys.m * G);
+                            // a diving submarine angles its wings down — almost no lift underwater
+                            if (powerState.held && flight.powerDef && flight.powerDef.type === 'dive'
+                                && waterAt(phys.pos.x, phys.pos.z)) Lmag *= 0.08;
                             const Dmag = WING_K * s2 * (0.015 + 0.1 * cl * cl);
                             wingAero = { liftDir, Lmag, Dmag, vHat };
                         }
@@ -4373,6 +4398,13 @@
                     } else if (def.type === 'hover') {
                         F.addScaledVector(WORLD_UP, phys.m * G * 1.5);
                         F.addScaledVector(fwd, phys.m * 6);
+                    } else if (def.type === 'dive') {
+                        // the submarine surges forward — and over water, it goes UNDER fast
+                        F.addScaledVector(fwd, phys.m * def.a);
+                        if (waterAt(phys.pos.x, phys.pos.z)) {
+                            F.addScaledVector(WORLD_UP, -phys.m * G * 2.6);
+                            if (phys.pos.y < 0) F.addScaledVector(phys.vel, -1.8 * phys.m);   // water is thick
+                        }
                     }
                 }
                 const ctrl = getControls();
@@ -4411,6 +4443,11 @@
             const angDamp = 0.9 + 1.1 * Math.min(craft.wingCount, 2) + (flight.broken ? 1.5 : 0);
             phys.angVel.multiplyScalar(Math.exp(-h * angDamp));
             phys.pos.addScaledVector(phys.vel, h);
+            // periscope depth: deep enough to hide the hull, shallow enough to see out
+            if (powerState.held && flight.powerDef && flight.powerDef.type === 'dive' && phys.pos.y < -1.6) {
+                phys.pos.y = -1.6;
+                if (phys.vel.y < 0) phys.vel.y = 0;
+            }
 
             const w = phys.angVel;
             const dq = new THREE.Quaternion(w.x * h * 0.5, w.y * h * 0.5, w.z * h * 0.5, 0).multiply(phys.quat);
@@ -4487,8 +4524,10 @@
             flight.floating = submerged > 0;
             if (flight.floating) {
                 const f = clamp(buoy / 2, 0, 1.6);
-                phys.vel.y += h * G * (1.15 + 0.9 * f) * f;
-                phys.vel.y *= Math.exp(-h * 4 * f);
+                // a diving submarine fights its own buoyancy
+                const diveDamp = (powerState.held && flight.powerDef && flight.powerDef.type === 'dive') ? 0.12 : 1;
+                phys.vel.y += h * G * (1.15 + 0.9 * f) * f * diveDamp;
+                phys.vel.y *= Math.exp(-h * (diveDamp < 1 ? 0.8 : 4) * f);
                 phys.vel.x *= Math.exp(-h * 0.9 * f);
                 phys.vel.z *= Math.exp(-h * 0.9 * f);
                 phys.angVel.multiplyScalar(Math.exp(-h * 2.5 * f));
@@ -4580,7 +4619,8 @@
                 flight.maxAlt = Math.max(flight.maxAlt, alt);
                 const upDot = WORLD_UP.clone().applyQuaternion(phys.quat).y;
                 const flewEnough = flight.airTime > 2.5 && flight.maxAlt > 10;
-                if (flewEnough && flight.grounded && phys.vel.length() < 1.0 && upDot > 0.65) {
+                const diving = powerState.held && flight.powerDef && flight.powerDef.type === 'dive';
+                if (flewEnough && flight.grounded && !diving && phys.vel.length() < 1.0 && upDot > 0.65) {
                     flight.landTimer += dt;
                     if (flight.landTimer > 1.2) triggerSuccess();
                 } else {
@@ -4685,7 +4725,13 @@
             if (onRunway) {
                 Sound.fanfare();
                 bigTitle.textContent = '🏆 RUNWAY LANDING!!!';
-                bigSub.innerHTML = `You flew <b>${Math.round(flight.maxAlt)} m</b> high and landed at the <b>${onRunway.name}</b> like a REAL pilot! ✈️`;
+                // runway prize: your ride morphs into a surprise new body (parts stay on!)
+                let newBody;
+                do { newBody = (Math.random() * BODIES.length) | 0; } while (newBody === design.bodyIndex);
+                design.bodyIndex = newBody;
+                saveWorkingDesign();
+                bigSub.innerHTML = `You flew <b>${Math.round(flight.maxAlt)} m</b> high and landed at the <b>${onRunway.name}</b> like a REAL pilot! ✈️`
+                    + `<br>🎁 Runway prize: your ride is now a <b>${BODIES[newBody].emoji} ${BODIES[newBody].name}</b>!`;
                 confetti(130);
                 setTimeout(() => confetti(130), 900);
                 fireworks();
@@ -4861,6 +4907,17 @@
 
         // ================= BOOT =================
         loadWorkingDesign();
+        try {
+            // park a Starter Plane in everyone's hangar, once
+            if (!localStorage.getItem('tf-starter-v1')) {
+                const h = loadHangar();
+                if (!h.some(e => e.id === 'starter-plane')) {
+                    h.push({ id: 'starter-plane', name: '✈️ Starter Plane', created: Date.now(), design: JSON.parse(JSON.stringify(STARTER_PLANE)) });
+                    saveHangar(h);
+                }
+                localStorage.setItem('tf-starter-v1', '1');
+            }
+        } catch (e) { }
         rebuildCraft();
         updateEditorCamera();
         updateHangarCount();
