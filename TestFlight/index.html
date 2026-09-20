@@ -3185,6 +3185,22 @@
             if (craft && craft.pilotGroup) craft.pilotGroup.visible = true;
         }
 
+        // the pilot can't walk (or float) through mountains, buildings, trees...
+        // — they get pushed out and slide around the edge instead
+        function pushOutOfObstacles(p, pad = 0.45) {
+            for (const c of colliders) {
+                if (p.y > c.h) continue;
+                const dx = p.x - c.x, dz = p.z - c.z;
+                const rr = (c.cone ? c.r * (1 - Math.max(0, p.y) / c.h) : c.r) + pad;
+                if (Math.abs(dx) > rr || Math.abs(dz) > rr) continue;
+                const d2 = dx * dx + dz * dz;
+                if (d2 >= rr * rr) continue;
+                const d = Math.sqrt(d2) || 0.001;
+                p.x = c.x + (dx / d) * rr;
+                p.z = c.z + (dz / d) * rr;
+            }
+        }
+
         function updateChute(dt) {
             const ch = flight.chute;
             ch.t += dt;
@@ -3212,6 +3228,7 @@
                     ch.pilot.rotation.x = az * 0.15;
                 }
                 ch.pilot.position.addScaledVector(ch.vel, dt);
+                pushOutOfObstacles(ch.pilot.position);
                 if (ch.pilot.position.y <= 0) {
                     ch.pilot.position.y = 0;
                     ch.walking = true;
@@ -3230,6 +3247,7 @@
                 if (ax || az) {
                     ch.pilot.position.x += ax * spd * dt;
                     ch.pilot.position.z += az * spd * dt;
+                    pushOutOfObstacles(ch.pilot.position);
                     ch.pilot.rotation.y = Math.atan2(ax, az) + Math.PI;
                     ch.bob += dt * 11;
                     ch.pilot.position.y = inWater ? -0.35 : Math.abs(Math.sin(ch.bob)) * 0.13;
