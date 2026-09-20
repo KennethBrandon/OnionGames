@@ -2306,7 +2306,7 @@
             // ----- airstrips everywhere (find and land on all 5!) -----
             const runwayMat = new THREE.MeshLambertMaterial({ map: makeRunwayTexture() });
             for (const rw of RUNWAYS) {
-                const strip = new THREE.Mesh(new THREE.PlaneGeometry(14, 250), runwayMat);
+                const strip = new THREE.Mesh(new THREE.PlaneGeometry(26, 250), runwayMat);
                 strip.rotation.x = -Math.PI / 2;
                 strip.position.set(rw.x, 0.04, rw.z);
                 strip.receiveShadow = true;
@@ -2317,13 +2317,13 @@
                 box(hg, 9, 4.5, 11, 0xd0202a, 0, 2.25, 0);
                 box(hg, 9.6, 0.5, 11.6, 0xf4f4f0, 0, 4.75, 0);
                 box(hg, 3.6, 2.8, 0.3, 0x8899a4, 0, 1.4, -5.5);
-                hg.position.set(-19, 0, 26);
+                hg.position.set(-27, 0, 26);
                 env.add(hg);
-                colliders.push({ x: -19, z: 26, r: 7, h: 5.4, cone: false, what: 'hangar' });
-                cyl(env, 0.08, 0.08, 6, 0xd8d8e0, 12, 3, 30, 8);
+                colliders.push({ x: -27, z: 26, r: 7, h: 5.4, cone: false, what: 'hangar' });
+                cyl(env, 0.08, 0.08, 6, 0xd8d8e0, 18, 3, 30, 8);
                 const sock = new THREE.Mesh(new THREE.ConeGeometry(0.5, 2.2, 10), mat(0xff8c1a));
                 sock.rotation.z = Math.PI / 2;
-                sock.position.set(13.2, 5.6, 30);
+                sock.position.set(19.2, 5.6, 30);
                 env.add(sock);
             }
 
@@ -2458,7 +2458,7 @@
             }
 
             // ----- placement helper that dodges runways + special zones -----
-            const nearRunway = (x, z) => RUNWAYS.some(rw => Math.abs(x - rw.x) < 26 && Math.abs(z - rw.z) < 160);
+            const nearRunway = (x, z) => RUNWAYS.some(rw => Math.abs(x - rw.x) < 38 && Math.abs(z - rw.z) < 160);
             const inCorridor = (x, z) => Math.abs(x) < 30 && z > -210 && z < 210;
             const nearZone = (x, z, zone, pad) => Math.hypot(x - zone.x, z - zone.z) < zone.r + pad;
             const ringPos = (rMin, rMax) => {
@@ -3612,8 +3612,27 @@
             return g;
         }
 
+        // falling (or balloon-riding)? pressing ? pulls the cord again
+        function redeployChute() {
+            const ch = flight.chute;
+            if (!ch || !ch.walking || ch.splat) return;
+            const falling = ch.balloon || ch.groundY > groundHeightAt(ch.pilot.position.x, ch.pilot.position.z) + 2;
+            if (!falling) return;
+            ch.balloon = null;
+            ch.walking = false;
+            ch.opened = true;
+            ch.canopy.visible = true;
+            ch.canopy.scale.setScalar(0.2);
+            ch.vel.set(0, Math.max(-8, ch.fallV || -2), 0);
+            ch.fallV = 0;
+            Sound.pop();
+            toast('🪂 Parachute open again!', 1500);
+        }
+
         function deployParachute() {
-            if (mode !== 'flight' || flight.broken || flight.finished || flight.chute) return;
+            if (mode !== 'flight') return;
+            if (flight.chute) { redeployChute(); return; }
+            if (flight.broken || flight.finished) return;
             Sound.init();
             const start = new THREE.Vector3();
             if (craft.pilotGroup) {
@@ -3740,6 +3759,24 @@
                 }
                 ch.pilot.position.addScaledVector(ch.vel, dt);
                 pushOutOfWalls(ch.pilot.position);
+                // catch a ride: touch down on TOP of a hot air balloon!
+                for (const bal of balloons) {
+                    if (!bal.visible || ch.vel.y > 0) continue;
+                    const bdx = ch.pilot.position.x - bal.position.x, bdz = ch.pilot.position.z - bal.position.z;
+                    const topY = bal.position.y + 8.05;
+                    if (bdx * bdx + bdz * bdz < 30 && ch.pilot.position.y <= topY + 0.3 && ch.pilot.position.y > topY - 2.5) {
+                        ch.walking = true;
+                        ch.balloon = bal;
+                        ch.balloonOx = clamp(bdx, -3, 3);
+                        ch.balloonOz = clamp(bdz, -3, 3);
+                        ch.pilot.rotation.x = ch.pilot.rotation.z = 0;
+                        Sound.success();
+                        confetti(40);
+                        toast('🎈 YOU LANDED ON A HOT AIR BALLOON!! Ride it across the sky!', 3200);
+                        break;
+                    }
+                }
+                if (ch.walking) return;
                 const gh = groundHeightAt(ch.pilot.position.x, ch.pilot.position.z);
                 if (ch.pilot.position.y <= gh) {
                     ch.pilot.position.y = gh;
@@ -3758,6 +3795,32 @@
                     if (ch.canopy.scale.x < 0.05) ch.canopy.visible = false;
                 }
                 if (ch.splat) return;   // face-down in the dirt. RIP.
+                if (ch.balloon) {
+                    // riding a hot air balloon!
+                    if (!ch.balloon.visible) {   // …someone POPPED it
+                        ch.balloon = null;
+                        ch.groundY = ch.pilot.position.y;
+                        ch.fallV = 0;
+                        toast('🎈💥 Your balloon popped!! Press ? to open your parachute!', 2600);
+                    } else {
+                        ch.balloonOx = clamp(ch.balloonOx + ax * 2.5 * dt, -4.8, 4.8);
+                        ch.balloonOz = clamp(ch.balloonOz + az * 2.5 * dt, -4.8, 4.8);
+                        const rr = Math.hypot(ch.balloonOx, ch.balloonOz);
+                        if (rr > 4.4) {           // stepped off the edge!
+                            ch.balloon = null;
+                            ch.groundY = ch.pilot.position.y;
+                            ch.fallV = 0;
+                            toast('🪂 Falling!! Press ? to open your parachute!', 2400);
+                        } else {
+                            ch.pilot.position.set(
+                                ch.balloon.position.x + ch.balloonOx,
+                                ch.balloon.position.y + 1.15 * Math.sqrt(Math.max(4, 49 - rr * rr)),
+                                ch.balloon.position.z + ch.balloonOz);
+                            if (ax || az) ch.pilot.rotation.y = Math.atan2(ax, az) + Math.PI;
+                            return;
+                        }
+                    }
+                }
                 const p = ch.pilot.position;
                 const inWater = ch.groundY < 0.5 && waterAt(p.x, p.z);
                 const spd = inWater ? 1.6 : 4.5;
@@ -4746,7 +4809,7 @@
             // landing back on the airstrip earns the BIG celebration
             let onRunway = null;
             for (const rw of RUNWAYS)
-                if (Math.abs(phys.pos.x - rw.x) <= 7.5 && Math.abs(phys.pos.z - rw.z) <= 126) { onRunway = rw; break; }
+                if (Math.abs(phys.pos.x - rw.x) <= 13.5 && Math.abs(phys.pos.z - rw.z) <= 126) { onRunway = rw; break; }
             $('big-card').classList.toggle('gold', !!onRunway);
             if (onRunway) {
                 Sound.fanfare();
@@ -4843,11 +4906,13 @@
             if (flight.chute) {
                 hudEl.innerHTML = flight.chute.splat
                     ? '💀 ouch…'
-                    : flight.chute.walking
-                        ? (flight.chute.groundY > 2
-                            ? `🧗 climbing! ⬆ ${Math.round(flight.chute.groundY)} m`
-                            : '🚶 exploring the world!')
-                        : `🪂 ⬆ ${Math.max(0, Math.round(flight.chute.pilot.position.y))} m`;
+                    : flight.chute.balloon
+                        ? `🎈 riding a balloon! ⬆ ${Math.round(flight.chute.pilot.position.y)} m`
+                        : flight.chute.walking
+                            ? (flight.chute.groundY > 2
+                                ? `🧗 climbing! ⬆ ${Math.round(flight.chute.groundY)} m`
+                                : '🚶 exploring the world!')
+                            : `🪂 ⬆ ${Math.max(0, Math.round(flight.chute.pilot.position.y))} m`;
                 return;
             }
             const alt = Math.max(0, Math.round(flight.lowY));
