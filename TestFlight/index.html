@@ -3693,9 +3693,51 @@
             toast('🪂 Parachute open again!', 1500);
         }
 
+        // SPACE is the pilot's everything-button: the ripcord in freefall,
+        // JUMP on the ground, and a mega-bounce on balloon tops
+        function openChuteCanopy() {
+            const ch = flight.chute;
+            if (!ch || ch.splat) return;
+            if (!ch.walking) {
+                if (ch.opened) return;
+                ch.opened = true;
+                ch.canopy.visible = true;
+                ch.canopy.scale.setScalar(0.15);
+                ch.pilot.rotation.x = 0;
+                Sound.pop();
+                toast('🪂 Parachute OPEN!', 1200);
+                return;
+            }
+            if (ch.balloon) {
+                // balloons are bouncy!
+                ch.balloon = null;
+                ch.groundY = ch.pilot.position.y + 0.1;
+                ch.fallV = 12;
+                Sound.boing();
+                toast('🎈 BOING!! (hold SPACE for the parachute!)', 2000);
+                return;
+            }
+            const gh = groundHeightAt(ch.pilot.position.x, ch.pilot.position.z);
+            if (ch.groundY > gh + 2) { redeployChute(); return; }   // mid-fall: pull the cord
+            if (ch.groundY <= gh + 0.05 && ch.fallV === 0) {        // solid ground: JUMP!
+                ch.fallV = 7.5;
+                ch.groundY += 0.08;
+                Sound.boing();
+            }
+        }
+
+        // release SPACE and the chute packs itself away — hold it to float!
+        function closeChuteCanopy() {
+            const ch = flight.chute;
+            if (!ch || ch.splat || ch.walking || !ch.opened) return;
+            ch.opened = false;
+            ch.canopy.visible = false;
+            Sound.unpop();
+        }
+
         function deployParachute() {
             if (mode !== 'flight') return;
-            if (flight.chute) { redeployChute(); return; }
+            if (flight.chute) { openChuteCanopy(); return; }
             if (flight.broken || flight.finished) return;
             Sound.init();
             const start = new THREE.Vector3();
@@ -3724,11 +3766,11 @@
             // all four arrows now steer the pilot
             $('arrow-pad').classList.remove('hidden');
             for (const id of ['ab-up', 'ab-down', 'ab-left', 'ab-right']) $(id).style.display = '';
-            flightHintEl.innerHTML = '🪂 <b>GERONIMOOO!</b> Steer with the arrow keys — when you land, walk around with them!';
+            flightHintEl.innerHTML = '🪂 <b>JUMPED!</b> <b>HOLD SPACE</b> to keep your parachute open!! Steer with the arrow keys.';
             flightHintEl.style.opacity = 1;
             setTimeout(() => { flightHintEl.style.opacity = 0; }, 6000);
             Sound.beep(600, 0.15, 'triangle', 0.2);
-            toast('🪂 GERONIMOOOO!', 1600);
+            toast('🪂 GERONIMOOOO! HOLD SPACE to open the chute!!', 2200);
             gtag('event', 'parachute', { game_name: 'Test Flight', body: craft.bodyDef.name });
         }
 
@@ -3799,12 +3841,6 @@
         function updateChute(dt) {
             const ch = flight.chute;
             ch.t += dt;
-            if (!ch.opened && ch.t > 0.55) {
-                ch.opened = true;
-                ch.canopy.visible = true;
-                ch.canopy.scale.setScalar(0.15);
-                Sound.pop();
-            }
             if (ch.canopy.visible && !ch.walking && ch.canopy.scale.x < 1)
                 ch.canopy.scale.setScalar(Math.min(1, ch.canopy.scale.x + dt * 3));
 
@@ -3821,12 +3857,19 @@
                     ch.vel.z *= Math.exp(-dt * 0.6);
                     ch.pilot.rotation.z = Math.sin(ch.t * 2.2) * 0.08 - ax * 0.2;
                     ch.pilot.rotation.x = az * 0.15;
+                } else {
+                    // FREEFALL — the chute won't open until you press SPACE!
+                    if (ch.vel.y < -45) ch.vel.y = -45;
+                    ch.vel.x += ax * 3 * dt;
+                    ch.vel.z += az * 3 * dt;
+                    ch.pilot.rotation.x = -1.2;   // skydiver belly-down pose
+                    ch.pilot.rotation.z = Math.sin(ch.t * 5) * 0.12;
                 }
                 ch.pilot.position.addScaledVector(ch.vel, dt);
                 pushOutOfWalls(ch.pilot.position);
                 // catch a ride: touch down on TOP of a hot air balloon!
                 for (const bal of balloons) {
-                    if (!bal.visible || ch.vel.y > 0) continue;
+                    if (!bal.visible || ch.vel.y > 0 || ch.vel.y < -18) continue;   // too fast = you zip right past
                     const bdx = ch.pilot.position.x - bal.position.x, bdz = ch.pilot.position.z - bal.position.z;
                     const topY = bal.position.y + 8.05;
                     if (bdx * bdx + bdz * bdz < 30 && ch.pilot.position.y <= topY + 0.3 && ch.pilot.position.y > topY - 2.5) {
@@ -3848,11 +3891,15 @@
                     ch.groundY = gh;
                     ch.walking = true;
                     ch.pilot.rotation.x = ch.pilot.rotation.z = 0;
-                    Sound.success();
-                    confetti(40);
-                    toast(gh > 3
-                        ? '🏢 ROOFTOP LANDING!! Walk around up there with the arrow keys!'
-                        : '🚶 Safe landing! Walk around with the arrow keys!', 2800);
+                    if (ch.vel.y < -16) {
+                        pilotSplat();   // hit the ground with the chute still packed…
+                    } else {
+                        Sound.success();
+                        confetti(40);
+                        toast(gh > 3
+                            ? '🏢 ROOFTOP LANDING!! Walk around up there with the arrow keys!'
+                            : '🚶 Safe landing! Walk around with the arrow keys!', 2800);
+                    }
                 }
             } else {
                 if (ch.canopy.visible) {
@@ -3866,7 +3913,7 @@
                         ch.balloon = null;
                         ch.groundY = ch.pilot.position.y;
                         ch.fallV = 0;
-                        toast('🎈💥 Your balloon popped!! Press ? to open your parachute!', 2600);
+                        toast('🎈💥 Your balloon popped!! HOLD SPACE for your parachute!', 2600);
                     } else {
                         ch.balloonOx = clamp(ch.balloonOx + ax * 2.5 * dt, -4.8, 4.8);
                         ch.balloonOz = clamp(ch.balloonOz + az * 2.5 * dt, -4.8, 4.8);
@@ -3875,7 +3922,7 @@
                             ch.balloon = null;
                             ch.groundY = ch.pilot.position.y;
                             ch.fallV = 0;
-                            toast('🪂 Falling!! Press ? to open your parachute!', 2400);
+                            toast('🪂 Falling!! HOLD SPACE for your parachute!', 2400);
                         } else {
                             ch.pilot.position.set(
                                 ch.balloon.position.x + ch.balloonOx,
@@ -4373,8 +4420,10 @@
             const cb = document.createElement('button');
             cb.className = 'bbtn chute-btn';
             cb.textContent = '🪂';
-            cb.title = 'Bail out with the parachute! (? key)';
+            cb.title = 'Bail out! Then HOLD to keep the chute open (? / space keys)';
             cb.addEventListener('pointerdown', (e) => { e.preventDefault(); deployParachute(); });
+            for (const evName of ['pointerup', 'pointerleave', 'pointercancel'])
+                cb.addEventListener(evName, () => closeChuteCanopy());
             boosterBtnsEl.appendChild(cb);
         }
         function updateBoosterButtonStates() {
@@ -4447,9 +4496,13 @@
                 return;
             }
             if (mode !== 'flight') return;
-            if (e.key === ' ') {                                   // SPACEBAR: all boosters at once!
+            if (e.key === ' ') {                                   // SPACEBAR: all boosters — or the RIPCORD!
                 e.preventDefault();
-                if (!e.repeat) { Sound.init(); setSpaceAll(true); }
+                if (!e.repeat) {
+                    Sound.init();
+                    if (flight.chute) openChuteCanopy();
+                    else setSpaceAll(true);
+                }
                 return;
             }
             if (e.key === '+' || e.key === '=') {                  // + : SUPERPOWER!
@@ -4474,7 +4527,7 @@
                 updateArrowBtnStates();
                 return;
             }
-            if (e.key === ' ') { setSpaceAll(false); return; }
+            if (e.key === ' ') { if (flight.chute) closeChuteCanopy(); setSpaceAll(false); return; }
             if (e.key === '+' || e.key === '=') { powerRelease(); return; }
             if (e.key === 'Enter' || e.key === '-' || e.key === '_') { gunHeld = false; return; }
             const k = e.key.toUpperCase();
@@ -4486,6 +4539,7 @@
             spaceAll = false;
             powerState.held = false;
             gunHeld = false;
+            if (flight.chute) closeChuteCanopy();
             updateBoosterButtonStates();
             updateArrowBtnStates();
         });
@@ -4982,7 +5036,9 @@
                             ? (flight.chute.groundY > 2
                                 ? `🧗 climbing! ⬆ ${Math.round(flight.chute.groundY)} m`
                                 : '🚶 exploring the world!')
-                            : `🪂 ⬆ ${Math.max(0, Math.round(flight.chute.pilot.position.y))} m`;
+                            : flight.chute.opened
+                                ? `🪂 ⬆ ${Math.max(0, Math.round(flight.chute.pilot.position.y))} m`
+                                : `😱 FALLING! hold SPACE! ⬆ ${Math.max(0, Math.round(flight.chute.pilot.position.y))} m`;
                 return;
             }
             const alt = Math.max(0, Math.round(flight.lowY));
