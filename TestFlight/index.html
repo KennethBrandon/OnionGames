@@ -777,7 +777,7 @@
             { x: 5200, z: 2600, r: 200 }, { x: -4600, z: -4200, r: 200 }
         ];
         const VOLCANO = { x: 1900, z: -2700, r: 260, h: 340 };
-        const ISLAND = { x: -2300, z: 700, r: 110 };   // out in the ocean!
+        const ISLAND = { x: -2300, z: 700, r: 150 };   // out in the ocean!
         // airstrips — land on ANY of them for the big celebration
         const RUNWAYS = [
             { x: 0, z: 0, name: 'Home Airstrip' },
@@ -789,6 +789,8 @@
             { x: -5400, z: 4260, name: 'Mega Desert Airstrip' }
         ];
         function waterAt(x, z) {
+            const dxi = x - ISLAND.x, dzi = z - ISLAND.z;
+            if (dxi * dxi + dzi * dzi < ISLAND.r * ISLAND.r) return null;   // the island is dry land!
             for (const w of WATERS) {
                 const dx = x - w.x, dz = z - w.z;
                 if (dx * dx + dz * dz < w.r * w.r) return w;
@@ -2217,7 +2219,7 @@
                 x.fillRect(14 + i * 18, 12, 10, 46);
                 x.fillRect(14 + i * 18, 966, 10, 46);
             }
-            for (let yy = 150; yy < 880; yy += 70) x.fillRect(59, yy, 10, 38); // centerline
+            for (let yy = 130; yy < 910; yy += 26) x.fillRect(59, yy, 10, 14); // centerline
             x.font = 'bold 46px sans-serif';                                   // runway number
             x.textAlign = 'center';
             x.fillText('01', 64, 128);
@@ -2304,7 +2306,7 @@
             // ----- airstrips everywhere (find and land on all 5!) -----
             const runwayMat = new THREE.MeshLambertMaterial({ map: makeRunwayTexture() });
             for (const rw of RUNWAYS) {
-                const strip = new THREE.Mesh(new THREE.PlaneGeometry(14, 120), runwayMat);
+                const strip = new THREE.Mesh(new THREE.PlaneGeometry(14, 250), runwayMat);
                 strip.rotation.x = -Math.PI / 2;
                 strip.position.set(rw.x, 0.04, rw.z);
                 strip.receiveShadow = true;
@@ -2456,8 +2458,8 @@
             }
 
             // ----- placement helper that dodges runways + special zones -----
-            const nearRunway = (x, z) => RUNWAYS.some(rw => Math.abs(x - rw.x) < 26 && Math.abs(z - rw.z) < 95);
-            const inCorridor = (x, z) => Math.abs(x) < 30 && z > -150 && z < 150;
+            const nearRunway = (x, z) => RUNWAYS.some(rw => Math.abs(x - rw.x) < 26 && Math.abs(z - rw.z) < 160);
+            const inCorridor = (x, z) => Math.abs(x) < 30 && z > -210 && z < 210;
             const nearZone = (x, z, zone, pad) => Math.hypot(x - zone.x, z - zone.z) < zone.r + pad;
             const ringPos = (rMin, rMax) => {
                 for (let tries = 0; tries < 24; tries++) {
@@ -2557,7 +2559,7 @@
                 !CITIES.some(C => nearZone(cx, cz, C, mr + 40)) &&
                 !DESERTS.some(D => nearZone(cx, cz, D, mr)) &&
                 !SNOWS.some(S => nearZone(cx, cz, S, mr)) &&
-                !RUNWAYS.some(rw => Math.hypot(cx - rw.x, cz - rw.z) < mr + 120) &&
+                !RUNWAYS.some(rw => Math.hypot(cx - rw.x, cz - rw.z) < mr + 190) &&
                 !nearZone(cx, cz, VOLCANO, mr + 60);
             for (let i = 0; i < 6; i++) {
                 const a = rand(-0.9, 1.6);
@@ -4744,7 +4746,7 @@
             // landing back on the airstrip earns the BIG celebration
             let onRunway = null;
             for (const rw of RUNWAYS)
-                if (Math.abs(phys.pos.x - rw.x) <= 7.5 && Math.abs(phys.pos.z - rw.z) <= 61) { onRunway = rw; break; }
+                if (Math.abs(phys.pos.x - rw.x) <= 7.5 && Math.abs(phys.pos.z - rw.z) <= 126) { onRunway = rw; break; }
             $('big-card').classList.toggle('gold', !!onRunway);
             if (onRunway) {
                 Sound.fanfare();
