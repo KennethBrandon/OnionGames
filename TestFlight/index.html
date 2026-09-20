@@ -3647,6 +3647,27 @@
             gtag('event', 'parachute', { game_name: 'Test Flight', body: craft.bodyDef.name });
         }
 
+        function pilotSplat() {
+            const ch = flight.chute;
+            if (!ch || ch.splat) return;
+            ch.splat = true;
+            Sound.crash();
+            for (let i = 0; i < 14; i++)
+                spawnPuff(ch.pilot.position.clone().add(tmpV1.set(rand(-0.8, 0.8), 0.3, rand(-0.8, 0.8))),
+                    new THREE.Vector3(rand(-2, 2), rand(1, 4), rand(-2, 2)), 0xb0aca2, rand(0.5, 1), rand(0.6, 1));
+            ch.pilot.rotation.x = -Math.PI / 2;   // face-plant
+            $('flash').style.background = '#ff5544';
+            $('flash').style.opacity = 0.4;
+            setTimeout(() => { $('flash').style.opacity = 0; }, 150);
+            flight.overlayTimer = setTimeout(() => {
+                $('big-card').classList.remove('gold');
+                bigTitle.textContent = '💀 SPLAT!';
+                bigSub.textContent = 'You jumped off something WAY too tall! Parachutes only work when they are open…';
+                bigOverlay.classList.remove('hidden');
+            }, 900);
+            gtag('event', 'pilot_splat', { game_name: 'Test Flight' });
+        }
+
         function clearChute() {
             if (!flight.chute) return;
             scene.remove(flight.chute.pilot);
@@ -3734,6 +3755,7 @@
                     ch.canopy.scale.multiplyScalar(Math.max(0, 1 - dt * 3));
                     if (ch.canopy.scale.x < 0.05) ch.canopy.visible = false;
                 }
+                if (ch.splat) return;   // face-down in the dirt. RIP.
                 const p = ch.pilot.position;
                 const inWater = ch.groundY < 0.5 && waterAt(p.x, p.z);
                 const spd = inWater ? 1.6 : 4.5;
@@ -3757,7 +3779,9 @@
                     ch.groundY = Math.max(gh, ch.groundY + ch.fallV * dt);
                     if (ch.groundY <= gh + 0.001) {
                         ch.groundY = gh;
-                        if (ch.fallV < -9) {
+                        if (ch.fallV < -16) {
+                            pilotSplat();   // buildings are too tall to jump off. who knew!
+                        } else if (ch.fallV < -9) {
                             Sound.boing();
                             toast('💨 WHEE! What a drop!', 1200);
                         }
@@ -4815,11 +4839,13 @@
             if (hudTimer > 0) return;
             hudTimer = 0.1;
             if (flight.chute) {
-                hudEl.innerHTML = flight.chute.walking
-                    ? (flight.chute.groundY > 2
-                        ? `🧗 climbing! ⬆ ${Math.round(flight.chute.groundY)} m`
-                        : '🚶 exploring the world!')
-                    : `🪂 ⬆ ${Math.max(0, Math.round(flight.chute.pilot.position.y))} m`;
+                hudEl.innerHTML = flight.chute.splat
+                    ? '💀 ouch…'
+                    : flight.chute.walking
+                        ? (flight.chute.groundY > 2
+                            ? `🧗 climbing! ⬆ ${Math.round(flight.chute.groundY)} m`
+                            : '🚶 exploring the world!')
+                        : `🪂 ⬆ ${Math.max(0, Math.round(flight.chute.pilot.position.y))} m`;
                 return;
             }
             const alt = Math.max(0, Math.round(flight.lowY));
