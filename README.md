@@ -4,6 +4,10 @@ A collection of games written by my 11-year-old son.
 
 ## Games List
 
+### [Pillow Smash](PillowSmash/)
+**Author:** EE
+Pick one of 16 fighters, grab your pillow, and whack your opponent off the island into the lava! Long pillows, exploding pillows, shooting pillows, and a giant pillow SLAM. Play vs a bot or a friend.
+
 ### [The Grinch](GrinchGame/)
 **Author:** EE
 Silent Night, Sneaky Night. Steal presents, avoid traps, and ruin Christmas in this stealth puzzle game.

@@ -1,0 +1,2667 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="description" content="Play Pillow Smash on Onion Games! Pick one of 16 fighters, grab your pillow, and whack your opponent off the island into the lava. Long pillows, explosive pillows, shooting pillows and a huge pillow SLAM. Play vs a bot or a friend!">
+    <meta name="keywords" content="Pillow Smash, Onion Games, free browser games, HTML5 games, mini-games, fighting game, 2 player game">
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="Onion Games">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://onion.redkb.com/PillowSmash/">
+    <meta property="og:title" content="Pillow Smash">
+    <meta property="og:description" content="Pick one of 16 fighters, grab your pillow, and whack your opponent off the island into the lava. Play vs a bot or a friend!">
+    <meta property="og:image" content="https://onion.redkb.com/assets/images/favicon.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://onion.redkb.com/PillowSmash/">
+    <meta property="twitter:title" content="Pillow Smash">
+    <meta property="twitter:description" content="Pick one of 16 fighters, grab your pillow, and whack your opponent off the island into the lava. Play vs a bot or a friend!">
+    <meta property="twitter:image" content="https://onion.redkb.com/assets/images/favicon.png">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "VideoGame",
+      "name": "Pillow Smash",
+      "description": "Pick one of 16 fighters, grab your pillow, and whack your opponent off the island into the lava. Play vs a bot or a friend!",
+      "url": "https://onion.redkb.com/PillowSmash/",
+      "image": "https://onion.redkb.com/assets/images/favicon.png",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Onion Games",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://onion.redkb.com/assets/images/favicon.png"
+        }
+      }
+    }
+    </script>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JV4DNLEE4R"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-JV4DNLEE4R');
+    </script>
+
+    <link rel="icon" type="image/png" href="../assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="../assets/images/favicon.png">
+    <title>Pillow Smash</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Nunito:wght@400;700;900&display=swap');
+
+        :root {
+            --lava: #ff6a00;
+            --lava2: #ffd166;
+            --p1: #4dabf7;
+            --p2: #ff6b6b;
+            --ink: #1b1030;
+            --panel: rgba(20, 10, 40, 0.88);
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #12060e;
+            font-family: 'Nunito', 'Segoe UI', sans-serif;
+            color: #fff;
+            overscroll-behavior: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #gameCanvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            touch-action: none;
+        }
+
+        /* ---------- overlay screens ---------- */
+        .screen {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 16px;
+            overflow: auto;
+            touch-action: pan-y;
+            z-index: 5;
+        }
+
+        .screen.hidden { display: none; }
+
+        .logo {
+            font-family: 'Luckiest Guy', cursive;
+            font-size: clamp(2.6rem, 11vw, 7rem);
+            line-height: 0.95;
+            margin: 0;
+            letter-spacing: 2px;
+            color: #fff3d6;
+            text-shadow:
+                0 4px 0 #b34700,
+                0 8px 0 #6b2200,
+                0 12px 24px rgba(0, 0, 0, 0.6),
+                0 0 40px rgba(255, 120, 0, 0.5);
+            transform: rotate(-3deg);
+            animation: wobble 3s ease-in-out infinite;
+        }
+
+        .logo span { color: var(--lava2); }
+
+        @keyframes wobble {
+            0%, 100% { transform: rotate(-3deg) scale(1); }
+            50% { transform: rotate(2deg) scale(1.04); }
+        }
+
+        .tagline {
+            font-weight: 900;
+            font-size: clamp(0.9rem, 2.4vw, 1.4rem);
+            color: #ffd9a8;
+            margin: 18px 0 26px;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+        }
+
+        .btn {
+            font-family: 'Luckiest Guy', cursive;
+            font-size: clamp(1.1rem, 3vw, 1.7rem);
+            letter-spacing: 1px;
+            color: #fff;
+            background: linear-gradient(180deg, #ff8c1a 0%, #e0420b 100%);
+            border: 4px solid #fff3d6;
+            border-radius: 18px;
+            padding: 12px 30px;
+            margin: 8px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #7a1c00, 0 10px 22px rgba(0, 0, 0, 0.55);
+            transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.15s ease;
+            text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+            min-width: 220px;
+        }
+
+        .btn:hover { filter: brightness(1.12); transform: translateY(-2px); }
+        .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #7a1c00, 0 4px 10px rgba(0, 0, 0, 0.5); }
+
+        .btn.blue { background: linear-gradient(180deg, #4dabf7 0%, #1c5fd6 100%); box-shadow: 0 6px 0 #0b2c6b, 0 10px 22px rgba(0, 0, 0, 0.55); }
+        .btn.blue:active { box-shadow: 0 2px 0 #0b2c6b; }
+        .btn.green { background: linear-gradient(180deg, #69db7c 0%, #2b8a3e 100%); box-shadow: 0 6px 0 #14421d, 0 10px 22px rgba(0, 0, 0, 0.55); }
+        .btn.green:active { box-shadow: 0 2px 0 #14421d; }
+        .btn.small { font-size: 1rem; padding: 8px 16px; min-width: 0; border-width: 3px; }
+        .btn.ghost { background: rgba(0, 0, 0, 0.45); box-shadow: 0 4px 0 #000; border-color: rgba(255, 255, 255, 0.6); }
+
+        .panel {
+            background: var(--panel);
+            border: 3px solid rgba(255, 200, 120, 0.35);
+            border-radius: 22px;
+            padding: 18px 22px;
+            max-width: 720px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+        }
+
+        .row { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; }
+
+        .diff-row { display: none; margin-top: 4px; }
+        .diff-row.show { display: flex; }
+        .diff-row .btn { min-width: 130px; }
+
+        /* ---------- how to play ---------- */
+        .help {
+            text-align: left;
+            font-size: clamp(0.85rem, 1.9vw, 1.05rem);
+            line-height: 1.5;
+        }
+
+        .help h3 { font-family: 'Luckiest Guy', cursive; letter-spacing: 1px; margin: 12px 0 4px; color: var(--lava2); }
+
+        .keys { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 22px; }
+
+        kbd {
+            display: inline-block;
+            background: #fff;
+            color: var(--ink);
+            border-radius: 6px;
+            padding: 1px 7px;
+            font-weight: 900;
+            font-family: 'Nunito', sans-serif;
+            box-shadow: 0 2px 0 #999;
+            margin: 1px;
+            font-size: 0.85em;
+        }
+
+        .p1c { color: var(--p1); font-weight: 900; }
+        .p2c { color: var(--p2); font-weight: 900; }
+
+        /* ---------- character select ---------- */
+        #select-screen { justify-content: flex-start; padding-top: 10px; }
+
+        .select-title {
+            font-family: 'Luckiest Guy', cursive;
+            font-size: clamp(1.6rem, 5vw, 3rem);
+            margin: 4px 0 6px;
+            color: #fff3d6;
+            text-shadow: 0 3px 0 #b34700, 0 6px 14px rgba(0, 0, 0, 0.6);
+        }
+
+        .select-wrap {
+            display: flex;
+            gap: 14px;
+            width: 100%;
+            max-width: 1100px;
+            align-items: stretch;
+            justify-content: center;
+        }
+
+        .pick-panel {
+            flex: 0 1 200px;
+            min-width: 0;
+            background: var(--panel);
+            border-radius: 18px;
+            padding: 10px;
+            border: 3px solid var(--p1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 300px;
+        }
+
+        .pick-panel.p2 { border-color: var(--p2); }
+        .pick-panel h2 { font-family: 'Luckiest Guy', cursive; margin: 0 0 4px; font-size: 1.4rem; letter-spacing: 1px; }
+        .pick-panel.p1 h2 { color: var(--p1); }
+        .pick-panel.p2 h2 { color: var(--p2); }
+        .pick-panel canvas { width: 150px; height: 150px; border-radius: 14px; background: rgba(255, 255, 255, 0.06); }
+        .pick-name { font-family: 'Luckiest Guy', cursive; font-size: 1.25rem; margin-top: 6px; color: #fff3d6; min-height: 1.4em; }
+        .pick-title { font-size: 0.8rem; color: #ffd9a8; font-style: italic; min-height: 1.2em; }
+        .pick-desc { font-size: 0.78rem; color: #e8e0f0; margin-top: 6px; line-height: 1.35; min-height: 3.6em; }
+        .pick-hint { font-size: 0.72rem; color: #b8a8d0; margin-top: auto; padding-top: 6px; }
+
+        .stats { width: 100%; margin-top: 6px; font-size: 0.7rem; }
+        .stat { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+        .stat span { width: 46px; text-align: right; color: #d9cfee; }
+        .stat .bar { flex: 1; height: 8px; background: rgba(255, 255, 255, 0.12); border-radius: 4px; overflow: hidden; }
+        .stat .bar i { display: block; height: 100%; background: linear-gradient(90deg, #ffd166, #ff6a00); border-radius: 4px; transition: width 0.2s ease; }
+
+        .grid {
+            flex: 1 1 auto;
+            min-width: 0;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            background: var(--panel);
+            border-radius: 18px;
+            padding: 10px;
+            border: 3px solid rgba(255, 200, 120, 0.35);
+            align-content: start;
+        }
+
+        .cell {
+            position: relative;
+            min-width: 0;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.07);
+            border: 3px solid transparent;
+            cursor: pointer;
+            padding: 4px 2px 2px;
+            transition: transform 0.1s ease, background 0.1s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .cell:hover { background: rgba(255, 255, 255, 0.16); transform: scale(1.04); }
+        .cell canvas { width: 100%; max-width: 92px; aspect-ratio: 1 / 1; height: auto; }
+        .cell .nm { font-family: 'Luckiest Guy', cursive; font-size: 0.72rem; letter-spacing: 0.5px; color: #fff3d6; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .cell.cursor1 { border-color: var(--p1); box-shadow: 0 0 14px var(--p1); }
+        .cell.cursor2 { border-color: var(--p2); box-shadow: 0 0 14px var(--p2); }
+        .cell.cursor1.cursor2 { border-color: #d0a3ff; box-shadow: 0 0 14px var(--p1), 0 0 26px var(--p2); }
+        .cell.locked1::after, .cell.locked2::after {
+            content: 'P1';
+            position: absolute;
+            top: -8px;
+            left: -6px;
+            background: var(--p1);
+            color: #fff;
+            font-weight: 900;
+            font-size: 0.65rem;
+            border-radius: 8px;
+            padding: 1px 6px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+        }
+        .cell.locked2::after { content: 'P2'; left: auto; right: -6px; background: var(--p2); }
+        .cell.locked1.locked2::after { content: 'P1 & P2'; background: linear-gradient(90deg, var(--p1), var(--p2)); left: 50%; right: auto; transform: translateX(-50%); }
+        .cell.random canvas { background: radial-gradient(circle, #ffd166 0%, #ff6a00 70%); border-radius: 50%; }
+
+        .select-footer { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
+        .select-footer .hint { font-size: 0.8rem; color: #d9cfee; width: 100%; }
+
+        /* ---------- results / pause ---------- */
+        .big {
+            font-family: 'Luckiest Guy', cursive;
+            font-size: clamp(2rem, 8vw, 5rem);
+            margin: 0;
+            color: #fff3d6;
+            text-shadow: 0 4px 0 #b34700, 0 8px 0 #6b2200, 0 12px 24px rgba(0, 0, 0, 0.6);
+        }
+
+        .sub { font-size: clamp(1rem, 2.6vw, 1.5rem); font-weight: 900; color: #ffd9a8; margin: 6px 0 14px; }
+
+        #result-portrait { width: 180px; height: 180px; border-radius: 22px; background: rgba(255, 255, 255, 0.08); border: 4px solid #fff3d6; box-shadow: 0 0 30px rgba(255, 150, 50, 0.5); }
+
+        /* ---------- top-right buttons ---------- */
+        #corner {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            z-index: 6;
+            display: flex;
+            gap: 6px;
+        }
+
+        /* during a fight the corners belong to the HUD, so the buttons tuck in under the timer */
+        body.in-fight #corner {
+            right: auto;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        #rotate-hint {
+            display: none;
+            position: absolute;
+            top: 6px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 7;
+            background: rgba(0, 0, 0, 0.7);
+            color: #ffd9a8;
+            font-weight: 900;
+            font-size: 0.8rem;
+            padding: 6px 12px;
+            border-radius: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        @media (orientation: portrait) and (max-width: 600px) {
+            #rotate-hint { display: block; }
+        }
+
+        @media (max-height: 520px) {
+            .select-title { font-size: 1.3rem; margin: 2px 0; }
+            .pick-panel { flex-basis: 150px; padding: 6px; min-height: 0; }
+            .pick-panel h2 { font-size: 1rem; margin: 0; }
+            .pick-panel canvas { width: 80px; height: 80px; }
+            .pick-name { font-size: 0.95rem; margin-top: 2px; }
+            .pick-desc, .stats, .pick-hint { display: none; }
+            .grid { gap: 4px; padding: 6px; }
+            .cell { padding: 2px; }
+            .cell .nm { font-size: 0.55rem; }
+            .select-footer { margin-top: 4px; }
+            .select-footer .hint { font-size: 0.7rem; }
+            .btn { padding: 8px 18px; font-size: 1rem; min-width: 0; }
+            .logo { font-size: 3rem; }
+            .tagline { margin: 8px 0 10px; }
+            .help { font-size: 0.8rem; line-height: 1.3; }
+            .help h3 { margin: 6px 0 2px; }
+        }
+
+        #corner button {
+            background: rgba(0, 0, 0, 0.45);
+            color: #fff;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 10px;
+            font-size: 1rem;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 900;
+        }
+
+        /* ---------- touch controls ---------- */
+        #touch {
+            position: absolute;
+            inset: 0;
+            z-index: 4;
+            pointer-events: none;
+            touch-action: none;
+            display: none;
+        }
+
+        #touch.show { display: block; }
+
+        .tbtn {
+            position: absolute;
+            pointer-events: auto;
+            width: 62px;
+            height: 62px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.18);
+            border: 3px solid rgba(255, 255, 255, 0.6);
+            color: #fff;
+            font-family: 'Luckiest Guy', cursive;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+            touch-action: none;
+        }
+
+        .tbtn.act { background: rgba(255, 106, 0, 0.35); border-color: #ffb066; }
+        .tbtn.slam { background: rgba(255, 209, 102, 0.35); border-color: #ffd166; }
+        .tbtn.pressed { background: rgba(255, 255, 255, 0.5); transform: scale(0.94); }
+        .tbtn.p2 { border-color: rgba(255, 150, 150, 0.8); }
+
+        @media (max-width: 700px) {
+            .select-wrap { flex-direction: column; align-items: center; }
+            .pick-panel { flex-direction: row; flex: 0 0 auto; width: 100%; min-height: 0; gap: 10px; text-align: left; align-items: flex-start; }
+            .pick-panel canvas { width: 84px; height: 84px; }
+            .pick-panel .stats { display: none; }
+            .pick-panel .pick-hint { display: none; }
+            .pick-panel h2 { font-size: 1.1rem; }
+            .grid { grid-template-columns: repeat(4, 1fr); width: 100%; gap: 6px; }
+            .cell .nm { font-size: 0.6rem; }
+            .keys { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="rotate-hint">Turn your phone sideways for the best view 🔄</div>
+    <div id="corner">
+        <button id="mute-btn" title="Sound on/off">🔊</button>
+        <button id="pause-btn" title="Pause" style="display:none">⏸</button>
+    </div>
+
+    <!-- Title Screen -->
+    <div id="title-screen" class="screen">
+        <h1 class="logo">PILLOW <span>SMASH</span></h1>
+        <div class="tagline">Choose your fighter. Grab your pillow. Don't fall in the lava.</div>
+        <div class="row">
+            <button class="btn blue" id="btn-1p">1 PLAYER vs BOT</button>
+            <button class="btn" id="btn-2p">2 PLAYERS</button>
+        </div>
+        <div class="row diff-row" id="diff-row">
+            <span style="font-weight:900;color:#ffd9a8;margin-right:6px;">Bot difficulty:</span>
+            <button class="btn green small" data-diff="easy">EASY</button>
+            <button class="btn small" data-diff="normal">NORMAL</button>
+            <button class="btn small" data-diff="hard" style="background:linear-gradient(180deg,#ff6b6b,#a80c0c)">HARD</button>
+        </div>
+        <div class="row">
+            <button class="btn ghost small" id="btn-help">HOW TO PLAY</button>
+            <a class="btn ghost small" href="../" style="text-decoration:none">MORE GAMES</a>
+        </div>
+        <div style="margin-top:14px;font-size:0.8rem;color:#b8a8d0;">A game by EE &middot; Onion Games</div>
+    </div>
+
+    <!-- How To Play -->
+    <div id="help-screen" class="screen hidden">
+        <div class="panel help">
+            <h3>THE RULES</h3>
+            <div>Whack your opponent with your pillow until their health is gone. Knock them off the island and the <b style="color:var(--lava)">LAVA</b> does the rest! Best of 3 rounds. The lower your health, the farther you fly.</div>
+            <h3>THE PILLOW SLAM</h3>
+            <div>Your <b style="color:var(--lava2)">SLAM meter</b> fills up over time and every time you land (or take) a hit. When it's full, slam your pillow on the ground for a huge power explosion that blasts your opponent away and takes out a big chunk of life!</div>
+            <h3>CONTROLS</h3>
+            <div class="keys">
+                <div>
+                    <div class="p1c">PLAYER 1</div>
+                    <div><kbd>A</kbd><kbd>D</kbd> move &nbsp; <kbd>W</kbd> jump &nbsp; <kbd>S</kbd> block</div>
+                    <div><kbd>F</kbd> swing pillow &nbsp; <kbd>G</kbd> PILLOW SLAM</div>
+                </div>
+                <div>
+                    <div class="p2c">PLAYER 2</div>
+                    <div><kbd>&larr;</kbd><kbd>&rarr;</kbd> move &nbsp; <kbd>&uarr;</kbd> jump &nbsp; <kbd>&darr;</kbd> block</div>
+                    <div><kbd>K</kbd> swing pillow &nbsp; <kbd>L</kbd> PILLOW SLAM</div>
+                </div>
+            </div>
+            <div style="margin-top:8px;font-size:0.85em;color:#d9cfee;">Gamepads work too (stick/d-pad to move, A jump, X swing, B/Y slam). Hold block + jump to drop through a floating platform. <kbd>Esc</kbd> pauses. On phones, use the on-screen buttons.</div>
+            <h3>TIPS</h3>
+            <div>Some fighters shoot feathers, some have super long pillows, some have exploding pillows. Try them all!</div>
+        </div>
+        <button class="btn small" id="btn-help-back" style="margin-top:14px">BACK</button>
+    </div>
+
+    <!-- Character Select -->
+    <div id="select-screen" class="screen hidden">
+        <div class="select-title">CHOOSE YOUR FIGHTER</div>
+        <div class="select-wrap">
+            <div class="pick-panel p1">
+                <h2>PLAYER 1</h2>
+                <canvas id="pick1" width="150" height="150"></canvas>
+                <div>
+                    <div class="pick-name" id="pick1-name">?</div>
+                    <div class="pick-title" id="pick1-title"></div>
+                    <div class="pick-desc" id="pick1-desc"></div>
+                </div>
+                <div class="stats" id="pick1-stats"></div>
+                <div class="pick-hint"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move &middot; <kbd>F</kbd> pick</div>
+            </div>
+            <div class="grid" id="grid"></div>
+            <div class="pick-panel p2">
+                <h2 id="p2-heading">PLAYER 2</h2>
+                <canvas id="pick2" width="150" height="150"></canvas>
+                <div>
+                    <div class="pick-name" id="pick2-name">?</div>
+                    <div class="pick-title" id="pick2-title"></div>
+                    <div class="pick-desc" id="pick2-desc"></div>
+                </div>
+                <div class="stats" id="pick2-stats"></div>
+                <div class="pick-hint" id="p2-hint"><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&larr;</kbd><kbd>&rarr;</kbd> move &middot; <kbd>K</kbd> pick</div>
+            </div>
+        </div>
+        <div class="select-footer">
+            <div class="hint" id="select-hint">Player 1: pick your fighter!</div>
+            <button class="btn ghost small" id="btn-select-back">BACK</button>
+            <button class="btn green" id="btn-fight" style="display:none">FIGHT!</button>
+        </div>
+    </div>
+
+    <!-- Match Result -->
+    <div id="result-screen" class="screen hidden">
+        <canvas id="result-portrait" width="180" height="180"></canvas>
+        <h1 class="big" id="result-title">PLAYER 1 WINS!</h1>
+        <div class="sub" id="result-sub"></div>
+        <div class="row">
+            <button class="btn green" id="btn-rematch">REMATCH</button>
+            <button class="btn blue" id="btn-reselect">NEW FIGHTERS</button>
+            <button class="btn ghost small" id="btn-menu">MAIN MENU</button>
+        </div>
+    </div>
+
+    <!-- Pause -->
+    <div id="pause-screen" class="screen hidden" style="background:rgba(0,0,0,0.55)">
+        <h1 class="big">PAUSED</h1>
+        <div class="row">
+            <button class="btn green" id="btn-resume">RESUME</button>
+            <button class="btn ghost small" id="btn-quit">QUIT TO MENU</button>
+        </div>
+    </div>
+
+    <!-- Touch controls -->
+    <div id="touch">
+        <div class="tbtn" data-p="0" data-k="left" style="left:16px;bottom:24px">&#9664;</div>
+        <div class="tbtn" data-p="0" data-k="right" style="left:92px;bottom:24px">&#9654;</div>
+        <div class="tbtn" data-p="0" data-k="up" style="left:54px;bottom:98px">JUMP</div>
+        <div class="tbtn" data-p="0" data-k="down" style="left:16px;bottom:172px;width:52px;height:52px;font-size:0.8rem">BLOCK</div>
+        <div class="tbtn act" data-p="0" data-k="a" style="right:92px;bottom:24px">SWING</div>
+        <div class="tbtn slam" data-p="0" data-k="b" style="right:16px;bottom:88px;width:74px;height:74px">SLAM</div>
+    </div>
+
+    <script>
+        'use strict';
+
+        // ============================================================
+        //  PILLOW SMASH  —  a pillow-fighting brawler by EE
+        // ============================================================
+
+        const W = 1280, H = 720;          // the game world is always this big; we scale it to fit
+        const canvas = document.getElementById('gameCanvas');
+        let ctx = canvas.getContext('2d');
+        let view = { scale: 1, ox: 0, oy: 0 };
+
+        function resize() {
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            canvas.width = Math.floor(window.innerWidth * dpr);
+            canvas.height = Math.floor(window.innerHeight * dpr);
+            const s = Math.min(canvas.width / W, canvas.height / H);
+            view.scale = s;
+            view.ox = (canvas.width - W * s) / 2;
+            view.oy = (canvas.height - H * s) / 2;
+            const corner = document.getElementById('corner');
+            if (corner) corner.style.top = document.body.classList.contains('in-fight') ? Math.round(view.oy / dpr + 92 * s / dpr) + 'px' : '8px';
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const $ = (id) => document.getElementById(id);
+        const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+        const lerp = (a, b, t) => a + (b - a) * t;
+        const rand = (a, b) => a + Math.random() * (b - a);
+        const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+        const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
+
+        const IS_TOUCH = matchMedia('(pointer: coarse)').matches;
+
+        // ------------------------------------------------------------
+        //  Tiny synth sound effects (no audio files needed)
+        // ------------------------------------------------------------
+        const Sound = {
+            ctx: null, muted: false,
+            init() {
+                if (this.ctx) return;
+                try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { this.ctx = null; }
+            },
+            resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+            tone(freq, dur, type = 'square', vol = 0.15, slide = 0) {
+                if (!this.ctx || this.muted) return;
+                const t = this.ctx.currentTime;
+                const o = this.ctx.createOscillator();
+                const g = this.ctx.createGain();
+                o.type = type;
+                o.frequency.setValueAtTime(freq, t);
+                if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(20, freq + slide), t + dur);
+                g.gain.setValueAtTime(vol, t);
+                g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+                o.connect(g).connect(this.ctx.destination);
+                o.start(t); o.stop(t + dur + 0.02);
+            },
+            noise(dur, vol = 0.2, lowpass = 800) {
+                if (!this.ctx || this.muted) return;
+                const t = this.ctx.currentTime;
+                const len = Math.floor(this.ctx.sampleRate * dur);
+                const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+                const d = buf.getChannelData(0);
+                for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+                const src = this.ctx.createBufferSource();
+                src.buffer = buf;
+                const f = this.ctx.createBiquadFilter();
+                f.type = 'lowpass'; f.frequency.value = lowpass;
+                const g = this.ctx.createGain();
+                g.gain.setValueAtTime(vol, t);
+                g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+                src.connect(f).connect(g).connect(this.ctx.destination);
+                src.start(t);
+            },
+            swing() { this.noise(0.12, 0.12, 1500); },
+            hit() { this.noise(0.18, 0.3, 500); this.tone(160, 0.12, 'triangle', 0.2, -80); },
+            block() { this.tone(500, 0.08, 'square', 0.08, -200); },
+            slam() { this.noise(0.6, 0.5, 300); this.tone(90, 0.5, 'sawtooth', 0.3, -70); },
+            jump() { this.tone(300, 0.12, 'sine', 0.08, 220); },
+            shoot() { this.tone(900, 0.08, 'square', 0.06, -500); },
+            lava() { this.noise(0.5, 0.35, 900); this.tone(220, 0.4, 'sawtooth', 0.12, -150); },
+            ko() { this.tone(400, 0.6, 'sawtooth', 0.25, -350); this.noise(0.5, 0.3, 400); },
+            ready() { this.tone(660, 0.12, 'square', 0.1); setTimeout(() => this.tone(880, 0.25, 'square', 0.1), 130); },
+            fight() { this.tone(523, 0.1, 'square', 0.12); setTimeout(() => this.tone(784, 0.35, 'square', 0.12), 110); },
+            win() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(f, 0.3, 'square', 0.12), i * 120)); },
+            select() { this.tone(700, 0.06, 'square', 0.06, 300); },
+        };
+
+        $('mute-btn').addEventListener('click', () => {
+            Sound.muted = !Sound.muted;
+            $('mute-btn').textContent = Sound.muted ? '🔇' : '🔊';
+        });
+        // browsers only let audio start after the first tap / key press
+        const unlockAudio = () => { Sound.init(); Sound.resume(); };
+        window.addEventListener('pointerdown', unlockAudio);
+        window.addEventListener('touchend', unlockAudio);
+        window.addEventListener('click', unlockAudio);
+        window.addEventListener('keydown', unlockAudio);
+
+        // ------------------------------------------------------------
+        //  Input: keyboard + gamepads + touch buttons, merged per player
+        // ------------------------------------------------------------
+        const KEYMAP = [
+            { KeyA: 'left', KeyD: 'right', KeyW: 'up', KeyS: 'down', KeyF: 'a', KeyG: 'b' },
+            { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', KeyK: 'a', KeyL: 'b' },
+        ];
+        const ACTIONS = ['left', 'right', 'up', 'down', 'a', 'b'];
+        const keysHeld = [{}, {}];
+        const touchHeld = [{}, {}];
+        // taps shorter than one frame still count as a press (latched until the next input update)
+        const tapped = [{}, {}];
+        const Input = {
+            players: [makeInputState(), makeInputState()],
+            anyKeyPressed: false,
+            pauseRequested: false,
+        };
+        function makeInputState() {
+            return { held: {}, pressed: {}, prev: {} };
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat) return;
+            for (let p = 0; p < 2; p++) {
+                const act = KEYMAP[p][e.code];
+                if (act) { keysHeld[p][act] = true; tapped[p][act] = true; e.preventDefault(); }
+            }
+            if (e.code === 'Escape' || e.code === 'KeyP') Input.pauseRequested = true;
+            if (e.code === 'Space') e.preventDefault();
+        });
+        window.addEventListener('keyup', (e) => {
+            for (let p = 0; p < 2; p++) {
+                const act = KEYMAP[p][e.code];
+                if (act) keysHeld[p][act] = false;
+            }
+        });
+        window.addEventListener('blur', () => { keysHeld[0] = {}; keysHeld[1] = {}; touchHeld[0] = {}; touchHeld[1] = {}; });
+
+        let padPauseWas = false;
+        function readGamepads() {
+            const out = [{}, {}];
+            const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+            let slot = 0;
+            for (const gp of pads) {
+                if (!gp || slot > 1) continue;
+                const o = out[slot++];
+                const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
+                const b = (i) => gp.buttons[i] && (gp.buttons[i].pressed || gp.buttons[i].value > 0.5);
+                o.left = ax < -0.4 || b(14);
+                o.right = ax > 0.4 || b(15);
+                o.up = ay < -0.6 || b(12) || b(0);
+                o.down = ay > 0.6 || b(13);
+                o.a = b(2) || b(5) || b(7);
+                o.b = b(1) || b(3) || b(4) || b(6);
+                const pause = b(9);
+                if (pause && !padPauseWas) Input.pauseRequested = true;
+                padPauseWas = pause;
+            }
+            return out;
+        }
+
+        function updateInput() {
+            const pads = readGamepads();
+            Input.anyKeyPressed = false;
+            for (let p = 0; p < 2; p++) {
+                const st = Input.players[p];
+                for (const a of ACTIONS) {
+                    const now = !!(keysHeld[p][a] || pads[p][a] || touchHeld[p][a] || tapped[p][a]);
+                    tapped[p][a] = false;
+                    st.pressed[a] = now && !st.prev[a];
+                    st.held[a] = now;
+                    st.prev[a] = now;
+                    if (st.pressed[a]) Input.anyKeyPressed = true;
+                }
+            }
+        }
+
+        // --- touch buttons ---
+        const touchLayer = $('touch');
+        function bindTouchButton(el) {
+            if (el.dataset.bound) return;
+            el.dataset.bound = '1';
+            const p = +el.dataset.p, k = el.dataset.k;
+            const press = (e) => { e.preventDefault(); touchHeld[p][k] = true; tapped[p][k] = true; el.classList.add('pressed'); };
+            const release = (e) => { if (e) e.preventDefault(); touchHeld[p][k] = false; el.classList.remove('pressed'); };
+            el.addEventListener('pointerdown', press);
+            el.addEventListener('pointerup', release);
+            el.addEventListener('pointercancel', release);
+            el.addEventListener('pointerleave', release);
+            el.addEventListener('contextmenu', (e) => e.preventDefault());
+        }
+        touchLayer.querySelectorAll('.tbtn').forEach(bindTouchButton);
+        function buildTouchControls(twoPlayers) {
+            touchLayer.querySelectorAll('.tbtn.p2').forEach((el) => el.remove());
+            if (!twoPlayers) return;
+            // player 2 gets a mirrored, smaller cluster on the right half of the screen
+            const defs = [
+                ['left', 'right:92px;bottom:24px', '&#9664;'],
+                ['right', 'right:16px;bottom:24px', '&#9654;'],
+                ['up', 'right:54px;bottom:98px', 'JUMP'],
+                ['down', 'right:16px;bottom:172px;width:52px;height:52px;font-size:0.8rem', 'BLOCK'],
+                ['a', 'right:190px;bottom:24px', 'SWING'],
+                ['b', 'right:176px;bottom:96px;width:74px;height:74px', 'SLAM'],
+            ];
+            const p1All = touchLayer.querySelectorAll('.tbtn:not(.p2)');
+            // shove P1's action buttons to the left half when two people share a screen
+            p1All.forEach((el) => {
+                const k = el.dataset.k;
+                if (k === 'a') el.style.cssText = 'left:190px;bottom:24px';
+                if (k === 'b') el.style.cssText = 'left:176px;bottom:96px;width:74px;height:74px';
+            });
+            for (const [k, css, label] of defs) {
+                const el = document.createElement('div');
+                el.className = 'tbtn p2' + (k === 'a' ? ' act' : k === 'b' ? ' slam' : '');
+                el.dataset.p = '1'; el.dataset.k = k;
+                el.style.cssText = css;
+                el.innerHTML = label;
+                touchLayer.appendChild(el);
+                bindTouchButton(el);
+            }
+        }
+        function resetTouchLayoutForOnePlayer() {
+            touchLayer.querySelectorAll('.tbtn.p2').forEach((el) => el.remove());
+            touchLayer.querySelectorAll('.tbtn:not(.p2)').forEach((el) => {
+                const k = el.dataset.k;
+                if (k === 'a') el.style.cssText = 'right:92px;bottom:24px';
+                if (k === 'b') el.style.cssText = 'right:16px;bottom:88px;width:74px;height:74px';
+            });
+        }
+
+        // ------------------------------------------------------------
+        //  THE ROSTER — 16 fighters, every one with a different pillow
+        // ------------------------------------------------------------
+        //  pillow.kind: swing | long | heavy | twin | explosive | shoot | boomerang
+        //  pillow.effect (on hit): slow | burn | stun | popup | poison
+        const ROSTER = [
+            {
+                id: 'fluff', name: 'Sir Fluffington', title: 'The Knight of Naps',
+                desc: 'A brave knight with a pillow as long as a jousting lance. Slow, sturdy, and hits from way over there.',
+                hat: 'helmet', body: '#c9d3e6', skin: '#f6d5b8', accent: '#3b5bdb',
+                pillow: { color: '#f8f9ff', trim: '#3b5bdb', kind: 'long', reach: 165, thick: 40, dmg: 11, swingTime: 0.5, cooldown: 0.3, knock: 520 },
+                hp: 115, speed: 290, jumpV: 800, airJumps: 0, weight: 1.2,
+                slam: { name: 'Lance Quake', radius: 190, dmg: 22, knock: 720, color: '#4c6ef5' },
+            },
+            {
+                id: 'betty', name: 'Boom Betty', title: 'Explosives Expert',
+                desc: 'Her pillow is stuffed with fireworks. Every hit goes KABOOM, and her slam is the biggest blast in the game.',
+                hat: 'bomb', body: '#e03131', skin: '#f6d5b8', accent: '#fab005',
+                pillow: { color: '#212529', trim: '#fab005', kind: 'explosive', reach: 100, thick: 46, dmg: 12, swingTime: 0.45, cooldown: 0.45, knock: 560, blast: 80 },
+                hp: 95, speed: 330, jumpV: 820, airJumps: 0, weight: 1.0,
+                slam: { name: 'KABOOM!', radius: 260, dmg: 26, knock: 760, color: '#ff922b' },
+            },
+            {
+                id: 'fox', name: 'Feather Fox', title: 'Sharpshooter',
+                desc: 'Shoots feathers out of her pillow from across the arena. Keep your distance and pepper them!',
+                hat: 'foxears', body: '#f76707', skin: '#ffe8cc', accent: '#fff4e6',
+                pillow: { color: '#ffd8a8', trim: '#e8590c', kind: 'shoot', proj: 'feather', reach: 70, thick: 34, dmg: 6, swingTime: 0.3, cooldown: 0.4, knock: 300, projSpeed: 780 },
+                hp: 95, speed: 380, jumpV: 840, airJumps: 0, weight: 0.9,
+                slam: { name: 'Feather Storm', radius: 170, dmg: 18, knock: 620, color: '#ffa94d', extra: 'feathers' },
+            },
+            {
+                id: 'bertha', name: 'Big Bertha', title: 'Heavy Sleeper',
+                desc: 'Carries a mattress-sized pillow. Slow as a snail but one hit sends you flying.',
+                hat: 'bow', body: '#9c36b5', skin: '#f6d5b8', accent: '#f783ac',
+                pillow: { color: '#f3d9fa', trim: '#9c36b5', kind: 'heavy', reach: 125, thick: 68, dmg: 17, swingTime: 0.7, cooldown: 0.5, knock: 700 },
+                hp: 130, speed: 240, jumpV: 760, airJumps: 0, weight: 1.45,
+                slam: { name: 'Mega Thump', radius: 210, dmg: 28, knock: 800, color: '#cc5de8' },
+            },
+            {
+                id: 'ninja', name: 'Ninja Nap', title: 'Silent but Sleepy',
+                desc: 'Two tiny pillows, lightning-fast swings, and a double jump. Weak hits, but SO many of them.',
+                hat: 'ninja', body: '#343a40', skin: '#f6d5b8', accent: '#e03131',
+                pillow: { color: '#495057', trim: '#e03131', kind: 'twin', reach: 80, thick: 30, dmg: 6, swingTime: 0.22, cooldown: 0.08, knock: 320 },
+                hp: 85, speed: 440, jumpV: 860, airJumps: 1, weight: 0.85,
+                slam: { name: 'Shadow Smash', radius: 140, dmg: 24, knock: 640, color: '#868e96' },
+            },
+            {
+                id: 'captain', name: 'Captain Cushion', title: 'Boomerang Buccaneer',
+                desc: 'Throws his pillow like a boomerang. It hits on the way out AND on the way back. Yarr.',
+                hat: 'pirate', body: '#1864ab', skin: '#e8b98a', accent: '#fcc419',
+                pillow: { color: '#fcc419', trim: '#1864ab', kind: 'boomerang', reach: 80, thick: 40, dmg: 10, swingTime: 0.3, cooldown: 0.25, knock: 420, projSpeed: 620, range: 380 },
+                hp: 100, speed: 330, jumpV: 820, airJumps: 0, weight: 1.05,
+                slam: { name: 'Anchor Drop', radius: 180, dmg: 23, knock: 700, color: '#339af0' },
+            },
+            {
+                id: 'frosty', name: 'Frosty Fleece', title: 'Cold Comfort',
+                desc: 'An icy pillow that freezes whoever it touches. Slowed opponents are easy to knock into the lava!',
+                hat: 'beanie', body: '#74c0fc', skin: '#e7f5ff', accent: '#ffffff',
+                pillow: { color: '#d0ebff', trim: '#1c7ed6', kind: 'swing', reach: 100, thick: 44, dmg: 9, swingTime: 0.4, cooldown: 0.3, knock: 420, effect: 'slow' },
+                hp: 100, speed: 340, jumpV: 820, airJumps: 0, weight: 1.0,
+                slam: { name: 'Freeze Frame', radius: 180, dmg: 16, knock: 380, color: '#a5d8ff', extra: 'freeze' },
+            },
+            {
+                id: 'larry', name: 'Lava Larry', title: 'Born in the Lava',
+                desc: 'His pillow is on fire, and his hits keep burning. Lava only does HALF damage to Larry.',
+                hat: 'flames', body: '#d9480f', skin: '#ffa94d', accent: '#ffe066',
+                pillow: { color: '#ff922b', trim: '#e8590c', kind: 'swing', reach: 100, thick: 44, dmg: 9, swingTime: 0.4, cooldown: 0.3, knock: 440, effect: 'burn' },
+                hp: 100, speed: 350, jumpV: 820, airJumps: 0, weight: 1.05, lavaResist: 0.5,
+                slam: { name: 'Eruption', radius: 200, dmg: 22, knock: 680, color: '#ff6b00', extra: 'fire' },
+            },
+            {
+                id: 'bob', name: 'Bouncy Bob', title: 'Spring-loaded',
+                desc: 'A trampoline pillow that pops enemies straight up into the air. Bob can jump three times!',
+                hat: 'spring', body: '#40c057', skin: '#f6d5b8', accent: '#ffd43b',
+                pillow: { color: '#b2f2bb', trim: '#2b8a3e', kind: 'swing', reach: 95, thick: 44, dmg: 8, swingTime: 0.35, cooldown: 0.25, knock: 380, effect: 'popup' },
+                hp: 95, speed: 370, jumpV: 940, airJumps: 2, weight: 0.9,
+                slam: { name: 'Pogo Pound', radius: 170, dmg: 20, knock: 700, color: '#69db7c', extra: 'popup' },
+            },
+            {
+                id: 'gertie', name: 'Grandma Gertie', title: 'Sweet but Deadly',
+                desc: 'Her quilted pillow is on a knitting-needle handle. Long reach, and her slam meter fills extra fast.',
+                hat: 'bun', body: '#e599f7', skin: '#f6d5b8', accent: '#ffffff',
+                pillow: { color: '#fff0f6', trim: '#be4bdb', kind: 'long', reach: 150, thick: 34, dmg: 9, swingTime: 0.42, cooldown: 0.25, knock: 460 },
+                hp: 105, speed: 280, jumpV: 780, airJumps: 0, weight: 1.1, meterRate: 1.8,
+                slam: { name: 'Quilt Quake', radius: 200, dmg: 21, knock: 660, color: '#da77f2' },
+            },
+            {
+                id: 'robo', name: 'Robo-Rest', title: 'Model Z-Z-Z',
+                desc: 'A sleepy robot whose pillow fires lasers. Rapid fire, low damage, very annoying.',
+                hat: 'antenna', body: '#adb5bd', skin: '#dee2e6', accent: '#15aabf',
+                pillow: { color: '#e9ecef', trim: '#15aabf', kind: 'shoot', proj: 'laser', reach: 70, thick: 36, dmg: 4, swingTime: 0.2, cooldown: 0.18, knock: 220, projSpeed: 1100 },
+                hp: 110, speed: 300, jumpV: 790, airJumps: 0, weight: 1.3,
+                slam: { name: 'System Crash', radius: 190, dmg: 20, knock: 640, color: '#3bc9db', extra: 'zap' },
+            },
+            {
+                id: 'gus', name: 'Ghost Gus', title: 'Boo-tiful Dreams',
+                desc: 'Floats gently and can jump FOUR times. Super light, so watch out: one good whack sends him far.',
+                hat: 'ghost', body: '#f8f9fa', skin: '#f8f9fa', accent: '#495057',
+                pillow: { color: '#dee2e6', trim: '#868e96', kind: 'swing', reach: 100, thick: 42, dmg: 8, swingTime: 0.36, cooldown: 0.25, knock: 400 },
+                hp: 85, speed: 320, jumpV: 700, airJumps: 3, weight: 0.7, gravityMul: 0.65,
+                slam: { name: 'Haunted Hush', radius: 200, dmg: 18, knock: 600, color: '#ced4da', extra: 'ghost' },
+            },
+            {
+                id: 'carl', name: 'Cactus Carl', title: 'Prickly Pillow',
+                desc: 'A spiky pillow that keeps hurting after it hits. Whoever whacks Carl gets poked by his thorns, too.',
+                hat: 'cactus', body: '#2f9e44', skin: '#8ce99a', accent: '#fcc419',
+                pillow: { color: '#51cf66', trim: '#2b8a3e', kind: 'swing', reach: 100, thick: 44, dmg: 8, swingTime: 0.38, cooldown: 0.3, knock: 420, effect: 'poison' },
+                hp: 100, speed: 330, jumpV: 810, airJumps: 0, weight: 1.05, thorns: 3,
+                slam: { name: 'Needle Nova', radius: 180, dmg: 20, knock: 640, color: '#94d82d', extra: 'needles' },
+            },
+            {
+                id: 'dino', name: 'Dino Doze', title: 'Prehistoric Napper',
+                desc: 'A dinosaur with a pillow tied to his tail. Heavy, tough, and his stomp launches you into orbit.',
+                hat: 'dino', body: '#12b886', skin: '#96f2d7', accent: '#e67700',
+                pillow: { color: '#c3fae8', trim: '#087f5b', kind: 'heavy', reach: 115, thick: 56, dmg: 14, swingTime: 0.6, cooldown: 0.4, knock: 620 },
+                hp: 125, speed: 270, jumpV: 780, airJumps: 0, weight: 1.35,
+                slam: { name: 'Extinction Stomp', radius: 200, dmg: 24, knock: 880, color: '#20c997' },
+            },
+            {
+                id: 'sam', name: 'Sleepy Sam', title: 'Zzz...',
+                desc: 'Puffs clouds of sleepy dust that slow you down, and his slam puts anyone nearby to SLEEP.',
+                hat: 'nightcap', body: '#5c7cfa', skin: '#f6d5b8', accent: '#ffe066',
+                pillow: { color: '#edf2ff', trim: '#5c7cfa', kind: 'shoot', proj: 'dust', reach: 70, thick: 40, dmg: 5, swingTime: 0.35, cooldown: 0.55, knock: 260, projSpeed: 420, effect: 'slow' },
+                hp: 100, speed: 320, jumpV: 810, airJumps: 0, weight: 1.0,
+                slam: { name: 'Nap Time', radius: 190, dmg: 14, knock: 300, color: '#91a7ff', extra: 'sleep' },
+            },
+            {
+                id: 'king', name: 'King Koosh', title: 'Ruler of the Bedroom',
+                desc: 'The champion. A golden royal pillow with great stats all around. No gimmicks, just skill.',
+                hat: 'crown', body: '#862e9c', skin: '#f6d5b8', accent: '#fcc419',
+                pillow: { color: '#ffe066', trim: '#e67700', kind: 'swing', reach: 110, thick: 46, dmg: 11, swingTime: 0.38, cooldown: 0.25, knock: 500 },
+                hp: 110, speed: 350, jumpV: 840, airJumps: 0, weight: 1.1,
+                slam: { name: 'Royal Decree', radius: 200, dmg: 24, knock: 720, color: '#ffd43b' },
+            },
+        ];
+        const byId = (id) => ROSTER.find((c) => c.id === id);
+
+        // 1–5 star ratings shown on the select screen
+        function statBars(c) {
+            const power = c.pillow.kind === 'shoot' ? c.pillow.dmg * 1.6 : c.pillow.dmg;
+            const reach = c.pillow.kind === 'shoot' || c.pillow.kind === 'boomerang' ? 5 : clamp(Math.round((c.pillow.reach - 60) / 25), 1, 5);
+            return {
+                Speed: clamp(Math.round((c.speed - 200) / 50), 1, 5),
+                Power: clamp(Math.round(power / 3.4), 1, 5),
+                Reach: reach,
+                Jump: clamp(Math.round((c.jumpV - 660) / 60) + c.airJumps, 1, 5),
+                Health: clamp(Math.round((c.hp - 70) / 12), 1, 5),
+            };
+        }
+
+        // ------------------------------------------------------------
+        //  The arena: one big island floating in a lake of lava,
+        //  plus two little floating platforms you can drop through.
+        // ------------------------------------------------------------
+        const ARENA = {
+            groundY: 560, left: 290, right: 990,
+            lavaY: 640,
+            platforms: [{ x: 330, y: 430, w: 200 }, { x: 750, y: 430, w: 200 }],
+            spawn: [430, 850],
+        };
+        const GRAVITY = 2300;
+        const ROUND_TIME = 90;
+        const LAVA_DAMAGE = 30;
+
+        // ------------------------------------------------------------
+        //  Fighter
+        // ------------------------------------------------------------
+        class Fighter {
+            constructor(data, index, isCPU) {
+                this.data = data;
+                this.index = index;        // 0 = player 1, 1 = player 2
+                this.isCPU = isCPU;
+                this.name = data.name;
+                this.maxHp = data.hp;
+                this.w = 44 + 10 * data.weight;
+                this.h = 80 + 12 * data.weight;
+                this.wins = 0;
+                this.reset(ARENA.spawn[index], index === 0 ? 1 : -1);
+            }
+
+            reset(x, facing) {
+                this.x = x; this.y = ARENA.groundY; this.vx = 0; this.vy = 0;
+                this.facing = facing;
+                this.onGround = true;
+                this.hp = this.maxHp;
+                this.meter = 0;
+                this.action = null;
+                this.hitstun = 0; this.invuln = 0; this.stunT = 0; this.slowT = 0;
+                this.burnT = 0; this.poisonT = 0; this.dotTick = 0;
+                this.cooldown = 0; this.flashT = 0;
+                this.jumpsLeft = this.data.airJumps;
+                this.blocking = false;
+                this.dropT = 0;
+                this.hoverT = 0;
+                this.ko = false; this.koT = 0;
+                this.animT = Math.random() * 10;
+                this.walkT = 0;
+                this.boomerangOut = false;
+                this.hitsLanded = 0;
+                this.sleepZ = 0;
+                this.groundedLastFrame = true;
+                this.pendingDrop = false;
+            }
+
+            get hurtbox() { return { x: this.x - this.w / 2, y: this.y - this.h, w: this.w, h: this.h }; }
+            get canAct() { return !this.ko && this.hitstun <= 0 && this.stunT <= 0 && this.hoverT <= 0 && !this.action; }
+            get speedMul() { return this.slowT > 0 ? 0.5 : 1; }
+            get busy() { return !!this.action || this.hitstun > 0 || this.stunT > 0; }
+
+            // where the hand holding the pillow is, in world space
+            handPos() {
+                return { x: this.x + this.facing * 16, y: this.y - this.h * 0.55 };
+            }
+
+            // pillow angle: 0 = straight ahead, positive = pointing down. Depends on what we're doing.
+            pillowAngle() {
+                const a = this.action;
+                if (this.blocking) return -0.35;
+                if (a && (a.type === 'swing' || a.type === 'shoot' || a.type === 'throw')) {
+                    const p = a.t / a.dur;
+                    if (a.type !== 'swing') return lerp(0.6, -0.1, Math.min(1, p * 2.5));
+                    // wind up, sweep, recover
+                    if (p < 0.25) return lerp(0.7, -1.7, p / 0.25);
+                    if (p < 0.7) return lerp(-1.7, 1.15, (p - 0.25) / 0.45);
+                    return lerp(1.15, 0.7, (p - 0.7) / 0.3);
+                }
+                if (a && a.type === 'slam') return a.phase === 'rise' ? -1.9 : (a.phase === 'fall' ? -0.6 : 1.35);
+                if (a && a.type === 'slamLand') return 1.35;
+                if (this.hitstun > 0) return -0.3;
+                if (!this.onGround) return 0.35;
+                return 0.7 + Math.sin(this.animT * 3) * 0.05;
+            }
+
+            // is the swing in the part of the animation that can actually hit?
+            swingActive() {
+                const a = this.action;
+                if (!a || a.type !== 'swing' || a.hitDone) return false;
+                const p = a.t / a.dur;
+                return p >= 0.3 && p <= 0.72;
+            }
+
+            update(dt, inp, game) {
+                const d = this.data;
+                this.animT += dt;
+                // timers
+                this.hitstun = Math.max(0, this.hitstun - dt);
+                this.invuln = Math.max(0, this.invuln - dt);
+                this.stunT = Math.max(0, this.stunT - dt);
+                this.slowT = Math.max(0, this.slowT - dt);
+                this.cooldown = Math.max(0, this.cooldown - dt);
+                this.flashT = Math.max(0, this.flashT - dt);
+                this.dropT = Math.max(0, this.dropT - dt);
+
+                // slam meter charges up over time (and with every hit, see applyHit)
+                if (!this.ko && game.phase === 'fight') {
+                    this.meter = Math.min(100, this.meter + dt * 4.5 * (d.meterRate || 1));
+                }
+
+                // damage over time from burning / prickly pillows
+                if (this.burnT > 0 || this.poisonT > 0) {
+                    this.burnT = Math.max(0, this.burnT - dt);
+                    this.poisonT = Math.max(0, this.poisonT - dt);
+                    this.dotTick += dt;
+                    if (this.dotTick >= 0.5) {
+                        this.dotTick = 0;
+                        const dmg = (this.burnT > 0 ? 1.2 : 0) + (this.poisonT > 0 ? 1 : 0);
+                        if (dmg > 0 && !this.ko) {
+                            this.hp = Math.max(0, this.hp - dmg);
+                            game.spawnParticles(this.x, this.y - this.h * 0.6, this.burnT > 0 ? 'fire' : 'poison', 3);
+                            game.checkKO(this, null);
+                        }
+                    }
+                }
+
+                if (this.ko) {
+                    this.koT += dt;
+                    this.vy += GRAVITY * dt;
+                    this.x += this.vx * dt; this.y += this.vy * dt;
+                    this.vx *= 0.98;
+                    if (this.y > ARENA.groundY && this.x > ARENA.left && this.x < ARENA.right && this.y < ARENA.groundY + 5) {
+                        this.y = ARENA.groundY; this.vy = 0; this.vx *= 0.8;
+                    }
+                    return;
+                }
+
+                // revival cloud after a lava dunk: hover for a moment, then drop back in
+                if (this.hoverT > 0) {
+                    this.hoverT -= dt;
+                    this.vx = 0; this.vy = 0;
+                    if (inp && (inp.held.left || inp.held.right || inp.pressed.down)) this.hoverT = 0;
+                    if (this.hoverT <= 0) { this.invuln = Math.max(this.invuln, 1.2); }
+                    return;
+                }
+
+                const stunned = this.hitstun > 0 || this.stunT > 0;
+                const act = this.action;
+                let moveX = 0;
+                this.blocking = false;
+
+                if (!stunned && inp) {
+                    const canMove = !act || act.type === 'swing' && act.t / act.dur > 0.6 || act.type === 'shoot' || act.type === 'throw';
+                    if (inp.held.left) moveX -= 1;
+                    if (inp.held.right) moveX += 1;
+
+                    if (canMove && !act && this.onGround && inp.held.down && !inp.pressed.up) {
+                        this.blocking = true;
+                        moveX = 0;
+                    }
+                    if (!canMove) moveX = 0;
+
+                    // jump (and drop-through when holding down)
+                    if (inp.pressed.up && (!act || act.type === 'shoot')) {
+                        if (this.onGround && inp.held.down && this.platformIdx >= 0) {
+                            this.dropT = 0.3; this.onGround = false; this.y += 2;
+                        } else if (this.onGround) {
+                            this.vy = -d.jumpV * (this.slowT > 0 ? 0.85 : 1);
+                            this.onGround = false;
+                            this.jumpsLeft = d.airJumps;
+                            Sound.jump();
+                            game.spawnParticles(this.x, this.y, 'dust', 5);
+                        } else if (this.jumpsLeft > 0) {
+                            this.jumpsLeft--;
+                            this.vy = -d.jumpV * 0.9;
+                            Sound.jump();
+                            game.spawnParticles(this.x, this.y - 10, 'puff', 6);
+                        }
+                    }
+
+                    // swing / shoot / throw
+                    if (inp.pressed.a && !act && this.cooldown <= 0 && !this.blocking) {
+                        this.startAttack(game);
+                    }
+                    // the big one
+                    if (inp.pressed.b && !act && this.meter >= 100) {
+                        this.startSlam(game);
+                    }
+                }
+
+                // facing follows movement (but not mid-swing)
+                if (moveX !== 0 && (!act || act.type === 'shoot')) this.facing = moveX > 0 ? 1 : -1;
+
+                // horizontal motion
+                const speed = d.speed * this.speedMul;
+                const accel = this.onGround ? 12 : 5;
+                const target = moveX * speed;
+                if (stunned) {
+                    // let knockback carry them, with a little air drag
+                    this.vx *= this.onGround ? Math.pow(0.02, dt) : Math.pow(0.55, dt);
+                } else if (act && act.type === 'slam') {
+                    this.vx *= Math.pow(0.1, dt);
+                } else {
+                    this.vx = lerp(this.vx, target, 1 - Math.pow(0.001, dt * accel / 8));
+                }
+                if (moveX !== 0 && this.onGround && !stunned && !this.blocking) this.walkT += dt * 12 * this.speedMul; else this.walkT = 0;
+
+                // gravity
+                let g = GRAVITY * (d.gravityMul || 1);
+                if (act && act.type === 'slam' && act.phase === 'fall') g *= 2.2;
+                if (act && act.type === 'slam' && act.phase === 'rise' && this.vy > 0) { act.phase = 'fall'; this.vy = 200; }
+                this.vy += g * dt;
+                if (this.vy > 1500) this.vy = 1500;
+
+                const prevY = this.y;
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+
+                // collide with the island and the floating platforms (one-way: only when falling)
+                this.groundedLastFrame = this.onGround;
+                this.onGround = false;
+                this.platformIdx = -1;
+                if (this.vy >= 0) {
+                    if (this.x > ARENA.left - 4 && this.x < ARENA.right + 4 && prevY <= ARENA.groundY + 1 && this.y >= ARENA.groundY) {
+                        this.y = ARENA.groundY; this.vy = 0; this.onGround = true;
+                    }
+                    if (!this.onGround && this.dropT <= 0) {
+                        ARENA.platforms.forEach((p, i) => {
+                            if (this.x > p.x - 4 && this.x < p.x + p.w + 4 && prevY <= p.y + 1 && this.y >= p.y) {
+                                this.y = p.y; this.vy = 0; this.onGround = true; this.platformIdx = i;
+                            }
+                        });
+                    }
+                }
+                if (this.onGround) {
+                    this.jumpsLeft = d.airJumps;
+                    if (!this.groundedLastFrame && act && act.type === 'slam') this.landSlam(game);
+                    if (!this.groundedLastFrame) game.spawnParticles(this.x, this.y, 'dust', 3);
+                }
+
+                // keep them on screen; the lava is the real wall
+                if (this.x < 30) { this.x = 30; this.vx = Math.abs(this.vx) * 0.5; }
+                if (this.x > W - 30) { this.x = W - 30; this.vx = -Math.abs(this.vx) * 0.5; }
+                if (this.y < -260) { this.y = -260; if (this.vy < 0) this.vy = 0; }
+
+                // LAVA!
+                if (this.y >= ARENA.lavaY) game.lavaDunk(this);
+
+                // advance the current action
+                if (this.action) {
+                    const a = this.action;
+                    a.t += dt;
+                    if (a.type === 'shoot' && !a.fired && a.t >= a.dur * 0.35) { a.fired = true; game.fireProjectile(this); }
+                    if (a.type === 'throw' && !a.fired && a.t >= a.dur * 0.3) { a.fired = true; game.throwBoomerang(this); }
+                    if (a.type === 'slam') {
+                        if (a.t > 2.5) { this.action = null; } // safety: never get stuck
+                    } else if (a.t >= a.dur) {
+                        this.action = null;
+                    }
+                }
+            }
+
+            startAttack(game) {
+                const p = this.data.pillow;
+                if (p.kind === 'shoot') {
+                    this.action = { type: 'shoot', t: 0, dur: p.swingTime, fired: false };
+                    this.cooldown = p.cooldown;
+                } else if (p.kind === 'boomerang') {
+                    if (this.boomerangOut) return;
+                    this.action = { type: 'throw', t: 0, dur: p.swingTime, fired: false };
+                    this.cooldown = p.cooldown;
+                } else {
+                    this.action = { type: 'swing', t: 0, dur: p.swingTime, hitDone: false };
+                    this.cooldown = p.cooldown + p.swingTime;
+                    Sound.swing();
+                }
+            }
+
+            startSlam(game) {
+                this.meter = 0;
+                this.blocking = false;
+                if (this.onGround) {
+                    this.vy = -560;
+                    this.onGround = false;
+                    this.action = { type: 'slam', t: 0, dur: 2, phase: 'rise' };
+                } else {
+                    this.vy = Math.max(this.vy, 300);
+                    this.action = { type: 'slam', t: 0, dur: 2, phase: 'fall' };
+                }
+                game.announce(this.data.slam.name + '!', this.index === 0 ? '#4dabf7' : '#ff6b6b', 0.9);
+            }
+
+            landSlam(game) {
+                this.action = { type: 'slamLand', t: 0, dur: 0.55 };
+                game.slamExplosion(this);
+            }
+        }
+
+        // ------------------------------------------------------------
+        //  Projectiles: feathers, lasers, sleepy dust and boomerang pillows
+        // ------------------------------------------------------------
+        class Projectile {
+            constructor(o) { Object.assign(this, { life: 3, hitOwnerReturn: false, hits: new Set(), angle: 0, t: 0 }, o); }
+            update(dt, game) {
+                this.t += dt;
+                this.life -= dt;
+                if (this.type === 'boomerang') {
+                    const owner = this.owner;
+                    if (!this.returning) {
+                        this.vx *= Math.pow(0.15, dt);
+                        if (Math.abs(this.vx) < 90 || Math.abs(this.x - this.startX) > this.range) this.returning = true;
+                    } else {
+                        const hx = owner.x, hy = owner.y - owner.h * 0.55;
+                        const dx = hx - this.x, dy = hy - this.y, len = Math.hypot(dx, dy) || 1;
+                        const sp = Math.min(this.speed * 1.2, 260 + this.t * 900);
+                        this.vx = dx / len * sp; this.vy = dy / len * sp;
+                        if (len < 30 || this.life <= 0) { owner.boomerangOut = false; return false; }
+                        this.hits.delete('return');
+                    }
+                    this.angle += dt * 14 * Math.sign(this.vx || 1);
+                } else if (this.type === 'dust') {
+                    this.vx *= Math.pow(0.05, dt); this.vy *= Math.pow(0.05, dt);
+                    this.vy -= 30 * dt;
+                } else if (this.type === 'feather') {
+                    this.vy += Math.sin(this.t * 18) * 260 * dt;
+                    this.angle = Math.atan2(this.vy, this.vx);
+                } else if (this.type === 'laser') {
+                    this.angle = Math.atan2(this.vy, this.vx);
+                }
+                this.x += this.vx * dt; this.y += this.vy * dt;
+                if (this.life <= 0 || this.x < -60 || this.x > W + 60 || this.y > ARENA.lavaY + 20 || this.y < -200) {
+                    if (this.type === 'boomerang') this.owner.boomerangOut = false;
+                    return false;
+                }
+                return true;
+            }
+        }
+
+        // ------------------------------------------------------------
+        //  Particles
+        // ------------------------------------------------------------
+        const PARTICLE_STYLES = {
+            feather: { colors: ['#ffffff', '#fff5e0', '#ffe6c7'], size: [5, 9], speed: [80, 320], up: 260, gravity: 240, life: [0.7, 1.4], drag: 0.92, sway: true },
+            spark: { colors: ['#ffd166', '#ff8c1a', '#ffffff'], size: [3, 6], speed: [120, 420], up: 120, gravity: 600, life: [0.25, 0.55], drag: 0.96 },
+            dust: { colors: ['#d8c9a8', '#bfa77f'], size: [4, 8], speed: [40, 140], up: 60, gravity: 200, life: [0.3, 0.6], drag: 0.9 },
+            puff: { colors: ['#ffffff', '#e9ecef'], size: [6, 12], speed: [40, 120], up: -20, gravity: -60, life: [0.3, 0.6], drag: 0.9 },
+            fire: { colors: ['#ff6b00', '#ffd166', '#ff3b00'], size: [5, 11], speed: [30, 140], up: 160, gravity: -300, life: [0.3, 0.7], drag: 0.94 },
+            poison: { colors: ['#94d82d', '#51cf66'], size: [4, 8], speed: [20, 90], up: 100, gravity: -150, life: [0.4, 0.8], drag: 0.95 },
+            lava: { colors: ['#ff4d00', '#ffb700', '#ff8800'], size: [6, 14], speed: [120, 420], up: 520, gravity: 1100, life: [0.5, 1.1], drag: 0.99 },
+            ice: { colors: ['#a5d8ff', '#e7f5ff', '#ffffff'], size: [4, 8], speed: [60, 220], up: 150, gravity: 500, life: [0.4, 0.9], drag: 0.96 },
+            zap: { colors: ['#3bc9db', '#ffffff', '#99e9f2'], size: [3, 6], speed: [200, 500], up: 100, gravity: 0, life: [0.15, 0.4], drag: 0.9 },
+            ghost: { colors: ['#ced4da', '#ffffff'], size: [8, 16], speed: [30, 120], up: 60, gravity: -120, life: [0.6, 1.2], drag: 0.95 },
+            zzz: { colors: ['#91a7ff', '#ffffff'], size: [10, 14], speed: [10, 40], up: 80, gravity: -40, life: [0.8, 1.4], drag: 0.98, text: 'z' },
+            confetti: { colors: ['#ff6b6b', '#ffd43b', '#69db7c', '#4dabf7', '#da77f2'], size: [5, 9], speed: [100, 420], up: 500, gravity: 700, life: [1.2, 2.2], drag: 0.98, sway: true },
+        };
+
+        class Particle {
+            constructor(x, y, style, dirX = 0) {
+                const s = PARTICLE_STYLES[style];
+                const ang = Math.random() * Math.PI * 2;
+                const sp = rand(s.speed[0], s.speed[1]);
+                this.style = style; this.s = s;
+                this.x = x; this.y = y;
+                this.vx = Math.cos(ang) * sp + dirX * sp * 0.6;
+                this.vy = Math.sin(ang) * sp - s.up * Math.random();
+                this.size = rand(s.size[0], s.size[1]);
+                this.color = pick(s.colors);
+                this.life = this.maxLife = rand(s.life[0], s.life[1]);
+                this.rot = Math.random() * 6.28;
+                this.spin = rand(-6, 6);
+                this.phase = Math.random() * 6.28;
+            }
+            update(dt) {
+                this.life -= dt;
+                this.vy += this.s.gravity * dt;
+                const dr = Math.pow(this.s.drag, dt * 60);
+                this.vx *= dr; this.vy *= dr;
+                if (this.s.sway) this.vx += Math.sin(this.life * 9 + this.phase) * 120 * dt;
+                this.x += this.vx * dt; this.y += this.vy * dt;
+                this.rot += this.spin * dt;
+                return this.life > 0;
+            }
+        }
+
+        // ------------------------------------------------------------
+        //  The bot. It thinks in "plans" a few times a second so it
+        //  doesn't jitter, and gets sharper on harder difficulties.
+        // ------------------------------------------------------------
+        const CPU_CONFIG = {
+            easy: { react: 0.5, aggro: 0.45, err: 0.55, block: 0.12, jumpy: 0.3, slam: 0.5, dodge: 0.2 },
+            normal: { react: 0.28, aggro: 0.7, err: 0.25, block: 0.35, jumpy: 0.5, slam: 0.85, dodge: 0.45 },
+            hard: { react: 0.12, aggro: 0.92, err: 0.06, block: 0.6, jumpy: 0.7, slam: 1.0, dodge: 0.75 },
+        };
+
+        class CPU {
+            constructor(f, diff) {
+                this.f = f; this.cfg = CPU_CONFIG[diff] || CPU_CONFIG.normal;
+                this.timer = 0; this.plan = 'approach'; this.wantDir = 0;
+                this.prev = {}; this.jumpWish = false; this.attackWish = false; this.slamWish = false; this.blockWish = false;
+                this.blockT = 0; this.wanderT = 0;
+            }
+            input(dt, game, opp) {
+                const f = this.f, c = this.cfg;
+                const want = { left: false, right: false, up: false, down: false, a: false, b: false };
+                const p = f.data.pillow;
+                const dx = opp.x - f.x, adx = Math.abs(dx), dy = opp.y - f.y;
+                const dir = Math.sign(dx) || 1;
+                const offIsland = f.x < ARENA.left || f.x > ARENA.right;
+                const onEdgeL = f.x < ARENA.left + 60, onEdgeR = f.x > ARENA.right - 60;
+
+                this.timer -= dt;
+                this.blockT = Math.max(0, this.blockT - dt);
+
+                // --- 1. survival first: never drift off the island, and get back if we did ---
+                if (!f.onGround) {
+                    const aheadX = f.x + f.vx * 0.45;
+                    const outLeft = f.x < ARENA.left + 20 || aheadX < ARENA.left + 20;
+                    const outRight = f.x > ARENA.right - 20 || aheadX > ARENA.right - 20;
+                    if (outLeft || outRight) {
+                        if (outLeft) want.right = true; else want.left = true;
+                        if (f.vy > 0 && f.jumpsLeft > 0 && (f.y > ARENA.groundY - 60 || Math.random() < 0.1)) want.up = true;
+                        return this.edges(want);
+                    }
+                }
+                // don't chase someone who is already in the lava (or riding the revival cloud)
+                const oppOff = opp.hoverT > 0 || opp.x < ARENA.left || opp.x > ARENA.right;
+                if (oppOff) {
+                    const toCenter = W / 2 - f.x;
+                    if (Math.abs(toCenter) > 140) { if (toCenter < 0) want.left = true; else want.right = true; }
+                    return this.edges(want);
+                }
+
+                // --- 2. incoming projectiles: block or hop ---
+                let threat = false;
+                for (const pr of game.projectiles) {
+                    if (pr.owner === f) continue;
+                    const towards = Math.sign(pr.vx) === Math.sign(f.x - pr.x);
+                    if (towards && Math.abs(pr.x - f.x) < 280 && Math.abs(pr.y - (f.y - f.h * 0.5)) < 70) threat = true;
+                }
+                // opponent mid-swing and in range = danger
+                const oppSwing = opp.action && (opp.action.type === 'swing' || opp.action.type === 'slam') && adx < opp.data.pillow.reach + 90 && Math.abs(dy) < 100;
+                if ((threat || oppSwing) && f.onGround && this.blockT <= 0) {
+                    const roll = Math.random();
+                    if (roll < c.block * (oppSwing ? 1.2 : 1)) { this.blockT = 0.35; }
+                    else if (roll < c.block + c.dodge * 0.5 && oppSwing && opp.action.type === 'slam') { want.up = true; }
+                    else if (roll < c.block + c.dodge * 0.6 && threat) { want.up = true; }
+                }
+                if (this.blockT > 0) { want.down = true; return this.edges(want); }
+
+                // --- 3. pick a plan every "react" seconds ---
+                if (this.timer <= 0) {
+                    this.timer = c.react * rand(0.7, 1.4);
+                    const wantsRange = p.kind === 'shoot' ? [300, 520] : p.kind === 'boomerang' ? [180, 340] : [0, p.reach * 0.85 + opp.w * 0.5];
+                    if (Math.random() < c.err * 0.5) this.plan = pick(['wait', 'approach', 'retreat']);
+                    else if (adx < wantsRange[0] && Math.random() < 0.75) this.plan = 'retreat';
+                    else if (adx > wantsRange[1]) this.plan = 'approach';
+                    else this.plan = Math.random() < c.aggro ? 'attack' : 'wait';
+                    this.wanderT = rand(0.2, 0.6);
+                }
+
+                // --- 4. carry out the plan ---
+                const nearEdgeInDir = (d) => (d < 0 && onEdgeL) || (d > 0 && onEdgeR);
+                let move = 0;
+                if (this.plan === 'approach') move = dir;
+                else if (this.plan === 'retreat') move = -dir;
+                else if (this.plan === 'attack') {
+                    const inRange = p.kind === 'shoot' ? Math.abs(dy) < 70 : p.kind === 'boomerang' ? Math.abs(dy) < 90 && adx < 420 : adx < p.reach + opp.w * 0.55 && Math.abs(dy) < 110;
+                    if (inRange) {
+                        if (f.facing !== dir && p.kind !== 'shoot') move = dir;
+                        if (Math.random() > c.err * 0.4) want.a = true;
+                        // shooters back up while firing; melee steps in
+                        if (p.kind === 'shoot' && adx < 220 && !nearEdgeInDir(-dir)) move = -dir;
+                    } else move = dir;
+                }
+                // the slam: when it's charged and they're close, drop the hammer
+                if (f.meter >= 100 && adx < f.data.slam.radius * 0.8 && Math.abs(dy) < 160 && Math.random() < c.slam * 0.6) want.b = true;
+                // jump up to reach them on a platform, or hop around a bit
+                const safeToHop = !nearEdgeInDir(move || dir);
+                if (dy < -90 && adx < 140 && f.onGround && safeToHop && Math.random() < c.jumpy * 0.5) want.up = true;
+                if (safeToHop && Math.random() < 0.004 * c.jumpy) want.up = true;
+                // never walk off the edge on purpose
+                if (move !== 0 && f.onGround && nearEdgeInDir(move) && f.platformIdx < 0) move = 0;
+                if (move < 0) want.left = true; else if (move > 0) want.right = true;
+                return this.edges(want);
+            }
+            edges(want) {
+                const pressed = {};
+                for (const k of ACTIONS) pressed[k] = !!want[k] && !this.prev[k];
+                this.prev = want;
+                return { held: want, pressed, prev: want };
+            }
+        }
+
+        // ------------------------------------------------------------
+        //  The game itself: rounds, hits, the slam, the lava
+        // ------------------------------------------------------------
+        const Game = {
+            phase: 'idle',          // idle | intro | fight | ko | timeup | matchOver
+            fighters: [], projectiles: [], particles: [], rings: [], texts: [],
+            cpus: [null, null], mode: '1p', difficulty: 'normal',
+            round: 0, timer: ROUND_TIME, phaseT: 0,
+            shake: 0, hitstop: 0, slowmo: 1,
+            ann: null, lavaT: 0, bgT: 0,
+
+            startMatch(c1, c2, mode, difficulty) {
+                this.mode = mode; this.difficulty = difficulty;
+                this.fighters = [new Fighter(c1, 0, mode === 'demo'), new Fighter(c2, 1, mode !== '2p')];
+                this.cpus = [mode === 'demo' ? new CPU(this.fighters[0], 'normal') : null, mode !== '2p' ? new CPU(this.fighters[1], difficulty) : null];
+                this.round = 0;
+                this.startRound();
+                if (mode !== 'demo') gtag('event', 'game_start', { game_name: 'Pillow Smash', mode, difficulty, p1: c1.id, p2: c2.id });
+            },
+
+            startRound() {
+                this.round++;
+                this.fighters[0].reset(ARENA.spawn[0], 1);
+                this.fighters[1].reset(ARENA.spawn[1], -1);
+                this.projectiles = []; this.rings = []; this.texts = [];
+                this.timer = ROUND_TIME;
+                this.phase = 'intro'; this.phaseT = 0;
+                this.hitstop = 0; this.slowmo = 1;
+                this.announce('ROUND ' + this.round, '#fff3d6', 1.2);
+                Sound.ready();
+            },
+
+            announce(text, color, dur) { this.ann = { text, color, t: 0, dur }; },
+
+            update(dt) {
+                this.bgT += dt;
+                this.lavaT += dt;
+                if (this.phase === 'idle' || this.phase === 'matchOver') return;
+                this.phaseT += dt;
+                if (this.ann) { this.ann.t += dt; if (this.ann.t > this.ann.dur) this.ann = null; }
+
+                if (this.phase === 'intro') {
+                    if (this.phaseT > 1.3 && !this.fightCalled) { this.fightCalled = true; this.announce('FIGHT!', '#ffd166', 0.8); Sound.fight(); }
+                    if (this.phaseT > 1.9) { this.phase = 'fight'; this.fightCalled = false; }
+                }
+
+                const sim = this.hitstop > 0 ? 0 : dt * this.slowmo;
+                this.hitstop = Math.max(0, this.hitstop - dt);
+                this.shake = Math.max(0, this.shake - dt * 30);
+
+                if (this.phase === 'fight') {
+                    this.timer -= sim;
+                    if (this.timer <= 0) { this.timer = 0; this.timeUp(); }
+                }
+
+                // fighters (they can't act during the intro or after the KO)
+                const acting = this.phase === 'fight';
+                for (let i = 0; i < 2; i++) {
+                    const f = this.fighters[i];
+                    let inp = null;
+                    if (acting) inp = this.cpus[i] ? this.cpus[i].input(sim, this, this.fighters[1 - i]) : Input.players[i];
+                    if (sim > 0) f.update(sim, inp, this);
+                }
+                if (sim > 0) {
+                    this.resolveMelee();
+                    this.projectiles = this.projectiles.filter((p) => { const alive = p.update(sim, this); return alive && !this.projectileHit(p); });
+                }
+                this.particles = this.particles.filter((p) => p.update(dt));
+                this.rings = this.rings.filter((r) => (r.t += dt) < r.dur);
+                this.texts = this.texts.filter((t) => (t.t += dt) < t.dur);
+
+                if (this.phase === 'ko' || this.phase === 'timeup') {
+                    this.slowmo = lerp(this.slowmo, 1, dt * 2);
+                    if (this.phaseT > 2.8) this.afterRound();
+                }
+            },
+
+            // ---- hits ----
+            resolveMelee() {
+                for (let i = 0; i < 2; i++) {
+                    const atk = this.fighters[i], def = this.fighters[1 - i];
+                    if (!atk.swingActive() || def.ko) continue;
+                    const p = atk.data.pillow;
+                    const hand = atk.handPos();
+                    const ang = atk.pillowAngle();
+                    const hb = def.hurtbox;
+                    let hit = false;
+                    for (let s = 0.25; s <= 1.0001; s += 0.15) {
+                        const px = hand.x + atk.facing * Math.cos(ang) * p.reach * s;
+                        const py = hand.y + Math.sin(ang) * p.reach * s;
+                        const r = p.thick * 0.5;
+                        const cx = clamp(px, hb.x, hb.x + hb.w), cy = clamp(py, hb.y, hb.y + hb.h);
+                        if (dist(px, py, cx, cy) < r) { hit = { x: px, y: py }; break; }
+                    }
+                    if (!hit) continue;
+                    atk.action.hitDone = true;
+                    const dir = Math.sign(def.x - atk.x) || atk.facing;
+                    this.applyHit(def, atk, p.dmg, p.knock, dir, p.effect, hit.x, hit.y, 'melee');
+                    if (p.kind === 'explosive') {
+                        this.addRing(hit.x, hit.y, p.blast, '#ff922b', 0.35, 10);
+                        this.spawnParticles(hit.x, hit.y, 'fire', 14);
+                        this.spawnParticles(hit.x, hit.y, 'spark', 10);
+                        this.shake = Math.max(this.shake, 6);
+                    }
+                }
+            },
+
+            projectileHit(pr) {
+                for (const def of this.fighters) {
+                    if (def === pr.owner || def.ko) continue;
+                    const key = pr.type === 'boomerang' ? (pr.returning ? 'return' : 'out') : 'once';
+                    if (pr.hits.has(key)) continue;
+                    const hb = def.hurtbox;
+                    const cx = clamp(pr.x, hb.x, hb.x + hb.w), cy = clamp(pr.y, hb.y, hb.y + hb.h);
+                    if (dist(pr.x, pr.y, cx, cy) < pr.r) {
+                        pr.hits.add(key);
+                        const dir = Math.sign(pr.vx) || pr.owner.facing;
+                        const landed = this.applyHit(def, pr.owner, pr.dmg, pr.knock, dir, pr.effect, pr.x, pr.y, 'proj');
+                        if (pr.type === 'boomerang') { if (!pr.returning) pr.returning = true; return false; }
+                        return true; // remove it
+                    }
+                }
+                return false;
+            },
+
+            // the one place damage happens. returns true if it connected (not blocked)
+            applyHit(def, atk, dmg, knock, dir, effect, hx, hy, source) {
+                if (def.invuln > 0 || def.ko || def.hoverT > 0) return false;
+                const blocked = def.blocking && def.onGround;
+                if (blocked) {
+                    dmg *= 0.25; knock *= 0.3;
+                    Sound.block();
+                    this.spawnParticles(hx, hy, 'spark', 5, dir);
+                    this.addText(def.x, def.y - def.h - 10, 'BLOCK', '#dee2e6');
+                } else {
+                    Sound.hit();
+                    this.spawnParticles(hx, hy, 'feather', 10 + Math.floor(dmg), dir);
+                    this.hitstop = Math.max(this.hitstop, 0.05 + dmg * 0.003);
+                    this.shake = Math.max(this.shake, 3 + dmg * 0.3);
+                    def.flashT = 0.15;
+                    this.addText(def.x, def.y - def.h - 10, Math.round(dmg), '#ffd166');
+                }
+                def.hp = Math.max(0, def.hp - dmg);
+                if (atk) { atk.meter = Math.min(100, atk.meter + (blocked ? 3 : 9) * (atk.data.meterRate || 1)); atk.hitsLanded++; }
+                def.meter = Math.min(100, def.meter + 4 * (def.data.meterRate || 1));
+
+                // knockback grows as health drops, shrinks with weight (Smash rules!)
+                const launch = knock * (1 + (1 - def.hp / def.maxHp) * 1.8) / def.data.weight;
+                if (effect === 'popup') { def.vx = dir * launch * 0.25; def.vy = -launch * 1.05; }
+                else { def.vx = dir * launch * 0.85; def.vy = -launch * 0.5; }
+                if (def.onGround && def.vy < 0) def.onGround = false;
+                if (!blocked) {
+                    def.hitstun = 0.18 + Math.min(0.45, launch / 2200);
+                    def.action = null; def.blocking = false;
+                    if (effect === 'slow') { def.slowT = 2.2; this.spawnParticles(hx, hy, 'ice', 8); }
+                    if (effect === 'burn') { def.burnT = 3; def.dotTick = 0; }
+                    if (effect === 'poison') { def.poisonT = 3; def.dotTick = 0; }
+                    // thorns: whoever pokes the cactus gets poked back
+                    if (source === 'melee' && def.data.thorns && atk) {
+                        atk.hp = Math.max(0, atk.hp - def.data.thorns);
+                        this.addText(atk.x, atk.y - atk.h - 10, def.data.thorns, '#94d82d');
+                        this.spawnParticles(atk.x, atk.y - atk.h * 0.5, 'poison', 4);
+                        this.checkKO(atk, def);
+                    }
+                }
+                this.checkKO(def, atk);
+                return !blocked;
+            },
+
+            slamExplosion(f) {
+                const s = f.data.slam;
+                const x = f.x, y = f.y;
+                Sound.slam();
+                this.shake = Math.max(this.shake, 18);
+                this.hitstop = Math.max(this.hitstop, 0.1);
+                this.addRing(x, y, s.radius, s.color, 0.5, 26);
+                this.addRing(x, y, s.radius * 0.6, '#ffffff', 0.3, 10);
+                this.spawnParticles(x, y, 'dust', 20);
+                this.spawnParticles(x, y, 'feather', 26);
+                if (s.extra === 'fire') this.spawnParticles(x, y, 'fire', 40);
+                if (s.extra === 'freeze') this.spawnParticles(x, y, 'ice', 40);
+                if (s.extra === 'zap') this.spawnParticles(x, y, 'zap', 40);
+                if (s.extra === 'ghost') this.spawnParticles(x, y, 'ghost', 24);
+                if (s.extra === 'needles') this.spawnParticles(x, y, 'poison', 30);
+                if (s.extra === 'sleep') this.spawnParticles(x, y, 'zzz', 12);
+                if (s.extra === 'feathers') {
+                    for (let i = 0; i < 10; i++) {
+                        const a = -Math.PI * (i + 0.5) / 10;
+                        this.projectiles.push(new Projectile({ type: 'feather', owner: f, x, y: y - 20, vx: Math.cos(a) * 560, vy: Math.sin(a) * 560, dmg: 4, knock: 260, r: 10, life: 1.4 }));
+                    }
+                }
+                const def = this.fighters[1 - f.index];
+                const cx = clamp(x, def.hurtbox.x, def.hurtbox.x + def.w), cy = clamp(y, def.hurtbox.y, def.y);
+                const d = dist(x, y, cx, cy);
+                if (d < s.radius && !def.ko) {
+                    const falloff = 1 - (d / s.radius) * 0.45;
+                    const dir = Math.sign(def.x - x) || -f.facing;
+                    const wasBlocking = def.blocking;
+                    if (wasBlocking) def.blocking = false;        // the slam smashes right through a block
+                    const landed = this.applyHit(def, f, s.dmg * falloff * (wasBlocking ? 0.6 : 1), s.knock * falloff, dir, s.extra === 'popup' ? 'popup' : null, cx, cy, 'slam');
+                    if (landed && (s.extra === 'freeze' || s.extra === 'sleep') && !def.ko) {
+                        def.stunT = 1.4; def.hitstun = 0; def.vx *= 0.3; def.vy *= 0.3;
+                        def.sleepZ = s.extra === 'sleep' ? 1 : 2;
+                    }
+                    if (landed && s.extra === 'fire' && !def.ko) { def.burnT = 3; }
+                    if (landed && s.extra === 'needles' && !def.ko) { def.poisonT = 3; }
+                }
+            },
+
+            lavaDunk(f) {
+                if (f.ko) return;
+                const dmg = LAVA_DAMAGE * (f.data.lavaResist || 1);
+                Sound.lava();
+                this.spawnParticles(f.x, ARENA.lavaY, 'lava', 30);
+                this.shake = Math.max(this.shake, 8);
+                f.hp = Math.max(0, f.hp - dmg);
+                this.addText(f.x, ARENA.lavaY - 60, Math.round(dmg) + ' LAVA!', '#ff6a00');
+                f.burnT = 0; f.poisonT = 0; f.slowT = 0; f.stunT = 0; f.hitstun = 0; f.action = null; f.boomerangOut = f.boomerangOut;
+                if (f.hp <= 0) { f.y = ARENA.lavaY; f.vx = 0; f.vy = 0; this.checkKO(f, this.fighters[1 - f.index], true); return; }
+                // pop back out on a cloud above the middle of the island
+                f.x = W / 2 + (f.index === 0 ? -80 : 80); f.y = ARENA.groundY - 230;
+                f.vx = 0; f.vy = 0; f.hoverT = 1.4; f.invuln = 2.8; f.onGround = false; f.jumpsLeft = f.data.airJumps;
+                f.meter = Math.min(100, f.meter + 15);
+            },
+
+            checkKO(f, attacker, sunk) {
+                if (f.hp > 0 || f.ko) return;
+                f.hp = 0; f.ko = true; f.koT = 0; f.action = null; f.blocking = false; f.hoverT = 0; f.stunT = 0;
+                if (sunk) { f.vy = 0; f.vx = 0; f.sunk = true; }
+                else { f.vy = Math.min(f.vy, -520); f.vx = (attacker ? Math.sign(f.x - attacker.x) || 1 : -f.facing) * 320; }
+                if (this.phase !== 'fight') return;
+                this.phase = 'ko'; this.phaseT = 0;
+                const winner = this.fighters[1 - f.index];
+                winner.wins++;
+                this.announce('K.O.!', '#ff6b6b', 2.2);
+                Sound.ko();
+                this.hitstop = 0.25; this.slowmo = 0.3;
+                this.shake = 20;
+                if (this.mode !== 'demo') gtag('event', 'ko', { game_name: 'Pillow Smash', winner: winner.data.id, loser: f.data.id, round: this.round });
+            },
+
+            timeUp() {
+                const [a, b] = this.fighters;
+                this.phase = 'timeup'; this.phaseT = 0;
+                if (a.hp !== b.hp) { (a.hp > b.hp ? a : b).wins++; }
+                this.announce('TIME UP!', '#ffd166', 2.2);
+            },
+
+            afterRound() {
+                const [a, b] = this.fighters;
+                if (this.mode === 'demo') { if (a.wins >= 2 || b.wins >= 2) startDemo(); else this.startRound(); return; }
+                if (a.wins >= 2 || b.wins >= 2) {
+                    this.phase = 'matchOver';
+                    const winner = a.wins >= 2 ? a : b;
+                    UI.showResult(winner);
+                    Sound.win();
+                    this.spawnParticles(W / 2, 200, 'confetti', 80);
+                    gtag('event', 'match_win', { game_name: 'Pillow Smash', mode: this.mode, difficulty: this.difficulty, winner: winner.data.id, winner_is_cpu: winner.isCPU });
+                } else {
+                    this.startRound();
+                }
+            },
+
+            // ---- projectiles ----
+            fireProjectile(f) {
+                const p = f.data.pillow;
+                const hand = f.handPos();
+                const x = hand.x + f.facing * p.reach * 0.8, y = hand.y - 6;
+                Sound.shoot();
+                if (p.proj === 'dust') {
+                    for (let i = -1; i <= 1; i++) {
+                        this.projectiles.push(new Projectile({ type: 'dust', owner: f, x, y, vx: f.facing * p.projSpeed * (1 - Math.abs(i) * 0.15), vy: i * 110 - 40, dmg: p.dmg, knock: p.knock, r: 20, life: 0.9, effect: p.effect }));
+                    }
+                } else if (p.proj === 'laser') {
+                    this.projectiles.push(new Projectile({ type: 'laser', owner: f, x, y, vx: f.facing * p.projSpeed, vy: 0, dmg: p.dmg, knock: p.knock, r: 9, life: 1.5 }));
+                    this.spawnParticles(x, y, 'zap', 3);
+                } else {
+                    this.projectiles.push(new Projectile({ type: 'feather', owner: f, x, y, vx: f.facing * p.projSpeed, vy: rand(-40, 40), dmg: p.dmg, knock: p.knock, r: 12, life: 1.8 }));
+                }
+            },
+
+            throwBoomerang(f) {
+                const p = f.data.pillow;
+                const hand = f.handPos();
+                f.boomerangOut = true;
+                Sound.swing();
+                this.projectiles.push(new Projectile({ type: 'boomerang', owner: f, x: hand.x, y: hand.y - 10, startX: hand.x, vx: f.facing * p.projSpeed, vy: -30, speed: p.projSpeed, range: p.range, dmg: p.dmg, knock: p.knock, r: 26, life: 4, returning: false }));
+            },
+
+            // ---- effects ----
+            spawnParticles(x, y, style, n, dirX = 0) {
+                if (this.particles.length > 600) return;
+                for (let i = 0; i < n; i++) this.particles.push(new Particle(x, y, style, dirX));
+            },
+            addRing(x, y, maxR, color, dur, width) { this.rings.push({ x, y, maxR, color, dur, width, t: 0 }); },
+            addText(x, y, text, color) { this.texts.push({ x: x + rand(-14, 14), y, text: String(text), color, t: 0, dur: 0.9 }); },
+
+            quit() {
+                this.phase = 'idle';
+                this.fighters = []; this.projectiles = []; this.particles = []; this.rings = []; this.texts = [];
+                this.cpus = [null, null]; this.ann = null; this.mode = '1p';
+            },
+        };
+
+        // ------------------------------------------------------------
+        //  Drawing: the volcano, the lava, and the giant mattress island
+        // ------------------------------------------------------------
+        const ash = Array.from({ length: 50 }, () => ({ x: Math.random() * W, y: Math.random() * H, s: rand(1, 3), v: rand(8, 30), ph: Math.random() * 6.28 }));
+        const bubbles = [];
+        const stars = Array.from({ length: 60 }, () => ({ x: Math.random() * W, y: Math.random() * 300, s: rand(0.6, 2), ph: Math.random() * 6.28 }));
+
+        function roundRect(x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+        }
+
+        function drawBackground(t) {
+            // sky
+            const sky = ctx.createLinearGradient(0, 0, 0, H);
+            sky.addColorStop(0, '#12041f');
+            sky.addColorStop(0.45, '#3a0d2e');
+            sky.addColorStop(0.8, '#8a1e12');
+            sky.addColorStop(1, '#ff5a00');
+            ctx.fillStyle = sky;
+            ctx.fillRect(0, 0, W, H);
+
+            // stars
+            ctx.fillStyle = '#fff';
+            for (const s of stars) {
+                ctx.globalAlpha = 0.3 + 0.5 * Math.abs(Math.sin(t * 0.8 + s.ph));
+                ctx.fillRect(s.x, s.y, s.s, s.s);
+            }
+            ctx.globalAlpha = 1;
+
+            // far volcanoes
+            const volc = (x, w, h, glow) => {
+                ctx.fillStyle = '#1d0a1c';
+                ctx.beginPath();
+                ctx.moveTo(x - w, ARENA.lavaY + 10);
+                ctx.lineTo(x - w * 0.18, ARENA.lavaY - h);
+                ctx.lineTo(x + w * 0.18, ARENA.lavaY - h);
+                ctx.lineTo(x + w, ARENA.lavaY + 10);
+                ctx.closePath();
+                ctx.fill();
+                // glowing crater + lava trickle
+                ctx.fillStyle = glow;
+                ctx.beginPath();
+                ctx.ellipse(x, ARENA.lavaY - h + 2, w * 0.18, 6, 0, 0, 6.28);
+                ctx.fill();
+                ctx.strokeStyle = glow; ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(x + w * 0.05, ARENA.lavaY - h + 4);
+                ctx.quadraticCurveTo(x + w * 0.2, ARENA.lavaY - h * 0.6, x + w * 0.42, ARENA.lavaY - h * 0.2);
+                ctx.stroke();
+                // smoke puffs
+                for (let i = 0; i < 4; i++) {
+                    const k = (t * 0.25 + i * 0.25) % 1;
+                    ctx.globalAlpha = (1 - k) * 0.35;
+                    ctx.fillStyle = '#3a2a3a';
+                    ctx.beginPath();
+                    ctx.arc(x + Math.sin(k * 6 + i) * 18 + k * 40, ARENA.lavaY - h - 10 - k * 120, 10 + k * 26, 0, 6.28);
+                    ctx.fill();
+                }
+                ctx.globalAlpha = 1;
+            };
+            volc(150, 210, 300, '#ff7a1a');
+            volc(1130, 260, 360, '#ffb01a');
+            volc(640, 330, 230, '#ff5a1a');
+
+            // drifting ash
+            ctx.fillStyle = 'rgba(255,200,160,0.5)';
+            for (const a of ash) {
+                const y = (a.y + t * a.v) % H;
+                ctx.fillRect(a.x + Math.sin(t * 0.7 + a.ph) * 20, H - y, a.s, a.s);
+            }
+        }
+
+        function drawLava(t) {
+            const top = ARENA.lavaY;
+            const g = ctx.createLinearGradient(0, top - 10, 0, H);
+            g.addColorStop(0, '#ffd166');
+            g.addColorStop(0.15, '#ff7a00');
+            g.addColorStop(0.6, '#d62a00');
+            g.addColorStop(1, '#5a0a00');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.moveTo(0, H);
+            ctx.lineTo(0, top);
+            for (let x = 0; x <= W; x += 20) {
+                const y = top + Math.sin(x * 0.02 + t * 2) * 5 + Math.sin(x * 0.045 - t * 1.3) * 4;
+                ctx.lineTo(x, y);
+            }
+            ctx.lineTo(W, H);
+            ctx.closePath();
+            ctx.fill();
+
+            // glow above the surface
+            const glow = ctx.createLinearGradient(0, top - 70, 0, top);
+            glow.addColorStop(0, 'rgba(255,120,0,0)');
+            glow.addColorStop(1, 'rgba(255,150,30,0.35)');
+            ctx.fillStyle = glow;
+            ctx.fillRect(0, top - 70, W, 70);
+
+            // dark crust blobs drifting
+            ctx.fillStyle = 'rgba(60,10,0,0.45)';
+            for (let i = 0; i < 9; i++) {
+                const x = ((i * 173 + t * 18) % (W + 200)) - 100;
+                const y = top + 30 + (i % 3) * 18;
+                ctx.beginPath();
+                ctx.ellipse(x, y, 40 + (i % 4) * 12, 9, 0, 0, 6.28);
+                ctx.fill();
+            }
+
+            // bubbles
+            if (Math.random() < 0.15) bubbles.push({ x: Math.random() * W, y: top + rand(12, 50), r: rand(4, 12), t: 0, dur: rand(0.6, 1.2) });
+            for (let i = bubbles.length - 1; i >= 0; i--) {
+                const b = bubbles[i];
+                b.t += 1 / 60;
+                if (b.t > b.dur) { bubbles.splice(i, 1); continue; }
+                const k = b.t / b.dur;
+                ctx.strokeStyle = 'rgba(255,230,120,' + (0.8 - k * 0.8) + ')';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(b.x, b.y - k * 10, b.r * (0.5 + k), 0, 6.28);
+                ctx.stroke();
+            }
+        }
+
+        // the island is a giant mattress on a chunk of rock
+        function drawIsland(t) {
+            const L = ARENA.left, R = ARENA.right, top = ARENA.groundY;
+            // rock underneath
+            ctx.fillStyle = '#3a2a2a';
+            ctx.beginPath();
+            ctx.moveTo(L - 30, top + 30);
+            ctx.lineTo(L + 20, ARENA.lavaY + 30);
+            ctx.lineTo(R - 20, ARENA.lavaY + 30);
+            ctx.lineTo(R + 30, top + 30);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#2a1c1c';
+            for (let i = 0; i < 6; i++) {
+                ctx.beginPath();
+                ctx.arc(L + 80 + i * 110, top + 60 + (i % 2) * 14, 18, 0, 6.28);
+                ctx.fill();
+            }
+            // glowing cracks where the lava licks the rock
+            ctx.strokeStyle = 'rgba(255,140,0,0.6)'; ctx.lineWidth = 2;
+            for (let i = 0; i < 5; i++) {
+                const x = L + 60 + i * 150;
+                ctx.beginPath(); ctx.moveTo(x, ARENA.lavaY + 20); ctx.lineTo(x + 12, ARENA.lavaY - 4); ctx.lineTo(x + 4, top + 50); ctx.stroke();
+            }
+
+            // mattress
+            const mh = 44;
+            ctx.fillStyle = '#e9e2d0';
+            roundRect(L - 30, top, R - L + 60, mh, 16);
+            ctx.fill();
+            ctx.strokeStyle = '#b8ad95'; ctx.lineWidth = 3; ctx.stroke();
+            // quilting
+            ctx.strokeStyle = 'rgba(120,100,80,0.35)'; ctx.lineWidth = 2;
+            for (let x = L - 10; x < R + 30; x += 60) {
+                ctx.beginPath(); ctx.moveTo(x, top + 6); ctx.lineTo(x + 20, top + mh - 6); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x + 20, top + 6); ctx.lineTo(x, top + mh - 6); ctx.stroke();
+            }
+            // stripe
+            ctx.fillStyle = '#6c8ebf';
+            ctx.fillRect(L - 30, top + 18, R - L + 60, 8);
+            // bed sheet on top
+            const sheet = ctx.createLinearGradient(0, top - 8, 0, top + 8);
+            sheet.addColorStop(0, '#ffffff'); sheet.addColorStop(1, '#dfe6f2');
+            ctx.fillStyle = sheet;
+            roundRect(L - 30, top - 6, R - L + 60, 14, 7);
+            ctx.fill();
+            // edge warning glow
+            ctx.fillStyle = 'rgba(255,80,0,' + (0.25 + 0.15 * Math.sin(t * 4)) + ')';
+            ctx.fillRect(L - 30, top - 6, 14, 14);
+            ctx.fillRect(R + 16, top - 6, 14, 14);
+
+            // floating pillow platforms
+            for (const p of ARENA.platforms) {
+                const bob = Math.sin(t * 1.5 + p.x) * 3;
+                ctx.save();
+                ctx.translate(0, bob);
+                ctx.fillStyle = 'rgba(0,0,0,0.25)';
+                ctx.beginPath(); ctx.ellipse(p.x + p.w / 2, p.y + 34, p.w * 0.5, 8, 0, 0, 6.28); ctx.fill();
+                ctx.fillStyle = '#fff7ee';
+                roundRect(p.x, p.y, p.w, 30, 15);
+                ctx.fill();
+                ctx.strokeStyle = '#d9c9b8'; ctx.lineWidth = 3; ctx.stroke();
+                ctx.strokeStyle = 'rgba(180,150,120,0.5)'; ctx.lineWidth = 2;
+                ctx.setLineDash([6, 6]);
+                roundRect(p.x + 8, p.y + 7, p.w - 16, 16, 8);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#f4b8c8';
+                [[p.x, p.y], [p.x + p.w, p.y], [p.x, p.y + 30], [p.x + p.w, p.y + 30]].forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 5, 0, 6.28); ctx.fill(); });
+                ctx.restore();
+            }
+        }
+
+        // ------------------------------------------------------------
+        //  HUD: health, slam meters, timer, round wins
+        // ------------------------------------------------------------
+        function drawHUD() {
+            const [a, b] = Game.fighters;
+            if (!a) return;
+            const barW = 470, barH = 26, y = 34;
+            const drawSide = (f, right) => {
+                const x0 = right ? W - 60 - barW : 60;
+                const col = right ? '#ff6b6b' : '#4dabf7';
+                // name
+                ctx.font = '900 20px "Luckiest Guy", "Nunito", sans-serif';
+                ctx.textAlign = right ? 'right' : 'left';
+                ctx.fillStyle = '#000'; ctx.globalAlpha = 0.5;
+                ctx.fillText(f.name.toUpperCase() + (f.isCPU ? '  (BOT)' : ''), (right ? W - 60 : 60) + 2, y - 8 + 2);
+                ctx.globalAlpha = 1; ctx.fillStyle = col;
+                ctx.fillText(f.name.toUpperCase() + (f.isCPU ? '  (BOT)' : ''), right ? W - 60 : 60, y - 8);
+                // health bar
+                ctx.fillStyle = '#1b1030';
+                roundRect(x0 - 3, y - 3, barW + 6, barH + 6, 8); ctx.fill();
+                ctx.fillStyle = '#5a1020';
+                roundRect(x0, y, barW, barH, 6); ctx.fill();
+                const hpFrac = clamp(f.hp / f.maxHp, 0, 1);
+                const hpW = barW * hpFrac;
+                const hg = ctx.createLinearGradient(0, y, 0, y + barH);
+                const hue = hpFrac > 0.5 ? '#69db7c' : hpFrac > 0.25 ? '#ffd43b' : '#ff6b6b';
+                hg.addColorStop(0, '#ffffff'); hg.addColorStop(0.25, hue); hg.addColorStop(1, hue);
+                ctx.fillStyle = hg;
+                if (hpW > 0) { roundRect(right ? x0 + barW - hpW : x0, y, hpW, barH, 6); ctx.fill(); }
+                // health number
+                ctx.font = '900 16px "Nunito", sans-serif';
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = right ? 'left' : 'right';
+                ctx.fillText(Math.ceil(f.hp), right ? x0 + barW + 12 : x0 - 12, y + 19);
+                // slam meter
+                const my = y + barH + 8, mw = barW * 0.6, mx = right ? W - 60 - mw : 60;
+                ctx.fillStyle = '#1b1030';
+                roundRect(mx - 2, my - 2, mw + 4, 14, 6); ctx.fill();
+                const full = f.meter >= 100;
+                const mg = ctx.createLinearGradient(mx, 0, mx + mw, 0);
+                mg.addColorStop(0, '#ff8c1a'); mg.addColorStop(1, '#ffd166');
+                ctx.fillStyle = full ? (Math.sin(Game.bgT * 12) > 0 ? '#ffffff' : '#ffd166') : mg;
+                const w2 = mw * f.meter / 100;
+                if (w2 > 0) { roundRect(right ? mx + mw - w2 : mx, my, w2, 10, 4); ctx.fill(); }
+                ctx.font = '900 12px "Nunito", sans-serif';
+                ctx.textAlign = right ? 'right' : 'left';
+                ctx.fillStyle = full ? '#ffd166' : '#d9cfee';
+                ctx.fillText(full ? 'SLAM READY! ' + (f.isCPU ? '' : (f.index === 0 ? '[G]' : '[L]')) : 'SLAM', right ? W - 60 : 60, my + 26);
+                // round wins
+                for (let i = 0; i < 2; i++) {
+                    const cx = right ? W - 60 - mw - 24 - i * 22 : 60 + mw + 24 + i * 22;
+                    ctx.beginPath(); ctx.arc(cx, my + 5, 8, 0, 6.28);
+                    ctx.fillStyle = i < f.wins ? '#ffd166' : 'rgba(0,0,0,0.5)';
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+                }
+            };
+            drawSide(a, false);
+            drawSide(b, true);
+
+            // timer
+            ctx.beginPath(); ctx.arc(W / 2, y + 16, 34, 0, 6.28);
+            ctx.fillStyle = '#1b1030'; ctx.fill();
+            ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 4; ctx.stroke();
+            ctx.font = '900 30px "Luckiest Guy", "Nunito", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = Game.timer < 10 ? '#ff6b6b' : '#fff';
+            ctx.fillText(Math.ceil(Game.timer), W / 2, y + 27);
+        }
+
+        function drawAnnouncement() {
+            const a = Game.ann;
+            if (!a) return;
+            const k = a.t / a.dur;
+            const pop = k < 0.15 ? 0.4 + (k / 0.15) * 0.8 : k > 0.8 ? 1.2 - (k - 0.8) / 0.2 * 0.4 : 1.2 - (k - 0.15) * 0.15;
+            const alpha = k > 0.85 ? 1 - (k - 0.85) / 0.15 : 1;
+            ctx.save();
+            ctx.translate(W / 2, H * 0.42);
+            ctx.scale(pop, pop);
+            ctx.rotate(-0.04);
+            ctx.globalAlpha = alpha;
+            ctx.font = '900 96px "Luckiest Guy", "Nunito", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.lineWidth = 12; ctx.strokeStyle = '#1b1030'; ctx.lineJoin = 'round';
+            ctx.strokeText(a.text, 0, 0);
+            ctx.fillStyle = a.color;
+            ctx.fillText(a.text, 0, 0);
+            ctx.restore();
+        }
+
+        function drawEffects() {
+            for (const r of Game.rings) {
+                const k = r.t / r.dur;
+                ctx.globalAlpha = 1 - k;
+                ctx.strokeStyle = r.color;
+                ctx.lineWidth = r.width * (1 - k * 0.7);
+                ctx.beginPath();
+                ctx.ellipse(r.x, r.y, r.maxR * Math.sqrt(k), r.maxR * Math.sqrt(k) * 0.55, 0, 0, 6.28);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+            for (const p of Game.particles) {
+                const k = p.life / p.maxLife;
+                ctx.globalAlpha = Math.min(1, k * 1.5);
+                ctx.fillStyle = p.color;
+                if (p.s.text) {
+                    ctx.font = '900 ' + p.size + 'px "Luckiest Guy", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(p.s.text, p.x, p.y);
+                } else if (p.style === 'feather' || p.style === 'confetti') {
+                    ctx.save();
+                    ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+                    ctx.beginPath(); ctx.ellipse(0, 0, p.size, p.size * 0.4, 0, 0, 6.28); ctx.fill();
+                    if (p.style === 'feather') { ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-p.size, 0); ctx.lineTo(p.size, 0); ctx.stroke(); }
+                    ctx.restore();
+                } else {
+                    ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (0.4 + 0.6 * k), 0, 6.28); ctx.fill();
+                }
+            }
+            ctx.globalAlpha = 1;
+            for (const t of Game.texts) {
+                const k = t.t / t.dur;
+                ctx.globalAlpha = 1 - k * k;
+                ctx.font = '900 ' + (26 + (k < 0.2 ? (0.2 - k) * 60 : 0)) + 'px "Luckiest Guy", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.lineWidth = 5; ctx.strokeStyle = '#1b1030'; ctx.lineJoin = 'round';
+                ctx.strokeText(t.text, t.x, t.y - k * 50);
+                ctx.fillStyle = t.color;
+                ctx.fillText(t.text, t.x, t.y - k * 50);
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        function drawProjectiles() {
+            for (const p of Game.projectiles) {
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                if (p.type === 'feather') {
+                    ctx.rotate(p.angle);
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath(); ctx.ellipse(0, 0, 16, 5, 0, 0, 6.28); ctx.fill();
+                    ctx.strokeStyle = '#f59f00'; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(-16, 0); ctx.lineTo(16, 0); ctx.stroke();
+                } else if (p.type === 'laser') {
+                    ctx.rotate(p.angle);
+                    ctx.shadowColor = '#3bc9db'; ctx.shadowBlur = 14;
+                    ctx.fillStyle = '#99e9f2';
+                    roundRect(-18, -4, 36, 8, 4); ctx.fill();
+                    ctx.fillStyle = '#fff'; roundRect(-12, -2, 24, 4, 2); ctx.fill();
+                } else if (p.type === 'dust') {
+                    ctx.globalAlpha = Math.min(1, p.life * 1.5) * 0.8;
+                    ctx.fillStyle = '#c5cdff';
+                    for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(Math.cos(i * 1.6 + p.t * 3) * 10, Math.sin(i * 1.6) * 8, 11, 0, 6.28); ctx.fill(); }
+                    ctx.fillStyle = '#5c7cfa'; ctx.font = '900 14px "Luckiest Guy", sans-serif'; ctx.textAlign = 'center';
+                    ctx.fillText('z', 0, 5);
+                } else if (p.type === 'boomerang') {
+                    ctx.rotate(p.angle);
+                    drawPillowShape(p.owner.data.pillow, 60, 34, p.owner.data);
+                }
+                ctx.restore();
+            }
+        }
+
+        // ------------------------------------------------------------
+        //  Drawing the fighters: bodies, faces, hats and pillows
+        // ------------------------------------------------------------
+        let paintOverride = null;                 // set to a color to draw a flat silhouette (hit flash)
+        const C = (c) => paintOverride || c;
+
+        // a pillow lying along +x from 0 to len, centered on y = 0
+        function drawPillowShape(p, len, thick, data) {
+            const id = data.id;
+            const half = thick / 2;
+            if (id === 'gus') ctx.globalAlpha *= 0.75;
+            ctx.fillStyle = C(p.color);
+            roundRect(0, -half, len, thick, Math.min(half, 16));
+            ctx.fill();
+            ctx.strokeStyle = C(p.trim); ctx.lineWidth = 3; ctx.stroke();
+            if (paintOverride) return;
+            // stitching
+            ctx.strokeStyle = p.trim; ctx.globalAlpha *= 0.5; ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            roundRect(6, -half + 6, len - 12, thick - 12, Math.max(2, half - 8));
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.globalAlpha /= 0.5;
+            // corner tassels
+            ctx.fillStyle = p.trim;
+            [[0, -half], [len, -half], [0, half], [len, half]].forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 4, 0, 6.28); ctx.fill(); });
+            // per-character decorations
+            switch (id) {
+                case 'fluff': ctx.strokeStyle = p.trim; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(len * 0.55, -half * 0.5); ctx.lineTo(len * 0.55, half * 0.5); ctx.moveTo(len * 0.45, 0); ctx.lineTo(len * 0.65, 0); ctx.stroke(); break;
+                case 'betty': ctx.strokeStyle = '#ced4da'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(len, -half * 0.3); ctx.quadraticCurveTo(len + 14, -half, len + 16, -half - 12); ctx.stroke();
+                    ctx.fillStyle = Math.random() < 0.5 ? '#ffd166' : '#ff922b'; ctx.beginPath(); ctx.arc(len + 16, -half - 12, 5, 0, 6.28); ctx.fill(); break;
+                case 'fox': ctx.fillStyle = '#5c3a1e'; ctx.beginPath(); ctx.ellipse(len, 0, 7, half * 0.7, 0, 0, 6.28); ctx.fill(); break;
+                case 'ninja': ctx.fillStyle = '#e03131'; ctx.fillRect(len * 0.3, -half, len * 0.14, thick); break;
+                case 'captain': ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(len * 0.5, -2, 7, 0, 6.28); ctx.fill(); ctx.fillStyle = '#1864ab'; ctx.fillRect(len * 0.5 - 4, -4, 3, 3); ctx.fillRect(len * 0.5 + 1, -4, 3, 3); break;
+                case 'frosty': ctx.strokeStyle = '#1c7ed6'; ctx.lineWidth = 2; for (let i = 0; i < 3; i++) { const x = len * (0.25 + i * 0.25); ctx.beginPath(); ctx.moveTo(x - 5, 0); ctx.lineTo(x + 5, 0); ctx.moveTo(x, -5); ctx.lineTo(x, 5); ctx.moveTo(x - 4, -4); ctx.lineTo(x + 4, 4); ctx.moveTo(x - 4, 4); ctx.lineTo(x + 4, -4); ctx.stroke(); } break;
+                case 'larry': for (let i = 0; i < 4; i++) { const x = len * (0.2 + i * 0.22), fl = 8 + Math.sin(Game.bgT * 20 + i) * 4; ctx.fillStyle = i % 2 ? '#ffd166' : '#ff3b00'; ctx.beginPath(); ctx.moveTo(x - 6, -half); ctx.lineTo(x, -half - fl - 6); ctx.lineTo(x + 6, -half); ctx.fill(); } break;
+                case 'bob': ctx.strokeStyle = '#2b8a3e'; ctx.lineWidth = 2; for (let i = 0; i < 3; i++) { const x = len * (0.25 + i * 0.25); ctx.beginPath(); ctx.arc(x, half * 0.2, 6, 0, 6.28); ctx.stroke(); } break;
+                case 'gertie': ctx.strokeStyle = 'rgba(190,75,219,0.5)'; ctx.lineWidth = 1.5; for (let x = 10; x < len; x += 14) { ctx.beginPath(); ctx.moveTo(x, -half + 3); ctx.lineTo(x + 10, half - 3); ctx.moveTo(x + 10, -half + 3); ctx.lineTo(x, half - 3); ctx.stroke(); } break;
+                case 'robo': ctx.fillStyle = '#15aabf'; ctx.shadowColor = '#3bc9db'; ctx.shadowBlur = 10; ctx.beginPath(); ctx.arc(len, 0, 8, 0, 6.28); ctx.fill(); ctx.shadowBlur = 0; break;
+                case 'carl': ctx.fillStyle = '#2b8a3e'; for (let i = 0; i < 5; i++) { const x = len * (0.15 + i * 0.18); ctx.beginPath(); ctx.moveTo(x - 4, -half); ctx.lineTo(x, -half - 9); ctx.lineTo(x + 4, -half); ctx.fill(); ctx.beginPath(); ctx.moveTo(x - 4, half); ctx.lineTo(x, half + 9); ctx.lineTo(x + 4, half); ctx.fill(); } break;
+                case 'sam': ctx.fillStyle = '#5c7cfa'; ctx.font = '900 14px "Luckiest Guy", sans-serif'; ctx.textAlign = 'center'; ctx.fillText('z z', len * 0.5, 5); break;
+                case 'king': ctx.fillStyle = '#e03131'; ctx.beginPath(); ctx.arc(len * 0.35, 0, 5, 0, 6.28); ctx.fill(); ctx.fillStyle = '#1c7ed6'; ctx.beginPath(); ctx.arc(len * 0.65, 0, 5, 0, 6.28); ctx.fill(); break;
+                case 'dino': ctx.strokeStyle = '#087f5b'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(len * 0.5, -half); ctx.lineTo(len * 0.5, half); ctx.stroke(); break;
+                case 'bertha': ctx.fillStyle = '#f783ac'; ctx.beginPath(); ctx.arc(len * 0.4, -3, 5, 0, 6.28); ctx.arc(len * 0.5, -3, 5, 0, 6.28); ctx.fill(); ctx.beginPath(); ctx.moveTo(len * 0.36, 0); ctx.lineTo(len * 0.45, 8); ctx.lineTo(len * 0.54, 0); ctx.fill(); break;
+            }
+        }
+
+        function drawHat(kind, R, data) {
+            const acc = C(data.accent);
+            switch (kind) {
+                case 'helmet':
+                    ctx.fillStyle = C('#adb5bd'); ctx.beginPath(); ctx.arc(0, -R * 0.15, R * 1.08, Math.PI, 0); ctx.fill();
+                    ctx.fillStyle = C('#868e96'); ctx.fillRect(-R * 1.08, -R * 0.2, R * 2.16, R * 0.35);
+                    ctx.fillStyle = acc; ctx.beginPath(); ctx.moveTo(-R * 0.3, -R * 1.2); ctx.quadraticCurveTo(-R * 0.9, -R * 2.2, -R * 1.4, -R * 1.5); ctx.lineTo(-R * 0.1, -R * 1.0); ctx.fill();
+                    break;
+                case 'bomb':
+                    ctx.fillStyle = C('#212529'); ctx.beginPath(); ctx.arc(0, -R * 1.25, R * 0.55, 0, 6.28); ctx.fill();
+                    ctx.strokeStyle = C('#ced4da'); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, -R * 1.8); ctx.quadraticCurveTo(R * 0.3, -R * 2.2, R * 0.5, -R * 2.3); ctx.stroke();
+                    ctx.fillStyle = C(Math.random() < 0.5 ? '#ffd166' : '#ff922b'); ctx.beginPath(); ctx.arc(R * 0.5, -R * 2.3, 5, 0, 6.28); ctx.fill();
+                    break;
+                case 'foxears':
+                    for (const s of [-1, 1]) {
+                        ctx.fillStyle = C(data.body); ctx.beginPath(); ctx.moveTo(s * R * 0.25, -R * 0.7); ctx.lineTo(s * R * 0.9, -R * 1.75); ctx.lineTo(s * R * 1.0, -R * 0.5); ctx.fill();
+                        ctx.fillStyle = C('#fff'); ctx.beginPath(); ctx.moveTo(s * R * 0.45, -R * 0.75); ctx.lineTo(s * R * 0.85, -R * 1.45); ctx.lineTo(s * R * 0.9, -R * 0.65); ctx.fill();
+                    }
+                    break;
+                case 'bow':
+                    ctx.fillStyle = acc;
+                    ctx.beginPath(); ctx.ellipse(-R * 0.95, -R * 0.85, R * 0.4, R * 0.25, -0.6, 0, 6.28); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(-R * 0.55, -R * 1.05, R * 0.4, R * 0.25, 0.6, 0, 6.28); ctx.fill();
+                    ctx.beginPath(); ctx.arc(-R * 0.75, -R * 0.9, R * 0.15, 0, 6.28); ctx.fill();
+                    break;
+                case 'ninja':
+                    ctx.fillStyle = acc; ctx.fillRect(-R * 1.02, -R * 0.55, R * 2.04, R * 0.3);
+                    ctx.beginPath(); ctx.moveTo(-R * 1.0, -R * 0.4); ctx.lineTo(-R * 1.7, -R * 0.2); ctx.lineTo(-R * 1.0, -R * 0.25); ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(-R * 1.0, -R * 0.4); ctx.lineTo(-R * 1.6, R * 0.1); ctx.lineTo(-R * 1.0, -R * 0.2); ctx.fill();
+                    ctx.fillStyle = C(data.body); ctx.fillRect(-R * 1.0, R * 0.15, R * 2.0, R * 0.7);
+                    break;
+                case 'pirate':
+                    ctx.fillStyle = C('#212529'); ctx.beginPath(); ctx.moveTo(-R * 1.4, -R * 0.6); ctx.quadraticCurveTo(0, -R * 2.3, R * 1.4, -R * 0.6); ctx.quadraticCurveTo(0, -R * 0.9, -R * 1.4, -R * 0.6); ctx.fill();
+                    ctx.fillStyle = C('#fff'); ctx.beginPath(); ctx.arc(0, -R * 1.25, R * 0.22, 0, 6.28); ctx.fill();
+                    ctx.fillStyle = C('#212529'); ctx.fillRect(-R * 0.1, -R * 1.32, 3, 3); ctx.fillRect(R * 0.03, -R * 1.32, 3, 3);
+                    break;
+                case 'beanie':
+                    ctx.fillStyle = C('#1c7ed6'); ctx.beginPath(); ctx.arc(0, -R * 0.35, R * 1.05, Math.PI, 0); ctx.fill();
+                    ctx.fillStyle = acc; ctx.fillRect(-R * 1.05, -R * 0.5, R * 2.1, R * 0.3);
+                    ctx.beginPath(); ctx.arc(0, -R * 1.45, R * 0.3, 0, 6.28); ctx.fill();
+                    break;
+                case 'flames':
+                    for (let i = -2; i <= 2; i++) {
+                        const fl = R * (0.9 + Math.sin(Game.bgT * 18 + i * 2) * 0.25);
+                        ctx.fillStyle = C(i % 2 ? '#ffd166' : '#ff3b00');
+                        ctx.beginPath(); ctx.moveTo(i * R * 0.4 - R * 0.25, -R * 0.7); ctx.lineTo(i * R * 0.4, -R * 0.7 - fl); ctx.lineTo(i * R * 0.4 + R * 0.25, -R * 0.7); ctx.fill();
+                    }
+                    break;
+                case 'spring':
+                    ctx.strokeStyle = C('#868e96'); ctx.lineWidth = 3; ctx.beginPath();
+                    for (let i = 0; i <= 5; i++) { const y = -R * 0.9 - i * R * 0.2; ctx.moveTo(-R * 0.35, y); ctx.lineTo(R * 0.35, y - R * 0.1); }
+                    ctx.stroke();
+                    ctx.fillStyle = acc; ctx.beginPath(); ctx.arc(0, -R * 2.15, R * 0.28, 0, 6.28); ctx.fill();
+                    break;
+                case 'bun':
+                    ctx.fillStyle = C('#ced4da'); ctx.beginPath(); ctx.arc(0, -R * 0.4, R * 1.05, Math.PI, 0); ctx.fill();
+                    ctx.beginPath(); ctx.arc(-R * 0.3, -R * 1.3, R * 0.45, 0, 6.28); ctx.fill();
+                    ctx.strokeStyle = C('#495057'); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(R * 0.15, -R * 0.12, R * 0.3, 0, 6.28); ctx.moveTo(R * 0.9, -R * 0.12); ctx.arc(R * 0.62, -R * 0.12, R * 0.28, 0, 6.28); ctx.stroke();
+                    break;
+                case 'antenna':
+                    ctx.strokeStyle = C('#495057'); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, -R); ctx.lineTo(0, -R * 1.6); ctx.stroke();
+                    ctx.fillStyle = C(Math.sin(Game.bgT * 6) > 0 ? '#e03131' : '#ffa8a8'); ctx.beginPath(); ctx.arc(0, -R * 1.7, R * 0.2, 0, 6.28); ctx.fill();
+                    break;
+                case 'cactus':
+                    ctx.strokeStyle = C('#1b5e20'); ctx.lineWidth = 2;
+                    for (let i = 0; i < 7; i++) { const a = Math.PI + i * Math.PI / 6; ctx.beginPath(); ctx.moveTo(Math.cos(a) * R, Math.sin(a) * R); ctx.lineTo(Math.cos(a) * R * 1.3, Math.sin(a) * R * 1.3); ctx.stroke(); }
+                    ctx.fillStyle = C('#f783ac'); for (let i = 0; i < 5; i++) { const a = i * 1.256; ctx.beginPath(); ctx.arc(R * 0.6 + Math.cos(a) * 5, -R * 0.85 + Math.sin(a) * 5, 4, 0, 6.28); ctx.fill(); }
+                    ctx.fillStyle = C('#ffd43b'); ctx.beginPath(); ctx.arc(R * 0.6, -R * 0.85, 3, 0, 6.28); ctx.fill();
+                    break;
+                case 'dino':
+                    ctx.fillStyle = acc;
+                    for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(i * R * 0.45 - R * 0.2, -R * 0.85); ctx.lineTo(i * R * 0.45, -R * 1.5); ctx.lineTo(i * R * 0.45 + R * 0.2, -R * 0.85); ctx.fill(); }
+                    break;
+                case 'nightcap':
+                    ctx.fillStyle = C('#4263eb'); ctx.beginPath(); ctx.moveTo(-R * 1.05, -R * 0.3); ctx.quadraticCurveTo(0, -R * 1.5, -R * 1.9, -R * 1.9); ctx.quadraticCurveTo(R * 0.6, -R * 1.3, R * 1.05, -R * 0.3); ctx.fill();
+                    ctx.fillStyle = C('#fff'); ctx.fillRect(-R * 1.05, -R * 0.45, R * 2.1, R * 0.28);
+                    ctx.beginPath(); ctx.arc(-R * 1.9, -R * 1.9, R * 0.25, 0, 6.28); ctx.fill();
+                    break;
+                case 'crown':
+                    ctx.fillStyle = acc; ctx.beginPath(); ctx.moveTo(-R * 0.9, -R * 0.75); ctx.lineTo(-R * 0.9, -R * 1.6); ctx.lineTo(-R * 0.45, -R * 1.15); ctx.lineTo(0, -R * 1.75); ctx.lineTo(R * 0.45, -R * 1.15); ctx.lineTo(R * 0.9, -R * 1.6); ctx.lineTo(R * 0.9, -R * 0.75); ctx.fill();
+                    ctx.fillStyle = C('#e03131'); ctx.beginPath(); ctx.arc(0, -R * 1.0, R * 0.14, 0, 6.28); ctx.fill();
+                    break;
+            }
+        }
+
+        function drawFighter(f, opts = {}) {
+            const d = f.data, R = f.w * 0.42;
+            const t = f.animT;
+            const hurt = f.hitstun > 0 && !f.ko;
+            const blink = f.invuln > 0 && f.hoverT <= 0 && Math.sin(Game.bgT * 30) > 0;
+            ctx.save();
+            if (f.hoverT > 0) {
+                // revival cloud
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.arc(f.x + i * 18, f.y + 6 + Math.abs(i) * 3, 16 - Math.abs(i) * 2, 0, 6.28); ctx.fill(); }
+            }
+            ctx.globalAlpha = blink ? 0.45 : 1;
+            paintOverride = f.flashT > 0 ? '#ffffff' : null;
+            ctx.translate(f.x, f.y);
+            // shadow
+            if (!f.sunk) {
+                ctx.fillStyle = 'rgba(0,0,0,0.25)';
+                ctx.beginPath(); ctx.ellipse(0, 2, f.w * 0.45, 6, 0, 0, 6.28); ctx.fill();
+            }
+            if (f.sunk) { ctx.translate(0, Math.min(140, f.koT * 70)); }
+            ctx.scale(f.facing, 1);
+            if (f.ko && !f.sunk) { ctx.translate(-10, -14); ctx.rotate(-1.4 * Math.min(1, f.koT * 3)); }
+            else if (hurt) ctx.rotate(-0.25);
+            else if (f.action && f.action.type === 'slam' && f.action.phase === 'fall') ctx.rotate(0.2);
+            const bob = f.onGround && !f.busy ? Math.sin(t * 4) * 2 : 0;
+            const walk = f.walkT;
+            const squash = f.onGround && !f.groundedLastFrame ? 0.9 : 1;
+            ctx.translate(0, bob);
+            ctx.scale(1 / squash, squash);
+
+            const headY = -f.h + R;
+            const isGhost = d.hat === 'ghost';
+            const isRobo = d.hat === 'antenna';
+
+            // legs
+            if (!isGhost) {
+                ctx.fillStyle = C(d.body);
+                const l1 = Math.sin(walk) * 8, l2 = -Math.sin(walk) * 8;
+                const jumpTuck = f.onGround ? 0 : 6;
+                ctx.beginPath(); ctx.ellipse(-10 + l1, -8 - jumpTuck, 9, 10, 0, 0, 6.28); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(10 + l2, -8 - jumpTuck, 9, 10, 0, 0, 6.28); ctx.fill();
+                ctx.fillStyle = C('#1b1030');
+                ctx.beginPath(); ctx.ellipse(-10 + l1, -2 - jumpTuck, 11, 5, 0, 0, 6.28); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(10 + l2, -2 - jumpTuck, 11, 5, 0, 0, 6.28); ctx.fill();
+            }
+            // dino tail
+            if (d.hat === 'dino') {
+                ctx.fillStyle = C(d.body);
+                ctx.beginPath(); ctx.moveTo(-f.w * 0.3, -f.h * 0.35); ctx.quadraticCurveTo(-f.w * 0.9, -f.h * 0.3, -f.w * 1.0, -f.h * 0.55 + Math.sin(t * 3) * 4); ctx.lineTo(-f.w * 0.3, -f.h * 0.2); ctx.fill();
+            }
+            // body
+            ctx.fillStyle = C(d.body);
+            if (isGhost) {
+                ctx.beginPath();
+                ctx.moveTo(-f.w * 0.42, -f.h * 0.55);
+                ctx.lineTo(-f.w * 0.42, -6);
+                for (let i = 0; i < 4; i++) ctx.quadraticCurveTo(-f.w * 0.42 + (i + 0.5) * f.w * 0.21, -6 + (i % 2 ? -10 : 12) + Math.sin(t * 5 + i) * 3, -f.w * 0.42 + (i + 1) * f.w * 0.21, -6);
+                ctx.lineTo(f.w * 0.42, -f.h * 0.55);
+                ctx.closePath(); ctx.fill();
+            } else {
+                ctx.beginPath(); ctx.ellipse(0, -f.h * 0.36, f.w * 0.42, f.h * 0.3, 0, 0, 6.28); ctx.fill();
+                // belly
+                ctx.fillStyle = C(isRobo ? '#dee2e6' : 'rgba(255,255,255,0.28)');
+                ctx.beginPath(); ctx.ellipse(4, -f.h * 0.33, f.w * 0.24, f.h * 0.2, 0, 0, 6.28); ctx.fill();
+            }
+            // back arm
+            ctx.fillStyle = C(d.skin);
+            ctx.beginPath(); ctx.arc(-f.w * 0.42, -f.h * 0.45 + Math.sin(walk) * 4, 8, 0, 6.28); ctx.fill();
+
+            // head
+            ctx.fillStyle = C(d.skin);
+            if (isRobo) { roundRect(-R, headY - R, R * 2, R * 2, 8); ctx.fill(); }
+            else { ctx.beginPath(); ctx.arc(0, headY, R, 0, 6.28); ctx.fill(); }
+            ctx.save();
+            ctx.translate(0, headY);
+            drawHat(d.hat, R, d);
+            // face
+            if (!paintOverride) {
+                const ex1 = R * 0.2, ex2 = R * 0.65, ey = -R * 0.12;
+                if (f.ko) {
+                    ctx.strokeStyle = '#1b1030'; ctx.lineWidth = 3;
+                    for (const ex of [ex1, ex2]) { ctx.beginPath(); ctx.moveTo(ex - 5, ey - 5); ctx.lineTo(ex + 5, ey + 5); ctx.moveTo(ex + 5, ey - 5); ctx.lineTo(ex - 5, ey + 5); ctx.stroke(); }
+                    ctx.beginPath(); ctx.arc(R * 0.45, R * 0.35, 5, 0, 6.28); ctx.stroke();
+                } else if (f.stunT > 0) {
+                    ctx.strokeStyle = '#1b1030'; ctx.lineWidth = 2.5;
+                    for (const ex of [ex1, ex2]) { ctx.beginPath(); ctx.arc(ex, ey, 5, 0.1, Math.PI - 0.1); ctx.stroke(); }
+                    ctx.beginPath(); ctx.arc(R * 0.45, R * 0.4, 4, 0, 6.28); ctx.stroke();
+                } else {
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath(); ctx.arc(ex1, ey, R * 0.24, 0, 6.28); ctx.arc(ex2, ey, R * 0.24, 0, 6.28); ctx.fill();
+                    ctx.fillStyle = isRobo ? '#15aabf' : '#1b1030';
+                    const look = hurt ? -2 : 3;
+                    ctx.beginPath(); ctx.arc(ex1 + look, ey + 1, R * 0.11, 0, 6.28); ctx.arc(ex2 + look, ey + 1, R * 0.11, 0, 6.28); ctx.fill();
+                    // angry brows while attacking
+                    if (f.action && f.action.type !== 'shoot') { ctx.strokeStyle = '#1b1030'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(ex1 - 8, ey - 12); ctx.lineTo(ex1 + 6, ey - 8); ctx.moveTo(ex2 - 6, ey - 8); ctx.lineTo(ex2 + 8, ey - 12); ctx.stroke(); }
+                    // mouth
+                    ctx.strokeStyle = '#1b1030'; ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    if (hurt) ctx.arc(R * 0.45, R * 0.42, 6, 0, 6.28);
+                    else if (f.blocking) { ctx.moveTo(R * 0.2, R * 0.42); ctx.lineTo(R * 0.7, R * 0.42); }
+                    else ctx.arc(R * 0.42, R * 0.25, R * 0.3, 0.2, Math.PI - 0.2);
+                    ctx.stroke();
+                    // cheeks
+                    ctx.fillStyle = 'rgba(255,120,120,0.35)';
+                    ctx.beginPath(); ctx.arc(-R * 0.35, R * 0.25, R * 0.16, 0, 6.28); ctx.arc(R * 0.85, R * 0.25, R * 0.16, 0, 6.28); ctx.fill();
+                }
+            }
+            ctx.restore();
+
+            // pillow + front hand
+            const hand = { x: 16, y: -f.h * 0.55 };
+            const p = d.pillow;
+            const pillowInHand = !(p.kind === 'boomerang' && f.boomerangOut);
+            ctx.save();
+            if (f.blocking) { ctx.translate(f.w * 0.5, -f.h * 0.3); ctx.rotate(-1.45); }
+            else { ctx.translate(hand.x, hand.y); ctx.rotate(f.pillowAngle()); }
+            if (pillowInHand) {
+                if (p.kind === 'twin') { drawPillowShape(p, p.reach, p.thick, d); }
+                else drawPillowShape(p, p.reach, p.thick, d);
+            }
+            ctx.fillStyle = C(d.skin);
+            ctx.beginPath(); ctx.arc(4, 0, 9, 0, 6.28); ctx.fill();
+            ctx.restore();
+            if (p.kind === 'twin') {
+                // second pillow on the back
+                ctx.save(); ctx.translate(-f.w * 0.3, -f.h * 0.5); ctx.rotate(2.0); drawPillowShape(p, p.reach * 0.6, p.thick * 0.8, d); ctx.restore();
+            }
+
+            // status doodads
+            if (!paintOverride) {
+                if (f.stunT > 0) {
+                    if (f.sleepZ === 2) { ctx.strokeStyle = 'rgba(165,216,255,0.9)'; ctx.lineWidth = 3; ctx.setLineDash([6, 4]); roundRect(-f.w * 0.55, -f.h - 8, f.w * 1.1, f.h + 12, 10); ctx.stroke(); ctx.setLineDash([]); }
+                    ctx.fillStyle = '#91a7ff'; ctx.font = '900 20px "Luckiest Guy", sans-serif'; ctx.textAlign = 'center';
+                    ctx.fillText('z', 18 + Math.sin(t * 3) * 4, -f.h - 12 - (t * 20 % 16));
+                    ctx.fillText('Z', 32 + Math.sin(t * 3 + 1) * 4, -f.h - 26 - (t * 20 % 16));
+                }
+                if (f.slowT > 0) { ctx.fillStyle = 'rgba(165,216,255,0.6)'; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(Math.cos(t * 4 + i * 1.57) * f.w * 0.55, -f.h * 0.5 + Math.sin(t * 4 + i * 1.57) * f.h * 0.4, 4, 0, 6.28); ctx.fill(); } }
+            }
+            paintOverride = null;
+            ctx.restore();
+
+            // ambient particles for burning / poisoned fighters
+            if (f.burnT > 0 && Math.random() < 0.35) Game.spawnParticles(f.x + rand(-15, 15), f.y - f.h * 0.5, 'fire', 1);
+            if (f.poisonT > 0 && Math.random() < 0.2) Game.spawnParticles(f.x + rand(-15, 15), f.y - f.h * 0.5, 'poison', 1);
+        }
+
+        // a portrait for the select screen (standing pose on a little canvas)
+        function drawPortrait(cv, data, scale) {
+            const c2 = cv.getContext('2d');
+            const saved = ctx;
+            const fake = { data, x: 0, y: 0, w: 44 + 10 * data.weight, h: 80 + 12 * data.weight, facing: 1, animT: 1, walkT: 0, onGround: true, groundedLastFrame: true, busy: false, hitstun: 0, invuln: 0, hoverT: 0, flashT: 0, stunT: 0, slowT: 0, burnT: 0, poisonT: 0, ko: false, action: null, blocking: false, boomerangOut: false, pillowAngle: () => 0.6 };
+            c2.clearRect(0, 0, cv.width, cv.height);
+            c2.save();
+            c2.translate(cv.width * 0.42, cv.height * 0.86);
+            c2.scale(scale, scale);
+            // temporarily point the shared drawing helpers at this canvas
+            ctx = c2;
+            drawFighter(fake);
+            ctx = saved;
+            c2.restore();
+        }
+
+        function drawOffscreenArrows() {
+            for (const f of Game.fighters) {
+                if (f.y > -40 || f.ko) continue;
+                const col = f.index === 0 ? '#4dabf7' : '#ff6b6b';
+                ctx.fillStyle = col;
+                ctx.beginPath(); ctx.moveTo(f.x, 96); ctx.lineTo(f.x - 16, 122); ctx.lineTo(f.x + 16, 122); ctx.fill();
+                ctx.font = '900 14px "Nunito", sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
+                ctx.fillText('P' + (f.index + 1), f.x, 136);
+            }
+        }
+
+        function render() {
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.fillStyle = '#12060e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.setTransform(view.scale, 0, 0, view.scale, view.ox, view.oy);
+            const t = Game.bgT;
+            ctx.save();
+            if (Game.shake > 0) ctx.translate(rand(-1, 1) * Game.shake, rand(-1, 1) * Game.shake);
+            drawBackground(t);
+            drawIsland(t);
+            const sunk = Game.fighters.filter((f) => f.sunk);
+            const up = Game.fighters.filter((f) => !f.sunk);
+            for (const f of sunk) drawFighter(f);
+            drawLava(t);
+            for (const f of up) drawFighter(f);
+            drawProjectiles();
+            drawEffects();
+            ctx.restore();
+            if (Game.fighters.length && Game.mode !== 'demo') { drawHUD(); drawOffscreenArrows(); drawAnnouncement(); }
+            // letterbox bars
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.fillStyle = '#12060e';
+            if (view.ox > 0) { ctx.fillRect(0, 0, view.ox, canvas.height); ctx.fillRect(canvas.width - view.ox, 0, view.ox, canvas.height); }
+            if (view.oy > 0) { ctx.fillRect(0, 0, canvas.width, view.oy); ctx.fillRect(0, canvas.height - view.oy, canvas.width, view.oy); }
+        }
+
+        // ------------------------------------------------------------
+        //  Screens & menus
+        // ------------------------------------------------------------
+        const SCREENS = ['title-screen', 'help-screen', 'select-screen', 'result-screen', 'pause-screen'];
+        const sel = { mode: '1p', difficulty: 'normal', cur: [0, 0], locked: [false, false], picks: [null, null], rouletteT: 0, rolling: false, lastChars: null };
+        const GRID = ROSTER.map((c) => c.id).concat(['random']);
+        let paused = false;
+        let touchSeen = IS_TOUCH;
+
+        const UI = {
+            show(id) {
+                SCREENS.forEach((s) => $(s).classList.toggle('hidden', s !== id));
+                document.body.classList.toggle('in-fight', id === null);
+                resize();
+                $('pause-btn').style.display = (id === null && touchSeen) ? '' : 'none';
+                touchLayer.classList.toggle('show', id === null && touchSeen);
+            },
+            title() {
+                paused = false;
+                UI.show('title-screen');
+                $('diff-row').classList.remove('show');
+                if (Game.mode !== 'demo' || Game.phase === 'idle' || Game.phase === 'matchOver') startDemo();
+            },
+            openSelect(mode) {
+                sel.mode = mode;
+                sel.locked = [false, false]; sel.picks = [null, null]; sel.rolling = false;
+                sel.cur = [Math.floor(Math.random() * ROSTER.length), Math.floor(Math.random() * ROSTER.length)];
+                $('p2-heading').textContent = mode === '1p' ? 'THE BOT' : 'PLAYER 2';
+                $('p2-hint').style.visibility = mode === '1p' ? 'hidden' : 'visible';
+                $('btn-fight').style.display = 'none';
+                UI.show('select-screen');
+                UI.refreshSelect();
+            },
+            refreshSelect() {
+                const cells = $('grid').children;
+                for (let i = 0; i < cells.length; i++) {
+                    const el = cells[i];
+                    el.classList.toggle('cursor1', !sel.locked[0] && sel.cur[0] === i);
+                    el.classList.toggle('cursor2', sel.mode === '2p' && !sel.locked[1] && sel.cur[1] === i);
+                    el.classList.toggle('locked1', sel.locked[0] && sel.picks[0] === GRID[i]);
+                    el.classList.toggle('locked2', sel.locked[1] && sel.picks[1] === GRID[i]);
+                }
+                for (let p = 0; p < 2; p++) {
+                    const id = sel.locked[p] ? sel.picks[p] : (p === 1 && sel.mode === '1p' ? null : GRID[sel.cur[p]]);
+                    UI.fillPanel(p, id);
+                }
+                const both = sel.locked[0] && sel.locked[1];
+                $('btn-fight').style.display = both ? '' : 'none';
+                $('select-hint').textContent = both ? 'Press FIGHT (or your swing button) to start!'
+                    : !sel.locked[0] ? 'Player 1: pick your fighter!'
+                        : sel.mode === '1p' ? 'The bot is choosing...' : 'Player 2: pick your fighter!';
+            },
+            fillPanel(p, id) {
+                const n = p + 1;
+                const cv = $('pick' + n);
+                const c2 = cv.getContext('2d');
+                if (!id || id === 'random') {
+                    c2.clearRect(0, 0, cv.width, cv.height);
+                    c2.font = '900 90px "Luckiest Guy", sans-serif'; c2.textAlign = 'center'; c2.fillStyle = '#ffd166';
+                    c2.fillText('?', cv.width / 2, cv.height * 0.72);
+                    $('pick' + n + '-name').textContent = id === 'random' ? 'RANDOM' : '?';
+                    $('pick' + n + '-title').textContent = id === 'random' ? 'Surprise me!' : '';
+                    $('pick' + n + '-desc').textContent = id === 'random' ? 'Let fate choose your pillow.' : (p === 1 && sel.mode === '1p' ? 'The bot picks after you do.' : '');
+                    $('pick' + n + '-stats').innerHTML = '';
+                    return;
+                }
+                const c = byId(id);
+                drawPortrait(cv, c, 1.15);
+                $('pick' + n + '-name').textContent = c.name;
+                $('pick' + n + '-title').textContent = c.title;
+                $('pick' + n + '-desc').textContent = c.desc;
+                const st = statBars(c);
+                $('pick' + n + '-stats').innerHTML = Object.keys(st).map((k) => '<div class="stat"><span>' + k + '</span><div class="bar"><i style="width:' + (st[k] * 20) + '%"></i></div></div>').join('');
+            },
+            moveCursor(p, dx, dy) {
+                const cols = 4, n = GRID.length;
+                let i = sel.cur[p];
+                if (dx) i = (i + dx + n) % n;
+                if (dy) { i = i + dy * cols; if (i < 0) i = (i + Math.ceil(n / cols) * cols) % (Math.ceil(n / cols) * cols); if (i >= n) i = i % cols; }
+                sel.cur[p] = clamp(i, 0, n - 1);
+                Sound.select();
+                UI.refreshSelect();
+            },
+            lock(p, id) {
+                if (id === 'random') id = pick(ROSTER).id;
+                sel.picks[p] = id; sel.locked[p] = true;
+                Sound.ready();
+                if (sel.mode === '1p' && p === 0) UI.startRoulette();
+                UI.refreshSelect();
+            },
+            unlock(p) { sel.locked[p] = false; sel.picks[p] = null; if (sel.mode === '1p') { sel.locked[1] = false; sel.picks[1] = null; sel.rolling = false; } UI.refreshSelect(); },
+            startRoulette() { sel.rolling = true; sel.rouletteT = 0; sel.rollSteps = 0; },
+            updateRoulette(dt) {
+                if (!sel.rolling) return;
+                sel.rouletteT += dt;
+                const step = 0.06 + sel.rollSteps * 0.012;
+                if (sel.rouletteT > step) {
+                    sel.rouletteT = 0; sel.rollSteps++;
+                    sel.cur[1] = Math.floor(Math.random() * ROSTER.length);
+                    Sound.select();
+                    const cells = $('grid').children;
+                    for (let i = 0; i < cells.length; i++) cells[i].classList.toggle('cursor2', i === sel.cur[1]);
+                    if (sel.rollSteps > 14) {
+                        sel.rolling = false;
+                        sel.picks[1] = GRID[sel.cur[1]]; sel.locked[1] = true;
+                        Sound.ready();
+                        UI.refreshSelect();
+                    }
+                }
+            },
+            fight() {
+                if (!(sel.locked[0] && sel.locked[1])) return;
+                const c1 = byId(sel.picks[0]), c2 = byId(sel.picks[1]);
+                sel.lastChars = [c1, c2];
+                UI.show(null);
+                if (touchSeen) { if (sel.mode === '2p') buildTouchControls(true); else resetTouchLayoutForOnePlayer(); }
+                Game.startMatch(c1, c2, sel.mode, sel.difficulty);
+            },
+            showResult(winner) {
+                const who = winner.isCPU ? 'THE BOT WINS!' : 'PLAYER ' + (winner.index + 1) + ' WINS!';
+                $('result-title').textContent = who;
+                $('result-sub').textContent = winner.name + ' — ' + winner.data.title;
+                drawPortrait($('result-portrait'), winner.data, 1.35);
+                UI.show('result-screen');
+            },
+            pause(on) {
+                if (Game.phase === 'idle' || Game.phase === 'matchOver' || Game.mode === 'demo') return;
+                paused = on;
+                UI.show(on ? 'pause-screen' : null);
+            },
+        };
+
+        function startDemo() {
+            const a = pick(ROSTER); let b = pick(ROSTER); if (b === a) b = ROSTER[(ROSTER.indexOf(a) + 1) % ROSTER.length];
+            Game.startMatch(a, b, 'demo', 'normal');
+        }
+
+        // build the character grid
+        (function buildGrid() {
+            const grid = $('grid');
+            GRID.forEach((id, i) => {
+                const el = document.createElement('div');
+                el.className = 'cell' + (id === 'random' ? ' random' : '');
+                const cv = document.createElement('canvas');
+                cv.width = 92; cv.height = 92;
+                el.appendChild(cv);
+                const nm = document.createElement('div');
+                nm.className = 'nm';
+                nm.textContent = id === 'random' ? 'RANDOM' : byId(id).name;
+                el.appendChild(nm);
+                if (id !== 'random') drawPortrait(cv, byId(id), 0.68);
+                else { const c2 = cv.getContext('2d'); c2.font = '900 60px "Luckiest Guy", sans-serif'; c2.textAlign = 'center'; c2.fillStyle = '#fff'; c2.fillText('?', 46, 68); }
+                el.addEventListener('mouseenter', () => { const p = !sel.locked[0] ? 0 : (sel.mode === '2p' && !sel.locked[1] ? 1 : -1); if (p >= 0) { sel.cur[p] = i; UI.refreshSelect(); } });
+                el.addEventListener('click', () => {
+                    if (!sel.locked[0]) { sel.cur[0] = i; UI.lock(0, id); }
+                    else if (sel.mode === '2p' && !sel.locked[1]) { sel.cur[1] = i; UI.lock(1, id); }
+                    else if (sel.mode === '1p' && !sel.rolling) { UI.unlock(0); sel.cur[0] = i; UI.lock(0, id); }
+                });
+                grid.appendChild(el);
+            });
+        })();
+
+        // menu buttons
+        $('btn-1p').addEventListener('click', () => { $('diff-row').classList.toggle('show'); });
+        document.querySelectorAll('#diff-row [data-diff]').forEach((b) => b.addEventListener('click', () => { sel.difficulty = b.dataset.diff; UI.openSelect('1p'); }));
+        $('btn-2p').addEventListener('click', () => UI.openSelect('2p'));
+        $('btn-help').addEventListener('click', () => UI.show('help-screen'));
+        $('btn-help-back').addEventListener('click', () => UI.title());
+        $('btn-select-back').addEventListener('click', () => UI.title());
+        $('btn-fight').addEventListener('click', () => UI.fight());
+        $('btn-rematch').addEventListener('click', () => { UI.show(null); Game.startMatch(sel.lastChars[0], sel.lastChars[1], sel.mode, sel.difficulty); });
+        $('btn-reselect').addEventListener('click', () => UI.openSelect(sel.mode));
+        $('btn-menu').addEventListener('click', () => { Game.quit(); UI.title(); });
+        $('btn-resume').addEventListener('click', () => UI.pause(false));
+        $('btn-quit').addEventListener('click', () => { paused = false; Game.quit(); UI.title(); });
+        $('pause-btn').addEventListener('click', () => UI.pause(true));
+        window.addEventListener('touchstart', () => { touchSeen = true; }, { passive: true });
+
+        // keyboard navigation on the select screen
+        function selectScreenInput() {
+            for (let p = 0; p < 2; p++) {
+                if (sel.mode === '1p' && p === 1) break;
+                const st = Input.players[p];
+                if (sel.locked[p]) {
+                    if (st.pressed.a && sel.locked[0] && sel.locked[1] && !sel.rolling) UI.fight();
+                    else if (st.pressed.b && !sel.rolling) UI.unlock(p);
+                    continue;
+                }
+                if (st.pressed.left) UI.moveCursor(p, -1, 0);
+                if (st.pressed.right) UI.moveCursor(p, 1, 0);
+                if (st.pressed.up) UI.moveCursor(p, 0, -1);
+                if (st.pressed.down) UI.moveCursor(p, 0, 1);
+                if (st.pressed.a) UI.lock(p, GRID[sel.cur[p]]);
+            }
+            if (Input.pauseRequested) UI.title();
+        }
+
+        // ------------------------------------------------------------
+        //  Main loop
+        // ------------------------------------------------------------
+        let last = performance.now();
+        function loop(now) {
+            const dt = Math.min(1 / 30, (now - last) / 1000);
+            last = now;
+            updateInput();
+
+            const onSelect = !$('select-screen').classList.contains('hidden');
+            const onTitle = !$('title-screen').classList.contains('hidden');
+            const onHelp = !$('help-screen').classList.contains('hidden');
+            if (onSelect) { selectScreenInput(); UI.updateRoulette(dt); }
+            else if (onHelp && Input.pauseRequested) UI.title();
+            else if (Input.pauseRequested && Game.phase !== 'idle' && Game.phase !== 'matchOver' && Game.mode !== 'demo') UI.pause(!paused);
+            Input.pauseRequested = false;
+
+            if (!paused) Game.update(dt);
+            else Game.bgT += dt;
+            render();
+            requestAnimationFrame(loop);
+        }
+
+        UI.title();
+        requestAnimationFrame(loop);
+    </script>
+</body>
+
+</html>
