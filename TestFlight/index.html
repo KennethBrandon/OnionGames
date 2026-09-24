@@ -458,6 +458,27 @@
             cursor: pointer;
         }
         .body-option:hover { transform: rotate(-1.5deg) scale(1.04); }
+        .body-option.make-own { background: #fff4c2; }
+        .body-option.make-own .bname { font-size: 17px; color: #b0302a; }
+
+        /* ---------- block builder (make your own body!) ---------- */
+        #block-ui { position: absolute; inset: 0; pointer-events: none; }
+        #block-ui > * { pointer-events: auto; }
+        #block-top {
+            position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
+            padding: 8px 18px; font-size: 16px; text-align: center; max-width: 86vw;
+        }
+        #block-bar {
+            position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+            display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center;
+            padding: 10px 14px; max-width: 94vw;
+        }
+        #block-colors { display: flex; gap: 6px; flex-wrap: wrap; }
+        .swatch { width: 30px; height: 30px; border-radius: 50%; border: 3px solid #2b2b2b; cursor: pointer; }
+        .swatch.on, #block-bar button.on { outline: 4px solid #4f9edb; outline-offset: 2px; }
+        #block-count { font-size: 13px; color: #777; }
+        #editor-ui.building #tray, #editor-ui.building #start-btn, #editor-ui.building #editor-hint,
+        #editor-ui.building #editor-title { display: none; }
         .body-option img { width: 100%; aspect-ratio: 1/1; object-fit: contain; }
         .body-option .bname { font-size: 15px; font-weight: bold; }
         .body-option .bmass { font-size: 12px; color: #777; }
@@ -602,6 +623,17 @@
         <div id="editor-hint" class="sketch">
             1️⃣ Tap <b>Bodies</b> to pick a body &nbsp; 2️⃣ Drag on 🚀 🌀 🛞 🧱 and wings &nbsp; 3️⃣ Press <b>Start!</b><br>
             <span style="font-size:13px;color:#777">(Tap a glued part to take it off. DRAG a glued part to move it! Drag empty space to spin the view. Every body has a ⚡ SUPERPOWER in flight — press the &gt; key!)</span>
+        </div>
+
+        <div id="block-ui" class="hidden">
+            <div id="block-top" class="sketch">🧱 <b>Build your own body!</b> Tap a block to stick a new one on that side. Drag empty space to spin it around.</div>
+            <div id="block-bar" class="sketch">
+                <div id="block-colors"></div>
+                <button id="block-add" class="sketch small-btn on">➕ Add</button>
+                <button id="block-remove" class="sketch sketch-b small-btn">🗑️ Remove</button>
+                <span id="block-count"></span>
+                <button id="block-done" class="sketch small-btn">✅ Done!</button>
+            </div>
         </div>
 
         <div id="tray">
@@ -2006,8 +2038,43 @@
                     }
                     return g;
                 }
+            },
+            {
+                // ALWAYS keep this one last: it's the "make your own body" card
+                name: 'My Block Body', emoji: '🧱', mass: 3, custom: true,
+                power: { name: 'BLOCK PARTY', emoji: '🧱', type: 'jump', v: 15, color: 'confetti', snd: 'boing' },
+                build(d) { return buildBlockBody(d && Array.isArray(d.blocks) && d.blocks.length ? d.blocks : [[0, 0, 0, 0]]); }
             }
         ];
+        const CUSTOM_BODY = BODIES.length - 1;
+
+        // ----- block bodies: every block is a 0.5 m toy brick on a grid -----
+        const BUILD_COLORS = [0xd0302a, 0xff8c1a, 0xffd21f, 0x4fae4a, 0x4f9edb, 0x6a3fa0, 0xf0909a, 0xf4f4f0, 0x2b2b2b, 0x8d5524];
+        const BLOCK_SIZE = 0.5;
+        function buildBlockBody(blocks) {
+            const g = new THREE.Group();
+            const minJ = Math.min(...blocks.map(b => b[1]));
+            const has = new Set(blocks.map(b => b.slice(0, 3).join(',')));
+            const geo = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            const studGeo = new THREE.CylinderGeometry(0.11, 0.11, 0.08, 12);
+            const mats = BUILD_COLORS.map(c => mat(c));
+            blocks.forEach((b, idx) => {
+                const [i, j, k, c] = b;
+                const m = mats[(c || 0) % mats.length];
+                const mesh = new THREE.Mesh(geo, m);
+                mesh.position.set(i * BLOCK_SIZE, (j - minJ) * BLOCK_SIZE + BLOCK_SIZE / 2, k * BLOCK_SIZE);
+                mesh.castShadow = mesh.receiveShadow = true;
+                mesh.userData.cell = idx;
+                g.add(mesh);
+                if (!has.has([i, j + 1, k].join(','))) {   // a stud on top, just like real bricks
+                    const stud = new THREE.Mesh(studGeo, m);
+                    stud.position.set(0, BLOCK_SIZE / 2 + 0.04, 0);
+                    stud.userData.cell = idx;
+                    mesh.add(stud);
+                }
+            });
+            return g;
+        }
 
         // ================= PART BUILDERS =================
         function makeKeySprite(key) {
@@ -2256,8 +2323,9 @@
         function buildCraft(design) {
             const group = new THREE.Group();
             const bodyDef = BODIES[design.bodyIndex];
-            const bodyGroup = bodyDef.build();
+            const bodyGroup = bodyDef.build(design);
             group.add(bodyGroup);
+            const bodyMass = bodyDef.custom ? 1 + 0.3 * ((design.blocks && design.blocks.length) || 1) : bodyDef.mass;
 
             const bbox = new THREE.Box3().setFromObject(bodyGroup);
             const size = bbox.getSize(new THREE.Vector3());
@@ -2307,8 +2375,8 @@
             const bombs = partEntries.filter(e => e.data.type === 'bomb');
 
             // mass + center of mass
-            let m = bodyDef.mass;
-            const com = center.clone().multiplyScalar(bodyDef.mass);
+            let m = bodyMass;
+            const com = center.clone().multiplyScalar(bodyMass);
             for (const e of partEntries) {
                 const pm = PART_MASS[e.data.type];
                 m += pm;
@@ -2508,6 +2576,88 @@
             return tex;
         }
 
+        // ----- walk-in buildings: a hollow lobby with a door (always on the +Z
+        //       side) and a blaster on a table inside. The tower sits on top. -----
+        const rooms = [];
+        const lobbyWallMat = new THREE.MeshLambertMaterial({ color: 0xe8e2d4 });
+        const lobbyFloorMat = new THREE.MeshLambertMaterial({ color: 0xa89a86 });
+        const doorMat = new THREE.MeshLambertMaterial({ color: 0x8d5524 });
+        const padMat = new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.6 });
+        function addRoomBuilding(env, cx, cz, w, d, h, lh, towerMat, what) {
+            const t = 0.4, doorHalf = 1.2, doorH = 2.8;
+            const addBox = (bw, bh, bd, x, y, z, m) => {
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), m);
+                mesh.position.set(cx + x, y, cz + z);
+                mesh.castShadow = mesh.receiveShadow = true;
+                env.add(mesh);
+                return mesh;
+            };
+            const wm = Array.isArray(towerMat) ? lobbyWallMat : towerMat;   // plain red hangar walls stay red
+            addBox(w, lh, t, 0, lh / 2, -d / 2 + t / 2, wm);                           // back wall
+            addBox(t, lh, d, -w / 2 + t / 2, lh / 2, 0, wm);                           // side walls
+            addBox(t, lh, d, w / 2 - t / 2, lh / 2, 0, wm);
+            const side = (w / 2 - doorHalf);
+            addBox(side, lh, t, -w / 2 + side / 2, lh / 2, d / 2 - t / 2, wm);        // front wall, with a gap…
+            addBox(side, lh, t, w / 2 - side / 2, lh / 2, d / 2 - t / 2, wm);
+            addBox(doorHalf * 2, lh - doorH, t, 0, doorH + (lh - doorH) / 2, d / 2 - t / 2, wm);   // …under the lintel
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(w - t * 2, d - t * 2), lobbyFloorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.set(cx, 0.09, cz);
+            env.add(floor);
+            if (h > lh + 0.3) addBox(w, h - lh, d, 0, lh + (h - lh) / 2, 0, towerMat);   // the tower above
+            else addBox(w, 0.3, d, 0, lh + 0.15, 0, Array.isArray(towerMat) ? towerMat[2] : towerMat);   // flat roof
+            // the door swings open on a hinge when you walk up
+            const hinge = new THREE.Group();
+            hinge.position.set(cx - doorHalf, 0, cz + d / 2 - 0.05);
+            const panel = new THREE.Mesh(new THREE.BoxGeometry(doorHalf * 2, doorH, 0.12), doorMat);
+            panel.position.set(doorHalf, doorH / 2, 0);
+            panel.castShadow = true;
+            hinge.add(panel);
+            const knob = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), mat(0xf2c11e));
+            knob.position.set(doorHalf * 1.8, 1.3, 0.1);
+            hinge.add(knob);
+            env.add(hinge);
+            // a blaster on a table, glowing so you can't miss it
+            const tz = -d / 2 + 2.2;
+            addBox(1.6, 0.9, 0.9, 0, 0.45, tz, doorMat);
+            const gun = buildGun();
+            gun.scale.setScalar(2.2);
+            gun.position.set(cx, 0.95, cz + tz);
+            gun.rotation.y = 0.6;
+            env.add(gun);
+            const pad = new THREE.Mesh(new THREE.RingGeometry(1.3, 1.6, 24), padMat);
+            pad.rotation.x = -Math.PI / 2;
+            pad.position.set(cx, 0.05, cz + tz + 1.2);
+            env.add(pad);
+            const room = { x: cx, z: cz, hw: w / 2, hd: d / 2, lh, h, doorHalf, hinge, open: 0, gun, gunPos: new THREE.Vector3(cx, 0, cz + tz + 1.0) };
+            rooms.push(room);
+            colliders.push({ x: cx, z: cz, r: Math.max(w, d) * 0.62, h, cone: false, what, room });
+        }
+        const inRoom = (R, x, z) => Math.abs(x - R.x) < R.hw && Math.abs(z - R.z) < R.hd;
+        // walking from (x0,z0) to (x1,z1) at height y: does a lobby wall block it?
+        function roomWallBlocks(x0, z0, x1, z1, y) {
+            for (const R of rooms) {
+                if (Math.abs(x1 - R.x) > R.hw + 2 || Math.abs(z1 - R.z) > R.hd + 2) continue;
+                if (y >= R.lh - 0.6) continue;   // up on the roof: no walls
+                const a = inRoom(R, x0, z0), b = inRoom(R, x1, z1);
+                if (a === b) {
+                    if (!a) continue;
+                    // inside: stay off the wall thickness
+                    if (Math.abs(x1 - R.x) > R.hw - 0.6 || (z1 - R.z) < -R.hd + 0.6) return true;
+                    continue;
+                }
+                // crossing in or out: only through the doorway on the front (+Z) side
+                const lx = x1 - R.x, lz = Math.max(z0, z1) - R.z;
+                if (Math.abs(lx) < R.doorHalf - 0.3 && lz > R.hd - 1.2) continue;
+                return true;
+            }
+            return false;
+        }
+        function roomAt(x, z, y) {
+            for (const R of rooms) if (y < R.lh - 0.6 && inRoom(R, x, z)) return R;
+            return null;
+        }
+
         function buildFlightEnv() {
             const env = new THREE.Group();
             colliders = [];
@@ -2591,14 +2741,9 @@
                 strip.receiveShadow = true;
                 env.add(strip);
             }
-            {   // your own little hangar + windsock at the Home Airstrip
-                const hg = new THREE.Group();
-                box(hg, 9, 4.5, 11, 0xd0202a, 0, 2.25, 0);
-                box(hg, 9.6, 0.5, 11.6, 0xf4f4f0, 0, 4.75, 0);
-                box(hg, 3.6, 2.8, 0.3, 0x8899a4, 0, 1.4, -5.5);
-                hg.position.set(-27, 0, 26);
-                env.add(hg);
-                colliders.push({ x: -27, z: 26, r: 7, h: 5.4, cone: false, what: 'hangar' });
+            {   // your own little hangar + windsock at the Home Airstrip (walk in — there's a blaster!)
+                addRoomBuilding(env, -27, 26, 9, 11, 5, 4.5, mat(0xd0202a), 'hangar');
+                box(env, 9.6, 0.5, 11.6, 0xf4f4f0, -27, 4.75, 26);
                 cyl(env, 0.08, 0.08, 6, 0xd8d8e0, 18, 3, 30, 8);
                 const sock = new THREE.Mesh(new THREE.ConeGeometry(0.5, 2.2, 10), mat(0xff8c1a));
                 sock.rotation.z = Math.PI / 2;
@@ -2771,9 +2916,11 @@
                 lavaBalls.push(ball);
             }
 
-            // ----- cities (three of them — fly between the skyscrapers!) -----
+            // ----- cities (fly between the skyscrapers!) — every building has a
+            //       walk-in lobby with a DOOR and a 🔫 BLASTER waiting inside -----
             const winTex = makeWindowTexture();
             const cityTints = [0xffffff, 0xd8e2ec, 0xc8d8d0, 0xe8d8c8, 0xd0c8e0];
+            const roofMat = new THREE.MeshLambertMaterial({ color: 0x7a828c });
             for (const C of CITIES) {
                 for (let gx = -2; gx <= 2; gx++) for (let gz = -1; gz <= 2; gz++) {
                     if (Math.random() < 0.15) continue;
@@ -2782,11 +2929,7 @@
                     const w = rand(9, 15), d = rand(9, 15);
                     const h = (gx === 0 && gz === 0) ? rand(55, 70) : rand(16, 48);
                     const wall = new THREE.MeshLambertMaterial({ map: winTex, color: cityTints[(Math.random() * cityTints.length) | 0] });
-                    const roof = new THREE.MeshLambertMaterial({ color: 0x7a828c });
-                    const bld = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [wall, wall, roof, roof, wall, wall]);
-                    bld.position.set(cx, h / 2, cz);
-                    env.add(bld);
-                    colliders.push({ x: cx, z: cz, r: Math.max(w, d) * 0.62, h, cone: false, what: 'building' });
+                    addRoomBuilding(env, cx, cz, w, d, h, 4, [wall, wall, roofMat, roofMat, wall, wall], 'building');
                     if (gx === 0 && gz === 0) cyl(env, 0.15, 0.15, 8, 0xd03a2c, cx, h + 4, cz, 8);
                 }
             }
@@ -3617,7 +3760,12 @@
             craft = buildCraft(design);
             scene.add(craft.group);
             if (mode === 'editor') {
-                orbit.target.y = Math.max(0.9, craft.size.y * 0.5);
+                if (blockBuild.active) {   // keep the block body centered while you build it
+                    orbit.target.copy(craft.center);
+                    updateEditorCamera();
+                } else {
+                    orbit.target.set(0, Math.max(0.9, craft.size.y * 0.5), 0);
+                }
                 sunLight.target.position.set(0, 0, 0);
             }
             $('body-emoji').textContent = craft.bodyDef.emoji;
@@ -3903,6 +4051,11 @@
                 orbitState = null;
                 return;
             }
+            if (mode === 'editor' && orbitState && pointers.size === 0 && blockBuild.active) {
+                if (!orbitState.moved) blockTap(ev.clientX, ev.clientY);
+                orbitState = null;
+                return;
+            }
             if (mode === 'editor' && orbitState && pointers.size === 0) {
                 if (!orbitState.moved && orbitState.removeIndex !== null) {
                     const removed = design.parts[orbitState.removeIndex];
@@ -3950,6 +4103,24 @@
                 const opt = document.createElement('div');
                 opt.className = 'body-option sketch' + (i % 2 ? ' sketch-b' : '') + (i === design.bodyIndex ? ' current' : '');
                 const img = document.createElement('img');
+                if (bodyDef.custom) {   // the very last card: MAKE YOUR OWN BODY!
+                    opt.classList.add('make-own');
+                    try { img.src = renderThumb({ bodyIndex: i, parts: [], blocks: loadBlocks() }); } catch (e) { }
+                    img.draggable = false;
+                    const nm = document.createElement('div');
+                    nm.className = 'bname';
+                    nm.textContent = '🧱 MAKE YOUR OWN BODY!';
+                    const sub = document.createElement('div');
+                    sub.className = 'bmass';
+                    sub.textContent = 'build it out of blocks!';
+                    opt.append(img, nm, sub);
+                    opt.addEventListener('click', () => {
+                        $('body-picker').classList.add('hidden');
+                        startBlockBuilder();
+                    });
+                    grid.appendChild(opt);
+                    return;
+                }
                 try {
                     if (!bodyThumbCache[i]) bodyThumbCache[i] = renderThumb({ bodyIndex: i, parts: [] });
                     img.src = bodyThumbCache[i];
@@ -3981,6 +4152,87 @@
             });
             $('body-picker').classList.remove('hidden');
         }
+        // ----- the block builder -----
+        const LS_BLOCKS = 'tf-blocks-v1';
+        const blockBuild = { active: false, tool: 'add', color: 0 };
+        function loadBlocks() {
+            try {
+                const b = JSON.parse(localStorage.getItem(LS_BLOCKS));
+                if (Array.isArray(b) && b.length && b.every(c => Array.isArray(c) && c.length >= 3)) return b;
+            } catch (e) { }
+            return [[0, 0, 0, 0]];
+        }
+        function saveBlocks() {
+            try { localStorage.setItem(LS_BLOCKS, JSON.stringify(design.blocks)); } catch (e) { }
+        }
+        function startBlockBuilder() {
+            Sound.init();
+            const had = design.parts.length > 0;
+            if (design.bodyIndex !== CUSTOM_BODY || !Array.isArray(design.blocks)) design.blocks = loadBlocks();
+            design.bodyIndex = CUSTOM_BODY;
+            design.parts = [];   // build the body first, then glue parts on
+            rebuildCraft();
+            blockBuild.active = true;
+            orbit.radius = 6;
+            rebuildCraft();
+            editorUI.classList.add('building');
+            $('block-ui').classList.remove('hidden');
+            renderBlockBar();
+            toast('🧱 Tap a block to add another one onto that side!' + (had ? ' (parts cleared)' : ''), 2600);
+        }
+        function endBlockBuilder() {
+            blockBuild.active = false;
+            editorUI.classList.remove('building');
+            $('block-ui').classList.add('hidden');
+            saveBlocks();
+            rebuildCraft();
+            Sound.success();
+            toast(`🧱 Your block body is ready (${design.blocks.length} blocks)! Now glue on boosters and wings!`, 2600);
+        }
+        function renderBlockBar() {
+            const wrap = $('block-colors');
+            wrap.innerHTML = '';
+            BUILD_COLORS.forEach((c, i) => {
+                const sw = document.createElement('div');
+                sw.className = 'swatch' + (i === blockBuild.color ? ' on' : '');
+                sw.style.background = '#' + c.toString(16).padStart(6, '0');
+                sw.addEventListener('click', () => { blockBuild.color = i; blockBuild.tool = 'add'; renderBlockBar(); });
+                wrap.appendChild(sw);
+            });
+            $('block-add').classList.toggle('on', blockBuild.tool === 'add');
+            $('block-remove').classList.toggle('on', blockBuild.tool === 'remove');
+            $('block-count').textContent = `${design.blocks.length} block${design.blocks.length === 1 ? '' : 's'}`;
+        }
+        $('block-add').addEventListener('click', () => { blockBuild.tool = 'add'; renderBlockBar(); });
+        $('block-remove').addEventListener('click', () => { blockBuild.tool = 'remove'; renderBlockBar(); });
+        $('block-done').addEventListener('click', endBlockBuilder);
+        function blockTap(cx, cy) {
+            screenRay(cx, cy);
+            const hit = raycaster.intersectObjects(craft.bodyMeshes, false).find(h => h.object.userData.cell !== undefined);
+            if (!hit) return;
+            const idx = hit.object.userData.cell;
+            const blocks = design.blocks;
+            if (blockBuild.tool === 'remove') {
+                if (blocks.length <= 1) { toast('You need at least ONE block! 😅', 1400); return; }
+                blocks.splice(idx, 1);
+                Sound.unpop();
+            } else {
+                if (blocks.length >= 200) { toast('200 blocks is the max! 🤯', 1400); return; }
+                // which side did you tap? (the stud on top counts as the top side)
+                const n = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+                const ax = Math.abs(n.x), ay = Math.abs(n.y), az = Math.abs(n.z);
+                const d = ax > ay && ax > az ? [Math.sign(n.x), 0, 0] : ay > az ? [0, Math.sign(n.y), 0] : [0, 0, Math.sign(n.z)];
+                const [i, j, k] = blocks[idx];
+                const cell = [i + d[0], j + d[1], k + d[2]];
+                if (blocks.some(b => b[0] === cell[0] && b[1] === cell[1] && b[2] === cell[2])) return;
+                blocks.push([...cell, blockBuild.color]);
+                Sound.pop();
+            }
+            rebuildCraft();
+            saveBlocks();
+            renderBlockBar();
+        }
+
         $('tile-bodies').addEventListener('pointerdown', () => {
             if (mode !== 'editor') return;
             openBodyPicker();
@@ -4367,7 +4619,7 @@
                 toast('🎈 BOING!! (hold SPACE for the parachute!)', 2000);
                 return;
             }
-            const gh = groundHeightAt(ch.pilot.position.x, ch.pilot.position.z);
+            const gh = groundHeightAt(ch.pilot.position.x, ch.pilot.position.z, ch.groundY);
             if (ch.groundY > gh + 2) { redeployChute(); return; }   // mid-fall: pull the cord
             if (ch.groundY <= gh + 0.05 && ch.fallV === 0) {        // solid ground: JUMP!
                 ch.fallV = 7.5;
@@ -4461,11 +4713,17 @@
         // What height is the ground here for the PILOT? Flat grass is 0,
         // mountains/pyramids/volcanoes are climbable slopes, and buildings,
         // houses and trees have flat tops you can stand on.
-        function groundHeightAt(x, z) {
+        function groundHeightAt(x, z, fromY) {
             let h = terrainY(x, z);
             for (const c of colliders) {
                 const dx = x - c.x, dz = z - c.z;
                 if (Math.abs(dx) > c.r || Math.abs(dz) > c.r) continue;
+                if (c.room) {   // walk-in buildings are boxes: a floor inside the lobby, a roof on top
+                    if (!inRoom(c.room, x, z)) continue;
+                    if (fromY !== undefined && fromY < c.room.lh - 0.6) continue;
+                    h = Math.max(h, c.h);
+                    continue;
+                }
                 const d2 = dx * dx + dz * dz;
                 if (d2 >= c.r * c.r) continue;
                 const base = c.y0 || 0;
@@ -4553,7 +4811,7 @@
                         confetti(40);
                         toast(gh > 3
                             ? '🏢 ROOFTOP LANDING!! Walk around up there with the arrow keys!'
-                            : '🚶 Safe landing! Walk around with the arrow keys!', 2800);
+                            : '🚶 Safe landing! Walk around with the arrow keys — go through a building\'s DOOR to find a 🔫!', 3200);
                     }
                 }
             } else {
@@ -4594,7 +4852,8 @@
                 if (ax || az) {
                     // slopes are climbable; walls and trees are too tall to step up
                     const tryMove = (nx, nz) => {
-                        if (groundHeightAt(nx, nz) - ch.groundY > 0.9) return false;
+                        if (groundHeightAt(nx, nz, ch.groundY) - ch.groundY > 0.9) return false;
+                        if (roomWallBlocks(p.x, p.z, nx, nz, ch.groundY)) return false;
                         p.x = nx;
                         p.z = nz;
                         return true;
@@ -4605,7 +4864,8 @@
                     ch.bob += dt * 11;
                 }
                 // follow the terrain: climb up slopes, fall off rooftop edges
-                const gh = groundHeightAt(p.x, p.z);
+                const gh = groundHeightAt(p.x, p.z, ch.groundY);
+                updatePilotRoom(ch);
                 if (ch.groundY > gh + 0.05) {
                     ch.fallV -= G * dt;
                     ch.groundY = Math.max(gh, ch.groundY + ch.fallV * dt);
@@ -4630,6 +4890,69 @@
                     toast('🏊 Splash! You can swim too!', 2000);
                 } else if (!inWater) ch.swimming = false;
             }
+        }
+
+        // ----- ON FOOT: walk into a building, grab the 🔫 blaster, shoot with ? -----
+        let pilotHasGun = false, pilotGunHeld = false, pilotGunCd = 0;
+        function updatePilotRoom(ch) {
+            const p = ch.pilot.position;
+            // doors swing open when you walk up to them
+            for (const R of rooms) {
+                const near = Math.abs(p.x - R.x) < R.hw + 4 && Math.abs(p.z - (R.z + R.hd)) < 4 && ch.groundY < R.lh;
+                const target = near ? 1.55 : 0;
+                if (Math.abs(R.open - target) > 0.01) {
+                    if (near && R.open < 0.05) Sound.beep(180, 0.2, 'triangle', 0.1);   // creeeak
+                    R.open += (target - R.open) * Math.min(1, 0.1 * 60 * (1 / 60) * 6);
+                    R.hinge.rotation.y = R.open;
+                }
+            }
+            ch.room = roomAt(p.x, p.z, ch.groundY);
+            if (ch.room && !pilotHasGun && Math.hypot(p.x - ch.room.gunPos.x, p.z - ch.room.gunPos.z) < 2.2) givePilotGun(ch);
+        }
+        function givePilotGun(ch) {
+            pilotHasGun = true;
+            const g = buildGun();
+            g.scale.setScalar(1.3);
+            g.position.set(0.2, 0.42, -0.12);
+            ch.pilot.add(g);
+            Sound.success();
+            toast('🔫 You picked up a BLASTER!! Press <b>?</b> to shoot!', 3000);
+            const btn = document.createElement('button');
+            btn.className = 'bbtn fire-btn';
+            btn.id = 'pilot-fire';
+            btn.textContent = '🔫';
+            btn.title = 'Shoot! (? key)';
+            btn.addEventListener('pointerdown', (e) => { e.preventDefault(); pilotGunHeld = true; pilotShoot(); });
+            for (const evName of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(evName, () => { pilotGunHeld = false; });
+            boosterBtnsEl.appendChild(btn);
+            gtag('event', 'pilot_gun', { game_name: 'Test Flight' });
+        }
+        function pilotShoot() {
+            const ch = flight.chute;
+            if (!ch || !ch.walking || ch.splat || !pilotHasGun || pilotGunCd > 0) return;
+            pilotGunCd = 0.2;
+            const from = ch.pilot.position.clone().add(tmpV1.set(0, 0.55, 0));
+            const ry = ch.pilot.rotation.y;
+            const dir = new THREE.Vector3(-Math.sin(ry), 0, -Math.cos(ry));
+            // friendly auto-aim: lock on to the closest robot or critter you're facing
+            let best = null, bestScore = 0.88;
+            const consider = (pos, r = 1) => {
+                const to = tmpV2.copy(pos).sub(from);
+                const d = to.length();
+                if (d > 170 || d < 0.5) return;
+                const c = to.dot(dir) / d;
+                if (c > bestScore) { bestScore = c; best = pos.clone(); }
+            };
+            if (battle.active) for (const b of battle.bots) if (!b.dead) consider(b.pos);
+            for (const an of animals) if (an.dead <= 0) consider(tmpV3.set(an.x, an.g.position.y + 1, an.z));
+            for (const b of birds) if (!(b.userData.dead > 0)) consider(b.position);
+            if (best) {
+                const d = best.distanceTo(from);
+                best.y += 1.25 * (d / 90) * (d / 90);   // bullets droop a little
+                dir.copy(best).sub(from).normalize();
+            }
+            spawnBullet(from.addScaledVector(dir, 0.6), dir.multiplyScalar(90), 'player');
+            Sound.pew();
         }
 
         // ----- BLASTERS (< or Enter) — pew pew at balloons and robots! -----
@@ -5148,7 +5471,7 @@
             if (flight.powerDef) extras.push(`<b>&gt;</b> = ${flight.powerDef.emoji} <b>${flight.powerDef.name}</b>`);
             if (craft.guns.length) extras.push('<b>&lt;</b> = 🔫 FIRE!');
             if (craft.bombs.length) extras.push('<b>;</b> = 💣 BOMBS AWAY!');
-            extras.push('<b>?</b> = 🪂');
+            extras.push('<b>?</b> = 🪂 jump out (then walk through a door to find a 🔫!)');
             hint += `<br><span style="font-size:13px;color:#777">${extras.join(' &nbsp;·&nbsp; ')}`
                 + (craft.bodyDef.power === 'hotdog' ? '<br>psst… SAVE it named “Hot Dog 2.0” (or 3.0, or 4.0…) for SECRET powers! 🤫' : '')
                 + '</span>';
@@ -5207,6 +5530,9 @@
 
             clearBullets();
             clearBombs();
+            pilotHasGun = false;
+            pilotGunHeld = false;
+            $('pilot-fire')?.remove();
             gunHeld = false;
             gunCooldown = 0;
             battle.won = false;
@@ -5401,8 +5727,12 @@
                 if (!e.repeat) { Sound.init(); powerPress(); }
                 return;
             }
-            if (e.key === '?' || e.key === '/') {                  // ? : parachute!
-                if (!e.repeat) { Sound.init(); deployParachute(); }
+            if (e.key === '?' || e.key === '/') {                  // ? : parachute! (or SHOOT, on foot with a blaster)
+                if (!e.repeat) {
+                    Sound.init();
+                    if (flight.chute && flight.chute.walking && pilotHasGun) { pilotGunHeld = true; pilotShoot(); }
+                    else deployParachute();
+                }
                 return;
             }
             if (e.key === 'Enter' || e.key === '<' || e.key === ',') {   // < (or Enter): FIRE THE BLASTERS!
@@ -5425,6 +5755,7 @@
             }
             if (e.key === ' ') { if (flight.chute) closeChuteCanopy(); setSpaceAll(false); return; }
             if (e.key === '>' || e.key === '.') { powerRelease(); return; }
+            if (e.key === '?' || e.key === '/') { pilotGunHeld = false; return; }
             if (e.key === 'Enter' || e.key === '<' || e.key === ',') { gunHeld = false; return; }
             const k = e.key.toUpperCase();
             if (KEY_ORDER.includes(k)) releaseKey(k);
@@ -5688,6 +6019,8 @@
             checkObstacles();
             updatePowers(dt);
             gunCooldown -= dt;
+            pilotGunCd -= dt;
+            if (pilotGunHeld && pilotGunCd <= 0) pilotShoot();
             flight.bounceT -= dt;
             if (gunHeld && gunCooldown <= 0) fireGuns();
             updateBullets(dt);
@@ -5904,7 +6237,7 @@
                 bigTitle.textContent = '🏆 RUNWAY LANDING!!!';
                 // runway prize: your ride morphs into a surprise new body (parts stay on!)
                 let newBody;
-                do { newBody = (Math.random() * BODIES.length) | 0; } while (newBody === design.bodyIndex);
+                do { newBody = (Math.random() * BODIES.length) | 0; } while (newBody === design.bodyIndex || BODIES[newBody].custom);
                 design.bodyIndex = newBody;
                 saveWorkingDesign();
                 bigSub.innerHTML = `You flew <b>${Math.round(flight.maxAlt)} m</b> high and landed at the <b>${onRunway.name}</b> like a REAL pilot! ✈️`
@@ -5963,7 +6296,10 @@
                 const ch = flight.chute;
                 const p = ch.pilot.position;
                 const desired = tmpV1.set(p.x, p.y + (ch.walking ? 2.4 : 3.2), p.z + (ch.walking ? 6.5 : 8));
-                flight.camPos.lerp(desired, 1 - Math.exp(-3 * dt));
+                if (ch.room) {   // indoors: tuck the camera inside the lobby
+                    desired.set(p.x, Math.min(p.y + 2.2, ch.room.lh - 0.5), Math.min(p.z + 3.4, ch.room.z + ch.room.hd - 0.5));
+                }
+                flight.camPos.lerp(desired, 1 - Math.exp(-(ch.room ? 6 : 3) * dt));
                 flight.camPos.y = Math.max(flight.camPos.y, terrainY(flight.camPos.x, flight.camPos.z) + 1.2);
                 camera.position.copy(flight.camPos);
                 camera.lookAt(p.x, p.y + 1, p.z);
@@ -6001,7 +6337,8 @@
                     : flight.chute.balloon
                         ? `🎈 riding a balloon! ⬆ ${Math.round(flight.chute.pilot.position.y)} m`
                         : flight.chute.walking
-                            ? (flight.chute.groundY > 2
+                            ? (flight.chute.room ? (pilotHasGun ? '🔫 got the blaster! press ? to shoot' : '🚪 inside! grab the 🔫 on the table!')
+                                : flight.chute.groundY > 2
                                 ? `🧗 climbing! ⬆ ${Math.round(flight.chute.groundY)} m`
                                 : '🚶 exploring the world!')
                             : flight.chute.opened
