@@ -308,6 +308,29 @@
         }
         #mode-free { background: #d1f7c4; }
         #mode-battle { background: #ffd6d0; }
+        #mode-rooms { background: #d6e6ff; }
+
+        /* ---------- ROOMS (fly with friends!) ---------- */
+        #rooms-dialog {
+            position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+            background: rgba(30, 30, 30, 0.25); z-index: 59;
+        }
+        #rooms-card { position: relative; padding: 22px 30px 24px 30px; text-align: center; width: 380px; max-width: 86vw; }
+        #rooms-card h2 { margin: 0 0 12px 0; font-size: 26px; }
+        #rooms-card .mode-btn { display: block; width: 100%; box-sizing: border-box; font-size: 20px; font-weight: bold; padding: 12px 20px; margin: 10px 0; }
+        #rooms-card .mode-btn span { display: block; font-size: 13px; font-weight: normal; color: #777; margin-top: 3px; }
+        #rooms-card input {
+            font-family: inherit; font-size: 20px; padding: 8px 12px; border: 3px solid #2b2b2b; border-radius: 12px;
+            width: 220px; max-width: 64vw; text-align: center; background: #fff; color: #2b2b2b;
+            user-select: text; -webkit-user-select: text;
+        }
+        #rooms-card #room-name { font-size: 16px; width: 150px; padding: 4px 8px; }
+        #rooms-card .row { display: flex; gap: 12px; justify-content: center; margin-top: 14px; }
+        #rooms-card .row button { font-size: 18px; padding: 8px 18px; }
+        #rooms-close { position: absolute; top: 10px; right: 10px; }
+        #rooms-status { font-size: 17px; margin: 6px 0; }
+        #rooms-list { font-size: 16px; margin: 8px 0; line-height: 1.6; }
+        #room-badge { position: absolute; top: 56px; left: 12px; font-size: 13px; padding: 3px 10px; }
 
         /* ---------- arrow pad (ailerons + elevator) ---------- */
         #arrow-pad {
@@ -723,6 +746,7 @@
         <button id="flight-mute" class="sketch sketch-b">🔊</button>
         <button id="flight-music" class="sketch" title="Music is ON">🎵</button>
         <button id="weather-btn" class="sketch sketch-b" title="Tap to change the weather!">🌤️ Costa Mesa</button>
+        <div id="room-badge" class="sketch hidden"></div>
         <div id="flight-hint" class="sketch">Hold your booster keys to blast off! 🚀</div>
         <div id="booster-btns"></div>
         <div id="arrow-pad" class="hidden">
@@ -777,7 +801,37 @@
         <div id="mode-card" class="sketch">
             <h2>How do you want to fly?</h2>
             <button id="mode-free" class="sketch mode-btn">🛫 Free Flight<br><span>explore the HUGE world — find all 5 airstrips!</span></button>
+            <button id="mode-rooms" class="sketch mode-btn">🌐 ROOMS<br><span>make a room with a secret code — your friends join and you all fly in the SAME world!</span></button>
             <button id="mode-battle" class="sketch sketch-b mode-btn">🤖 ROBOT ARMY<br><span>a BILLION robots attack from the sky, the ground AND the water — bring 🔫 blasters and 💣 bombs!</span></button>
+        </div>
+    </div>
+
+    <!-- ============ ROOMS ============ -->
+    <div id="rooms-dialog" class="hidden">
+        <div id="rooms-card" class="sketch">
+            <button id="rooms-close" class="sketch small-btn">✖</button>
+            <h2>🌐 Rooms</h2>
+            <div id="rooms-home">
+                <div>Your pilot name: <input id="room-name" maxlength="14" autocomplete="off"></div>
+                <button id="room-create" class="sketch mode-btn">🏠 Create a room<br><span>make up a secret passcode for your friends</span></button>
+                <button id="room-join" class="sketch sketch-b mode-btn">🚪 Join a room<br><span>type the passcode your friend made up</span></button>
+            </div>
+            <div id="rooms-code" class="hidden">
+                <p id="rooms-code-label">Make up a passcode:</p>
+                <input id="room-code" maxlength="16" autocomplete="off">
+                <div class="row">
+                    <button id="room-go" class="sketch">Go!</button>
+                    <button id="room-back" class="sketch sketch-b">Back</button>
+                </div>
+            </div>
+            <div id="rooms-in" class="hidden">
+                <p id="rooms-status"></p>
+                <div id="rooms-list"></div>
+                <div class="row">
+                    <button id="room-fly" class="sketch">🛫 Fly!</button>
+                    <button id="room-leave" class="sketch sketch-b danger">🚪 Leave</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -4952,6 +5006,7 @@
                 dir.copy(best).sub(from).normalize();
             }
             spawnBullet(from.addScaledVector(dir, 0.6), dir.multiplyScalar(90), 'player');
+            if (Room.peer) roomBroadcast({ t: 'shot', id: Room.myId, p: from.toArray(), v: dir.toArray() });
             Sound.pew();
         }
 
@@ -4986,6 +5041,7 @@
                 const wp = new THREE.Vector3(0, 0.15, -0.6);
                 e.group.localToWorld(wp);
                 spawnBullet(wp, fwd.clone().multiplyScalar(85).add(phys.vel), 'player');
+                if (Room.peer) roomBroadcast({ t: 'shot', id: Room.myId, p: wp.toArray(), v: fwd.clone().multiplyScalar(85).add(phys.vel).toArray() });
             }
             Sound.pew();
             gunCooldown = 0.22;
@@ -5431,9 +5487,19 @@
             mode = 'flight';
             flight.battleMode = battleMode;
             if (!flightEnv) {
-                flightEnv = buildFlightEnv();
+                // the world is built from a fixed seed, so EVERYONE (and every room) gets the same world
+                const realRandom = Math.random;
+                let seed = 20260924;
+                Math.random = () => {
+                    seed = (seed + 0x6D2B79F5) | 0;
+                    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+                    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+                    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+                };
+                try { flightEnv = buildFlightEnv(); } finally { Math.random = realRandom; }
                 scene.add(flightEnv);
             }
+            if (Room.peer) roomBroadcast({ t: 'design', id: Room.myId, name: Room.name, design });
             flightEnv.visible = true;
             editorEnv.visible = false;
             scene.background = new THREE.Color(0x87c8f0);
@@ -5702,6 +5768,7 @@
             if (e.metaKey || e.ctrlKey || e.altKey) return;
             if (e.key === 'Escape') {
                 if (!$('mode-dialog').classList.contains('hidden')) { $('mode-dialog').classList.add('hidden'); return; }
+                if (!$('rooms-dialog').classList.contains('hidden')) { $('rooms-dialog').classList.add('hidden'); return; }
                 if (!$('body-picker').classList.contains('hidden')) { $('body-picker').classList.add('hidden'); return; }
                 if (!$('hangar').classList.contains('hidden')) { closeHangar(); return; }
                 if (mode === 'flight') endFlight();
@@ -6604,6 +6671,306 @@
             if (sunSprite) sunSprite.visible = !on;
         }
 
+        // ================= ROOMS — fly in the same world with your friends! =================
+        // Peer-to-peer (PeerJS): whoever CREATES the room is the host; everyone
+        // else connects to the host, and the host passes messages along.
+        const ROOM_PREFIX = 'onion-testflight-v1-';
+        const LS_PILOT = 'tf-pilot-name';
+        const Room = {
+            peer: null, code: null, isHost: false, conns: [], hostConn: null, myId: null,
+            name: 'Pilot', remotes: new Map(), sendT: 0, pending: null
+        };
+        function loadPeerJS() {
+            if (window.Peer) return Promise.resolve();
+            return new Promise((res, rej) => {
+                const sc = document.createElement('script');
+                sc.src = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
+                sc.onload = res;
+                sc.onerror = () => rej(new Error('could not load PeerJS'));
+                document.head.appendChild(sc);
+            });
+        }
+        const cleanCode = (c) => (c || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        function roomShow(which) {
+            for (const id of ['rooms-home', 'rooms-code', 'rooms-in']) $(id).classList.toggle('hidden', id !== which);
+        }
+        function openRooms() {
+            $('mode-dialog').classList.add('hidden');
+            $('rooms-dialog').classList.remove('hidden');
+            if (Room.peer) { roomShow('rooms-in'); renderRoomList(); }
+            else {
+                roomShow('rooms-home');
+                let nm = '';
+                try { nm = localStorage.getItem(LS_PILOT) || ''; } catch (e) { }
+                $('room-name').value = nm || `Pilot ${1 + (Math.random() * 99 | 0)}`;
+            }
+        }
+        function roomAsk(create) {
+            Room.pending = create ? 'create' : 'join';
+            Room.name = ($('room-name').value.trim() || 'Pilot').slice(0, 14);
+            try { localStorage.setItem(LS_PILOT, Room.name); } catch (e) { }
+            $('rooms-code-label').textContent = create ? '🔑 Make up a secret passcode:' : '🔑 Type the passcode your friend made up:';
+            $('room-code').value = '';
+            roomShow('rooms-code');
+            setTimeout(() => $('room-code').focus(), 50);
+        }
+        async function roomGo() {
+            const code = cleanCode($('room-code').value);
+            if (code.length < 3) { toast('The passcode needs at least 3 letters or numbers!', 2000); return; }
+            $('room-go').disabled = true;
+            $('rooms-code-label').textContent = '⏳ Connecting…';
+            try { await loadPeerJS(); } catch (e) {
+                toast('😢 Could not connect to the room service. Check your internet!', 3000);
+                $('room-go').disabled = false;
+                roomShow('rooms-home');
+                return;
+            }
+            Room.code = code;
+            if (Room.pending === 'create') hostRoom(code); else joinRoom(code);
+        }
+        function roomFail(msg) {
+            toast(msg, 3500);
+            leaveRoom(true);
+            $('room-go').disabled = false;
+            roomShow('rooms-home');
+        }
+        function hostRoom(code) {
+            Room.isHost = true;
+            const peer = Room.peer = new Peer(ROOM_PREFIX + code, { debug: 0 });
+            peer.on('open', (id) => {
+                Room.myId = id;
+                $('room-go').disabled = false;
+                roomEntered();
+            });
+            peer.on('connection', (conn) => {
+                conn.on('open', () => { Room.conns.push(conn); });
+                conn.on('data', (msg) => onRoomMsg(msg, conn));
+                conn.on('close', () => {
+                Room.conns = Room.conns.filter(c => c !== conn);
+                roomBroadcast({ t: 'bye', id: conn.peer });
+                dropRemote(conn.peer);
+            });
+            });
+            peer.on('error', (err) => {
+                if (err.type === 'unavailable-id') roomFail(`😬 Somebody already made a room called “${code}”. Pick a different passcode — or JOIN it!`);
+                else if (!Room.myId) roomFail('😢 Could not make the room (' + err.type + ')');
+            });
+        }
+        function joinRoom(code) {
+            Room.isHost = false;
+            const peer = Room.peer = new Peer(undefined, { debug: 0 });
+            peer.on('open', (id) => {
+                Room.myId = id;
+                const conn = peer.connect(ROOM_PREFIX + code, { reliable: false });
+                Room.hostConn = conn;
+                const timer = setTimeout(() => { if (!conn.open) roomFail(`🤷 No room called “${code}”. Check the passcode with your friend!`); }, 9000);
+                conn.on('open', () => {
+                    clearTimeout(timer);
+                    $('room-go').disabled = false;
+                    conn.send({ t: 'hello', id: Room.myId, name: Room.name, design: design });
+                    roomEntered();
+                });
+                conn.on('data', (msg) => onRoomMsg(msg, conn));
+                conn.on('close', () => {
+                    if (Room.peer) { toast('🚪 The room closed (the host left).', 3000); leaveRoom(true); }
+                });
+            });
+            peer.on('error', (err) => {
+                if (err.type === 'peer-unavailable') roomFail(`🤷 No room called “${code}”. Check the passcode with your friend!`);
+                else if (!Room.hostConn || !Room.hostConn.open) roomFail('😢 Could not join (' + err.type + ')');
+            });
+        }
+        function roomEntered() {
+            Sound.success();
+            roomShow('rooms-in');
+            renderRoomList();
+            toast(Room.isHost ? `🏠 Room “${Room.code}” is open! Tell your friends the passcode!` : `🚪 You joined room “${Room.code}”!`, 3000);
+            gtag('event', Room.isHost ? 'room_create' : 'room_join', { game_name: 'Test Flight' });
+        }
+        function renderRoomList() {
+            if (!Room.peer) return;
+            const n = 1 + Room.remotes.size;
+            $('rooms-status').innerHTML = `Room <b>“${Room.code}”</b> — ${n} pilot${n === 1 ? '' : 's'} here`
+                + (Room.isHost ? '<br><span style="font-size:13px;color:#777">(you made it — tell your friends the passcode!)</span>' : '');
+            const names = [`✈️ <b>${escapeHtml(Room.name)}</b> (you)`];
+            for (const r of Room.remotes.values()) names.push(`✈️ ${escapeHtml(r.name)}`);
+            $('rooms-list').innerHTML = names.join('<br>');
+            $('room-badge').innerHTML = `🌐 ${escapeHtml(Room.code)} · ${n} pilot${n === 1 ? '' : 's'}`;
+            $('room-badge').classList.toggle('hidden', false);
+        }
+        function escapeHtml(t) { return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
+        function leaveRoom(quiet) {
+            if (!Room.peer) return;
+            try { roomBroadcast({ t: 'bye', id: Room.myId }); } catch (e) { }
+            try { Room.peer.destroy(); } catch (e) { }
+            Room.peer = null;
+            Room.conns = [];
+            Room.hostConn = null;
+            Room.myId = null;
+            for (const id of [...Room.remotes.keys()]) dropRemote(id, true);
+            $('room-badge').classList.add('hidden');
+            if (!quiet) toast('🚪 You left the room.', 1800);
+        }
+        // host: send to everyone (except `skip`); guest: send to the host
+        function roomBroadcast(msg, skip) {
+            if (Room.isHost) { for (const c of Room.conns) if (c.open && c !== skip) c.send(msg); }
+            else if (Room.hostConn && Room.hostConn.open) Room.hostConn.send(msg);
+        }
+        function onRoomMsg(msg, conn) {
+            if (!msg || typeof msg !== 'object' || typeof msg.id !== 'string' || msg.id === Room.myId) return;
+            if (Room.isHost) {
+                if (msg.t === 'hello') {
+                    conn._pid = msg.id;
+                    // tell the newcomer about everybody already here
+                    conn.send({ t: 'hello', id: Room.myId, name: Room.name, design, already: true });
+                    for (const r of Room.remotes.values()) conn.send({ t: 'hello', id: r.id, name: r.name, design: r.design, already: true });
+                }
+                roomBroadcast(msg, conn);   // pass it along to the others
+            }
+            if (msg.t === 'hello' || msg.t === 'design') {
+                addRemote(msg.id, msg.name, msg.design);
+                if (msg.t === 'hello' && !msg.already) toast(`👋 ${escapeHtml(msg.name || 'A pilot')} joined the room!`, 2200);
+            } else if (msg.t === 'state') {
+                const r = Room.remotes.get(msg.id);
+                if (r) applyRemoteState(r, msg);
+            } else if (msg.t === 'shot') {
+                if (mode === 'flight' && Array.isArray(msg.p) && Array.isArray(msg.v))
+                    spawnBullet(new THREE.Vector3().fromArray(msg.p), new THREE.Vector3().fromArray(msg.v), 'remote');
+            } else if (msg.t === 'bye') {
+                dropRemote(msg.id);
+            }
+        }
+        function validDesign(d) {
+            return d && typeof d.bodyIndex === 'number' && d.bodyIndex >= 0 && d.bodyIndex < BODIES.length && Array.isArray(d.parts)
+                && d.parts.every(p => p && PART_MASS[p.type] && Array.isArray(p.pos));
+        }
+        function makeNameTag(text) {
+            const c = document.createElement('canvas');
+            c.width = 256; c.height = 64;
+            const x = c.getContext('2d');
+            x.fillStyle = 'rgba(255,254,251,0.92)';
+            x.strokeStyle = '#2b2b2b'; x.lineWidth = 5;
+            x.beginPath(); x.roundRect(4, 6, 248, 52, 18); x.fill(); x.stroke();
+            x.fillStyle = '#2b2b2b';
+            x.font = 'bold 30px "Comic Sans MS", sans-serif';
+            x.textAlign = 'center'; x.textBaseline = 'middle';
+            x.fillText(text, 128, 34);
+            const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false }));
+            sp.scale.set(3.2, 0.8, 1);
+            sp.renderOrder = 20;
+            return sp;
+        }
+        function addRemote(id, name, d) {
+            let r = Room.remotes.get(id);
+            if (!r) {
+                r = { id, name: String(name || 'Pilot').slice(0, 14), design: null, group: null, craftInfo: null, tag: makeNameTag(String(name || 'Pilot').slice(0, 14)),
+                    pilot: buildPilot(), pos: new THREE.Vector3(0, -999, 0), vel: new THREE.Vector3(), quat: new THREE.Quaternion(),
+                    tPos: new THREE.Vector3(0, -999, 0), tQuat: new THREE.Quaternion(), chute: null, seen: 0 };
+                r.pilot.visible = false;
+                r.canopy = buildCanopy();
+                r.canopy.visible = false;
+                r.pilot.add(r.canopy);
+                scene.add(r.pilot, r.tag);
+                Room.remotes.set(id, r);
+            }
+            if (validDesign(d) && JSON.stringify(d) !== JSON.stringify(r.design)) {
+                if (r.group) { scene.remove(r.group); disposeObject(r.group); }
+                r.design = JSON.parse(JSON.stringify(d));
+                try {
+                    r.craftInfo = buildCraft(r.design);
+                    r.group = r.craftInfo.group;
+                    r.group.visible = mode === 'flight';
+                    scene.add(r.group);
+                } catch (e) { r.group = null; }
+            }
+            renderRoomList();
+            return r;
+        }
+        function dropRemote(id, quiet) {
+            const r = Room.remotes.get(id);
+            if (!r) return;
+            if (r.group) { scene.remove(r.group); disposeObject(r.group); }
+            scene.remove(r.pilot, r.tag);
+            disposeObject(r.pilot);
+            Room.remotes.delete(id);
+            if (!quiet) { toast(`👋 ${escapeHtml(r.name)} left the room.`, 2000); renderRoomList(); }
+        }
+        function applyRemoteState(r, m) {
+            if (!Array.isArray(m.p) || !Array.isArray(m.q)) return;
+            r.tPos.fromArray(m.p);
+            r.tQuat.fromArray(m.q);
+            if (Array.isArray(m.v)) r.vel.fromArray(m.v);
+            if (r.pos.y < -900) { r.pos.copy(r.tPos); r.quat.copy(r.tQuat); }
+            r.flying = !!m.f;
+            r.chute = m.c || null;
+            r.seen = 0;
+        }
+        function sendRoomState(dt) {
+            if (!Room.peer || !Room.myId) return;
+            Room.sendT -= dt;
+            if (Room.sendT > 0) return;
+            Room.sendT = 0.1;   // 10 times a second
+            const f = mode === 'flight';
+            const msg = {
+                t: 'state', id: Room.myId, f,
+                p: f ? phys.pos.toArray().map(v => +v.toFixed(2)) : [0, -999, 0],
+                q: f ? phys.quat.toArray().map(v => +v.toFixed(4)) : [0, 0, 0, 1],
+                v: f ? phys.vel.toArray().map(v => +v.toFixed(2)) : [0, 0, 0]
+            };
+            if (f && flight.chute) {
+                const pp = flight.chute.pilot;
+                msg.c = { p: pp.position.toArray().map(v => +v.toFixed(2)), ry: +pp.rotation.y.toFixed(3), rx: +pp.rotation.x.toFixed(3), o: !!flight.chute.canopy.visible };
+            }
+            roomBroadcast(msg);
+        }
+        function updateRemotes(dt) {
+            for (const r of Room.remotes.values()) {
+                r.seen += dt;
+                const show = mode === 'flight' && r.flying && r.seen < 5;
+                // glide smoothly between updates
+                r.tPos.addScaledVector(r.vel, dt);
+                r.pos.lerp(r.tPos, 1 - Math.exp(-10 * dt));
+                r.quat.slerp(r.tQuat, 1 - Math.exp(-10 * dt));
+                if (r.group) {
+                    r.group.visible = show;
+                    if (show) {
+                        r.group.quaternion.copy(r.quat);
+                        r.group.position.copy(r.pos).sub(r.craftInfo.comLocal.clone().applyQuaternion(r.quat));
+                    }
+                }
+                r.pilot.visible = show && !!r.chute;
+                if (r.chute) {
+                    r.pilot.position.lerp(tmpV1.fromArray(r.chute.p), 1 - Math.exp(-10 * dt));
+                    r.pilot.rotation.set(r.chute.rx || 0, r.chute.ry || 0, 0);
+                    r.canopy.visible = !!r.chute.o;
+                    r.canopy.scale.setScalar(1);
+                }
+                r.tag.visible = show;
+                if (show) {
+                    const at = r.chute ? r.pilot.position : r.pos;
+                    r.tag.position.set(at.x, at.y + (r.chute ? 2.2 : 2.8), at.z);
+                }
+            }
+        }
+        $('mode-rooms').addEventListener('click', () => { Sound.init(); openRooms(); });
+        $('room-create').addEventListener('click', () => roomAsk(true));
+        $('room-join').addEventListener('click', () => roomAsk(false));
+        $('room-go').addEventListener('click', roomGo);
+        $('room-back').addEventListener('click', () => roomShow('rooms-home'));
+        $('room-leave').addEventListener('click', () => { leaveRoom(false); roomShow('rooms-home'); });
+        $('rooms-close').addEventListener('click', () => $('rooms-dialog').classList.add('hidden'));
+        $('room-fly').addEventListener('click', () => {
+            $('rooms-dialog').classList.add('hidden');
+            startFlight(false);
+        });
+        for (const id of ['room-code', 'room-name']) {
+            $(id).addEventListener('keydown', (e) => {
+                e.stopPropagation();
+                if (e.key === 'Enter' && id === 'room-code') roomGo();
+                if (e.key === 'Escape') $('rooms-dialog').classList.add('hidden');
+            });
+        }
+
         // ----- flight buttons -----
         function openModeDialog() {
             Sound.init();
@@ -6676,6 +7043,8 @@
             }
             updateSmoke(dt);
             updateWeather(dt);
+            sendRoomState(dt);
+            updateRemotes(dt);
             renderer.render(scene, camera);
         }
 
@@ -6686,7 +7055,8 @@
             get battle() { return battle; }, get bullets() { return bullets; }, get balloons() { return balloons; },
             get camera() { return camera; }, get turbines() { return turbines; }, get birds() { return birds; },
             get animals() { return animals; }, get fishes() { return fishes; }, get weather() { return Weather; },
-            step(dt = 1 / 60, n = 1) { if (mode === 'flight') for (let i = 0; i < n; i++) { stepPhysics(dt); updateVolcanoes(dt); } }
+            step(dt = 1 / 60, n = 1) { if (mode === 'flight') for (let i = 0; i < n; i++) { stepPhysics(dt); updateVolcanoes(dt); sendRoomState(dt); updateRemotes(dt); } },
+            get room() { return Room; }
         };
 
         // ================= BOOT =================
