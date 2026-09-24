@@ -581,7 +581,7 @@
 
         <div id="editor-hint" class="sketch">
             1️⃣ Tap <b>Bodies</b> to pick a body &nbsp; 2️⃣ Drag on 🚀 🌀 🛞 🧱 and wings &nbsp; 3️⃣ Press <b>Start!</b><br>
-            <span style="font-size:13px;color:#777">(Tap a glued part to take it off. DRAG a glued part to move it! Drag empty space to spin the view. Every body has a ➕ SUPERPOWER in flight!)</span>
+            <span style="font-size:13px;color:#777">(Tap a glued part to take it off. DRAG a glued part to move it! Drag empty space to spin the view. Every body has a ⚡ SUPERPOWER in flight — press the &gt; key!)</span>
         </div>
 
         <div id="tray">
@@ -620,6 +620,11 @@
                     <span class="icon">🔫</span>
                     <span class="label">Blasters</span>
                     <span class="sub">pew pew pew!</span>
+                </div>
+                <div id="tile-bomb" class="tile sketch" data-type="bomb">
+                    <span class="icon">💣</span>
+                    <span class="label">Bombs</span>
+                    <span class="sub">press 0 to drop!</span>
                 </div>
                 <div id="tile-wingL" class="tile sketch sketch-b" data-type="wingL">
                     <svg width="52" height="26" viewBox="0 0 52 26">
@@ -755,7 +760,7 @@
         const DRAG_Q = 0.02;        // parasitic drag (low, so diving trades altitude for real speed)
         const CRASH_BODY_V = 6.0;   // body hits ground faster than this = crash
         const CRASH_WHEEL_V = 10.0; // wheels are tougher
-        const PART_MASS = { booster: 0.25, wheel: 0.35, wingL: 0.5, wingR: 0.5, aileron: 0.3, tail: 0.4, prop: 0.25, block: 0.2, gun: 0.3 };
+        const PART_MASS = { booster: 0.25, wheel: 0.35, wingL: 0.5, wingR: 0.5, aileron: 0.3, tail: 0.4, prop: 0.25, block: 0.2, gun: 0.3, bomb: 0.35 };
         // water you can splash into (or float on, if your body floats!)
         const WATERS = [
             { x: 260, z: -320, r: 68 },        // the classic lake
@@ -776,7 +781,12 @@
             { x: 0, z: -850, r: 160 }, { x: 2600, z: -1900, r: 200 }, { x: -2100, z: 2400, r: 180 },
             { x: 5200, z: 2600, r: 200 }, { x: -4600, z: -4200, r: 200 }
         ];
-        const VOLCANO = { x: 1900, z: -2700, r: 260, h: 340 };
+        // volcanoes: fly over one and it's a coin flip whether it ERUPTS!
+        const VOLCANOES = [
+            { x: 1900, z: -2700, r: 260, h: 340 },
+            { x: -4200, z: 1400, r: 210, h: 280 },
+            { x: 3000, z: 4200, r: 230, h: 300 }
+        ];
         const ISLAND = { x: -2300, z: 700, r: 150 };   // out in the ocean!
         // airstrips — land on ANY of them for the big celebration
         const RUNWAYS = [
@@ -797,6 +807,8 @@
             }
             return null;
         }
+        // how deep the water goes (the ocean is REALLY deep)
+        function waterDepth(w) { return w.r > 500 ? 45 : clamp(w.r * 0.15, 8, 22); }
 
         // ----- TERRAIN: real rolling hills! -----
         // Flat pads are kept around runways, water, cities, deserts, snow and
@@ -808,7 +820,7 @@
         for (const D of DESERTS) FLATS.push({ x: D.x, z: D.z, r: D.r, fade: 220 });
         for (const S of SNOWS) FLATS.push({ x: S.x, z: S.z, r: S.r, fade: 220 });
         FLATS.push({ x: ISLAND.x, z: ISLAND.z, r: ISLAND.r, fade: 90 });
-        FLATS.push({ x: VOLCANO.x, z: VOLCANO.z, r: VOLCANO.r + 30, fade: 160 });
+        for (const V of VOLCANOES) FLATS.push({ x: V.x, z: V.z, r: V.r + 30, fade: 160 });
 
         function terrainY(x, z) {
             const rad2 = x * x + z * z;
@@ -1670,7 +1682,7 @@
                 }
             },
             {
-                name: 'Submarine', emoji: '⚓', mass: 5, floats: true,
+                name: 'Submarine', emoji: '⚓', mass: 5, floats: true, swims: true,
                 power: { name: 'DIVE DASH', emoji: '🫧', type: 'dive', a: 30, color: 0x8fd3ff, snd: 'splash' },
                 build() {
                     const g = new THREE.Group();
@@ -1813,6 +1825,165 @@
                     }
                     return g;
                 }
+            },
+            {
+                name: 'School Bus', emoji: '🚌', mass: 7,
+                power: { name: 'HONK HONK', emoji: '📢', type: 'boost', a: 34, color: 0xffc629, snd: 'honk' },
+                // big built-in wheels, just like a real bus
+                wheelContacts: [[-0.62, 0, -1.2], [0.62, 0, -1.2], [-0.62, 0, 1.25], [0.62, 0, 1.25]],
+                bottomClearance: 0.22,
+                build() {
+                    const g = new THREE.Group();
+                    const yel = 0xffc629, blk = 0x24242a, glass = 0x9fd4f0;
+                    box(g, 1.3, 1.15, 3.3, yel, 0, 0.98, 0.15);                   // the big yellow box
+                    box(g, 1.26, 0.55, 0.6, yel, 0, 0.68, -1.75);                 // hood
+                    box(g, 1.32, 0.07, 3.32, blk, 0, 0.8, 0.15).castShadow = false;   // black stripes
+                    box(g, 1.32, 0.05, 3.32, blk, 0, 1.08, 0.15).castShadow = false;
+                    box(g, 1.1, 0.42, 0.03, glass, 0, 1.28, -1.5).castShadow = false; // windshield
+                    for (let i = 0; i < 6; i++)                                   // side windows
+                        for (const sx of [-0.66, 0.66])
+                            box(g, 0.02, 0.34, 0.38, glass, sx, 1.3, -1.05 + i * 0.5).castShadow = false;
+                    box(g, 0.03, 0.26, 0.26, 0xd0202a, -0.7, 1.0, -1.15);          // STOP sign
+                    for (const sx of [-0.45, 0.45]) {                             // headlights
+                        const hl = cyl(g, 0.09, 0.09, 0.05, 0xfff4c0, sx, 0.72, -2.06, 10);
+                        hl.rotation.x = Math.PI / 2;
+                    }
+                    box(g, 1.36, 0.14, 0.1, 0xb8b8c0, 0, 0.42, -2.08);             // bumper
+                    const c = document.createElement('canvas');                    // SCHOOL BUS sign
+                    c.width = 256; c.height = 48;
+                    const x = c.getContext('2d');
+                    x.fillStyle = '#ffc629'; x.fillRect(0, 0, 256, 48);
+                    x.fillStyle = '#24242a';
+                    x.font = 'bold 34px sans-serif';
+                    x.textAlign = 'center'; x.textBaseline = 'middle';
+                    x.fillText('SCHOOL BUS', 128, 26);
+                    const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.19),
+                        new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(c), roughness: 0.8 }));
+                    sign.position.set(0, 1.62, -1.505);
+                    sign.rotation.y = Math.PI;
+                    g.add(sign);
+                    for (const [wx, wz] of [[-0.62, -1.2], [0.62, -1.2], [-0.62, 1.25], [0.62, 1.25]]) {
+                        const tire = cyl(g, 0.28, 0.28, 0.22, 0x1c1c22, wx, 0.28, wz, 16);
+                        tire.rotation.z = Math.PI / 2;
+                        const hub = cyl(g, 0.12, 0.12, 0.24, 0xd8d8e0, wx, 0.28, wz, 10);
+                        hub.rotation.z = Math.PI / 2;
+                    }
+                    return g;
+                }
+            },
+            {
+                name: 'Snake', emoji: '🐍', mass: 2.5,
+                power: { name: 'SSSSUPER SSSPEED', emoji: '🐍', type: 'boost', a: 42, color: 0x7ed957, snd: 'hiss' },
+                build() {
+                    const g = new THREE.Group();
+                    const grn = 0x4f9b3a, belly = 0xc8d860;
+                    for (let i = 0; i < 12; i++) {                                // wiggly body, fat to skinny
+                        const t = i / 11;
+                        const r = 0.28 - t * 0.17;
+                        sph(g, r, i % 3 === 1 ? belly : grn, Math.sin(t * Math.PI * 2.5) * 0.35, r, -0.8 + t * 2.6);
+                    }
+                    sph(g, 0.3, grn, 0, 0.3, -1.05, 1.1, 0.75, 1.3);              // head
+                    sph(g, 0.06, 0xffe14d, -0.14, 0.45, -1.3);                    // eyes
+                    sph(g, 0.06, 0xffe14d, 0.14, 0.45, -1.3);
+                    sph(g, 0.03, 0x1c1c22, -0.14, 0.46, -1.35);
+                    sph(g, 0.03, 0x1c1c22, 0.14, 0.46, -1.35);
+                    const tongue = box(g, 0.04, 0.02, 0.3, 0xd0202a, 0, 0.26, -1.52);   // fork tongue
+                    tongue.castShadow = false;
+                    for (const sx of [-1, 1]) {
+                        const f = box(g, 0.03, 0.02, 0.12, 0xd0202a, sx * 0.04, 0.26, -1.7);
+                        f.rotation.y = sx * 0.5;
+                        f.castShadow = false;
+                    }
+                    return g;
+                }
+            },
+            {
+                name: 'Onion Book', emoji: '📖', mass: 3,
+                power: { name: 'PAGE TURNER', emoji: '📖', type: 'jump', v: 15, color: 0xf4f4f0, snd: 'chord' },
+                build() {
+                    const g = new THREE.Group();
+                    const c = document.createElement('canvas');                    // the cover: ONION!
+                    c.width = 256; c.height = 340;
+                    const x = c.getContext('2d');
+                    x.fillStyle = '#6a3fa0'; x.fillRect(0, 0, 256, 340);
+                    x.strokeStyle = '#f2c11e'; x.lineWidth = 8;
+                    x.strokeRect(14, 14, 228, 312);
+                    x.fillStyle = '#f2c11e';
+                    x.font = 'bold 64px "Comic Sans MS", sans-serif';
+                    x.textAlign = 'center'; x.textBaseline = 'middle';
+                    x.fillText('ONION', 128, 130);
+                    x.font = '72px sans-serif';
+                    x.fillText('🧅', 128, 235);
+                    const coverTex = new THREE.CanvasTexture(c);
+                    const pc = document.createElement('canvas');                   // stacked pages
+                    pc.width = 64; pc.height = 16;
+                    const px = pc.getContext('2d');
+                    px.fillStyle = '#fbf6e8'; px.fillRect(0, 0, 64, 16);
+                    px.fillStyle = '#d8d0bc';
+                    for (let yy = 1; yy < 16; yy += 2) px.fillRect(0, yy, 64, 1);
+                    const pageTex = new THREE.CanvasTexture(pc);
+                    const purple = mat(0x6a3fa0), pages = new THREE.MeshStandardMaterial({ map: pageTex, roughness: 0.9 });
+                    const top = new THREE.MeshStandardMaterial({ map: coverTex, roughness: 0.7 });
+                    // box faces: +x, -x, +y, -y, +z, -z  (spine on the -x side)
+                    const book = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.4, 2.0), [pages, purple, top, purple, pages, pages]);
+                    book.position.y = 0.2;
+                    book.castShadow = true;
+                    g.add(book);
+                    box(g, 1.54, 0.05, 2.04, 0x6a3fa0, 0, 0.025, 0).castShadow = false;   // back cover
+                    box(g, 0.08, 0.44, 2.04, 0x4a2a78, -0.74, 0.22, 0);            // spine
+                    const ribbon = box(g, 0.08, 0.02, 0.5, 0xd0202a, -0.3, 0.2, 1.1);     // bookmark
+                    ribbon.rotation.x = 0.5;
+                    return g;
+                }
+            },
+            {
+                name: 'Soccer Ball', emoji: '⚽', mass: 2, bouncy: true,
+                power: { name: 'MEGA KICK', emoji: '⚽', type: 'jump', v: 17, color: 0xffffff, snd: 'kick' },
+                build() {
+                    const g = new THREE.Group();
+                    sph(g, 0.7, 0xf8f8f4, 0, 0.7, 0);
+                    // black pentagon patches on the 12 corners of an icosahedron
+                    const ico = new THREE.IcosahedronGeometry(1, 0).attributes.position;
+                    const seen = [];
+                    for (let i = 0; i < ico.count; i++) {
+                        const v = new THREE.Vector3(ico.getX(i), ico.getY(i), ico.getZ(i)).normalize();
+                        if (seen.some(s => s.distanceTo(v) < 0.1)) continue;
+                        seen.push(v);
+                        const patch = new THREE.Mesh(new THREE.CircleGeometry(0.22, 5), mat(0x1c1c22));
+                        patch.position.copy(v).multiplyScalar(0.705).add(new THREE.Vector3(0, 0.7, 0));
+                        patch.lookAt(patch.position.clone().add(v));
+                        g.add(patch);
+                    }
+                    return g;
+                }
+            },
+            {
+                name: 'Giant Fish', emoji: '🐟', mass: 3, floats: true, swims: true,
+                power: { name: 'SWIM DASH', emoji: '🐟', type: 'dive', a: 30, color: 0x8fd3ff, snd: 'splash' },
+                build() {
+                    const g = new THREE.Group();
+                    const orange = 0xff8c1a, white = 0xfdf6e8;
+                    sph(g, 0.55, orange, 0, 0.6, 0, 0.75, 1, 1.6);               // body
+                    box(g, 0.84, 0.9, 0.16, white, 0, 0.6, -0.25).castShadow = false;   // white stripes
+                    box(g, 0.8, 0.8, 0.14, white, 0, 0.6, 0.4).castShadow = false;
+                    sph(g, 0.09, 0xffffff, -0.3, 0.75, -0.6);                     // eyes
+                    sph(g, 0.09, 0xffffff, 0.3, 0.75, -0.6);
+                    sph(g, 0.05, 0x1c1c22, -0.35, 0.76, -0.64);
+                    sph(g, 0.05, 0x1c1c22, 0.35, 0.76, -0.64);
+                    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.6, 4), mat(orange));
+                    tail.rotation.x = -Math.PI / 2;                               // tail fin at the back
+                    tail.scale.set(0.25, 1, 1);
+                    tail.position.set(0, 0.6, 1.05);
+                    tail.castShadow = true;
+                    g.add(tail);
+                    const dorsal = box(g, 0.06, 0.35, 0.5, orange, 0, 1.12, 0.05);   // back fin
+                    dorsal.rotation.x = -0.3;
+                    for (const sx of [-1, 1]) {                                   // side fins
+                        const fin = box(g, 0.3, 0.05, 0.22, orange, sx * 0.45, 0.45, -0.1);
+                        fin.rotation.z = sx * -0.5;
+                    }
+                    return g;
+                }
             }
         ];
 
@@ -1923,6 +2094,29 @@
             return g;
         }
 
+        // Bomb bay: glue it on (the bottom is best!) and press 0 to drop a bomb. KABOOM!
+        function buildBombBay() {
+            const g = new THREE.Group();
+            box(g, 0.3, 0.1, 0.46, 0x3a3d42, 0, 0.05, 0);                        // rack
+            const bomb = buildBomb();
+            bomb.position.y = -0.12;
+            g.add(bomb);
+            g.userData.bomb = bomb;
+            return g;
+        }
+        // the bomb itself points along -Z, fins at the back (+Z)
+        function buildBomb() {
+            const bomb = new THREE.Group();
+            const shell = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.28, 4, 10), mat(0x3f5a2f));
+            shell.rotation.x = Math.PI / 2;
+            shell.castShadow = true;
+            bomb.add(shell);
+            box(bomb, 0.26, 0.02, 0.1, 0x2b2b2b, 0, 0, 0.24);                    // fins
+            box(bomb, 0.02, 0.26, 0.1, 0x2b2b2b, 0, 0, 0.24);
+            box(bomb, 0.23, 0.03, 0.05, 0xd03a2c, 0, 0.1, -0.05).castShadow = false;   // red band
+            return bomb;
+        }
+
         // Every aircraft needs a pilot! A tiny brave human rides on top.
         function buildPilot() {
             const g = new THREE.Group();
@@ -2021,6 +2215,7 @@
             else if (data.type === 'prop') g = buildProp(data.key);
             else if (data.type === 'block') g = buildBlock(data.c || 0);
             else if (data.type === 'gun') g = buildGun();
+            else if (data.type === 'bomb') g = buildBombBay();
             else if (data.type === 'wheel') g = buildWheel();
             else if (data.type === 'aileron') g = buildAileron();
             else if (data.type === 'tail') g = buildTail();
@@ -2087,6 +2282,7 @@
             const tailCount = design.parts.filter(p => p.type === 'tail').length;
             const wheels = partEntries.filter(e => e.data.type === 'wheel');
             const guns = partEntries.filter(e => e.data.type === 'gun');
+            const bombs = partEntries.filter(e => e.data.type === 'bomb');
 
             // mass + center of mass
             let m = bodyDef.mass;
@@ -2102,7 +2298,7 @@
             const fs = full.getSize(new THREE.Vector3());
             const inertia = Math.max(0.6, m * (fs.x * fs.x + fs.y * fs.y + fs.z * fs.z) / 9);
 
-            return { group, bodyGroup, bodyMeshes, bboxMesh, wingMeshes, blockMeshes, bbox, size, center, partEntries, wingCount, aileronCount, tailCount, wheels, guns, mass: m, comLocal: com, inertia, bodyDef };
+            return { group, bodyGroup, bodyMeshes, bboxMesh, wingMeshes, blockMeshes, bbox, size, center, partEntries, wingCount, aileronCount, tailCount, wheels, guns, bombs, mass: m, comLocal: com, inertia, bodyDef };
         }
 
         // contact points in craft-local space
@@ -2119,12 +2315,13 @@
             }
             if (includeParts) {
                 for (const e of craft.partEntries) {
+                    // wing tips carry `part`: if they scrape the ground the wing snaps off
                     if (e.data.type === 'wheel') pts.push({ p: e.posLocal.clone().add(new THREE.Vector3(0, -0.6, 0)), wheel: true });
-                    else if (e.data.type === 'wingL') pts.push({ p: e.posLocal.clone().add(new THREE.Vector3(-1.3, 0, 0)), wheel: false });
-                    else if (e.data.type === 'wingR') pts.push({ p: e.posLocal.clone().add(new THREE.Vector3(1.3, 0, 0)), wheel: false });
+                    else if (e.data.type === 'wingL') pts.push({ p: e.posLocal.clone().add(new THREE.Vector3(-1.3, 0, 0)), wheel: false, part: e });
+                    else if (e.data.type === 'wingR') pts.push({ p: e.posLocal.clone().add(new THREE.Vector3(1.3, 0, 0)), wheel: false, part: e });
                     else if (e.data.type === 'aileron') {
-                        pts.push({ p: e.posLocal.clone().add(new THREE.Vector3(0.62, 0, 0)), wheel: false });
-                        pts.push({ p: new THREE.Vector3(-e.posLocal.x - 0.62, e.posLocal.y, e.posLocal.z), wheel: false });
+                        pts.push({ p: e.posLocal.clone().add(new THREE.Vector3(0.62, 0, 0)), wheel: false, part: e });
+                        pts.push({ p: new THREE.Vector3(-e.posLocal.x - 0.62, e.posLocal.y, e.posLocal.z), wheel: false, part: e });
                     }
                     else if (e.data.type === 'tail') pts.push({ p: e.posLocal.clone().add(new THREE.Vector3(0, 0.05, 0.35)), wheel: false });
                     else if (e.data.type === 'booster') pts.push({ p: e.posLocal.clone().addScaledVector(new THREE.Vector3().fromArray(e.data.normal).normalize(), 0.7), wheel: false });
@@ -2149,11 +2346,12 @@
         scene.add(editorEnv);
 
         let flightEnv = null;
-        let skyDome = null;
+        let skyDome = null, sunSprite = null;
         const clouds = [];
         const balloons = [];
         const turbines = [];
         const birds = [];
+        const lavaBalls = [];
         let lakeTex = null, oceanTex = null;   // animated so the water actually moves
         let colliders = [];   // stuff you can CRASH into: mountains, trees, houses, skyscrapers...
 
@@ -2328,6 +2526,7 @@
             sun.position.set(6800, 5200, -10400);
             sun.scale.set(2600, 2600, 1);
             env.add(sun);
+            sunSprite = sun;
 
             // ----- ground: REAL rolling terrain near the action, flat beyond -----
             const groundTexFar = makeGroundTexture();
@@ -2391,11 +2590,30 @@
             oceanTex = makeWaterTexture('#2f6fb5', '#7fb8e0');
             oceanTex.repeat.set(34, 34);
             for (const w of WATERS) {
+                let surf;
                 if (w.r > 500) {   // the ocean gets a beach
                     flatCircle(w.x, w.z, w.r + 45, 0xe8d49a, 0.012, 48);
-                    flatCircle(w.x, w.z, w.r, 0xffffff, 0.035, 48, oceanTex);
+                    surf = flatCircle(w.x, w.z, w.r, 0xffffff, 0.035, 48, oceanTex);
                 } else {
-                    flatCircle(w.x, w.z, w.r, 0xffffff, 0.03, 28, lakeTex);
+                    surf = flatCircle(w.x, w.z, w.r, 0xffffff, 0.03, 28, lakeTex);
+                }
+                surf.material.side = THREE.DoubleSide;   // look UP at the waves from underwater
+                // the bottom: sand, rocks and swaying seaweed (only swimmers ever see it!)
+                const depth = waterDepth(w);
+                flatCircle(w.x, w.z, w.r, 0xc8b27a, -depth, w.r > 500 ? 40 : 24);
+                const nWeed = w.r > 500 ? 110 : 10;
+                for (let i = 0; i < nWeed; i++) {
+                    const a = rand(0, Math.PI * 2), r = rand(0, w.r - 10);
+                    const wx = w.x + Math.cos(a) * r, wz = w.z + Math.sin(a) * r;
+                    if (!waterAt(wx, wz)) continue;
+                    if (i % 3 === 0) {
+                        sph(env, rand(0.8, 2.2), 0x6f6a62, wx, -depth + 0.4, wz, 1, 0.6, 1).castShadow = false;
+                    } else {
+                        const hgt = rand(2.5, Math.min(9, depth - 2));
+                        const weed = box(env, 0.35, hgt, 0.12, i % 2 ? 0x2f8a3e : 0x4fae4a, wx, -depth + hgt / 2, wz);
+                        weed.rotation.set(rand(-0.2, 0.2), rand(0, 3), rand(-0.2, 0.2));
+                        weed.castShadow = false;
+                    }
                 }
             }
             {   // the island (with its own airstrip and palm trees!)
@@ -2483,16 +2701,52 @@
                 }
             }
 
-            // ----- THE VOLCANO -----
-            {
-                const cone = new THREE.Mesh(new THREE.ConeGeometry(VOLCANO.r, VOLCANO.h, 8), mat(0x4a3f3c));
-                cone.position.set(VOLCANO.x, VOLCANO.h / 2 - 6, VOLCANO.z);
+            // ----- VOLCANOES: smoking, glowing, and 50/50 ready to BLOW -----
+            const smokeMat = new THREE.SpriteMaterial({ map: puffTex, color: 0x6a6460, transparent: true, opacity: 0.5, depthWrite: false });
+            for (const V of VOLCANOES) {
+                const topR = V.r * 0.2, topY = V.h - 6;
+                const cone = new THREE.Mesh(new THREE.CylinderGeometry(topR, V.r, V.h, 18, 1, true), mat(0x4a3f3c, { side: THREE.DoubleSide }));
+                cone.position.set(V.x, V.h / 2 - 6, V.z);
                 env.add(cone);
-                const lava = new THREE.Mesh(new THREE.CylinderGeometry(VOLCANO.r * 0.22, VOLCANO.r * 0.3, 14, 8),
-                    new THREE.MeshBasicMaterial({ color: 0xff5a1a }));
-                lava.position.set(VOLCANO.x, VOLCANO.h - 12, VOLCANO.z);
+                const glowMat = new THREE.MeshBasicMaterial({ color: 0xff5a1a });
+                const lava = new THREE.Mesh(new THREE.CircleGeometry(topR * 0.98, 18), glowMat);   // bubbling crater
+                lava.rotation.x = -Math.PI / 2;
+                lava.position.set(V.x, topY - 10, V.z);
                 env.add(lava);
-                colliders.push({ x: VOLCANO.x, z: VOLCANO.z, r: VOLCANO.r * 0.85, h: VOLCANO.h - 6, cone: true, what: 'volcano' });
+                const pit = new THREE.Mesh(new THREE.CylinderGeometry(topR * 0.98, topR * 0.98, 10, 18, 1, true), mat(0x2b2220, { side: THREE.BackSide }));
+                pit.position.set(V.x, topY - 5, V.z);
+                env.add(pit);
+                // glowing lava rivers running down the sides
+                for (let i = 0; i < 5; i++) {
+                    const a = (i / 5) * Math.PI * 2 + rand(-0.3, 0.3);
+                    const f0 = 1.02, f1 = rand(0.45, 0.8);   // from the rim down part-way
+                    const r0 = topR * f0, r1 = topR + (V.r - topR) * f1;
+                    const y0 = topY, y1 = topY * (1 - f1);
+                    const p0 = new THREE.Vector3(V.x + Math.cos(a) * r0, y0 + 0.5, V.z + Math.sin(a) * r0);
+                    const p1 = new THREE.Vector3(V.x + Math.cos(a) * (r1 + 1.5), y1 + 0.5, V.z + Math.sin(a) * (r1 + 1.5));
+                    const river = new THREE.Mesh(new THREE.BoxGeometry(rand(4, 7), 1, p0.distanceTo(p1)), glowMat);
+                    river.position.copy(p0).lerp(p1, 0.5);
+                    river.lookAt(p1);
+                    env.add(river);
+                }
+                colliders.push({ x: V.x, z: V.z, r: V.r * 0.85, h: V.h - 6, cone: true, what: 'volcano' });
+                // a lazy smoke plume that never stops
+                const smoke = [];
+                for (let i = 0; i < 10; i++) {
+                    const sp = new THREE.Sprite(smokeMat.clone());
+                    sp.userData.t = i / 10;
+                    env.add(sp);
+                    smoke.push(sp);
+                }
+                V.fx = { top: new THREE.Vector3(V.x, topY, V.z), smoke, inside: false, eruptT: 0, killT: 0 };
+            }
+            lavaBalls.length = 0;
+            for (let i = 0; i < 60; i++) {
+                const ball = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), new THREE.MeshBasicMaterial({ color: i % 3 ? 0xff5a1a : 0xffb347 }));
+                ball.visible = false;
+                ball.userData.vel = new THREE.Vector3();
+                env.add(ball);
+                lavaBalls.push(ball);
             }
 
             // ----- cities (three of them — fly between the skyscrapers!) -----
@@ -2528,7 +2782,7 @@
                     if (DESERTS.some(D => nearZone(x, z, D, 10))) continue;
                     if (SNOWS.some(S => nearZone(x, z, S, 10))) continue;
                     if (CITIES.some(C => nearZone(x, z, C, 40))) continue;
-                    if (nearZone(x, z, VOLCANO, 30)) continue;
+                    if (VOLCANOES.some(V => nearZone(x, z, V, 30))) continue;
                     return [x, z];
                 }
                 return null;
@@ -2621,7 +2875,7 @@
                 !DESERTS.some(D => nearZone(cx, cz, D, mr)) &&
                 !SNOWS.some(S => nearZone(cx, cz, S, mr)) &&
                 !RUNWAYS.some(rw => Math.hypot(cx - rw.x, cz - rw.z) < mr + 190) &&
-                !nearZone(cx, cz, VOLCANO, mr + 60);
+                !VOLCANOES.some(V => nearZone(cx, cz, V, mr + 60));
             for (let i = 0; i < 6; i++) {
                 const a = rand(-0.9, 1.6);
                 const r = rand(550, 950);
@@ -2871,7 +3125,29 @@
             quack() { this.beep(280, 0.12, 'sawtooth', 0.2); this.beep(200, 0.15, 'sawtooth', 0.18, 0.1); },
             chord() { [523, 659, 784].forEach(f => this.beep(f, 0.5, 'triangle', 0.15)); },
             pew() { this.beep(1150, 0.06, 'square', 0.1); this.beep(720, 0.07, 'square', 0.08, 0.03); },
-            boom() { this.beep(75, 0.4, 'sawtooth', 0.25); this.beep(115, 0.3, 'triangle', 0.2, 0.05); }
+            boom() { this.beep(75, 0.4, 'sawtooth', 0.25); this.beep(115, 0.3, 'triangle', 0.2, 0.05); },
+            honk() { this.beep(330, 0.22, 'sawtooth', 0.16); this.beep(415, 0.22, 'sawtooth', 0.12); this.beep(330, 0.3, 'sawtooth', 0.16, 0.28); this.beep(415, 0.3, 'sawtooth', 0.12, 0.28); },
+            kick() { this.beep(140, 0.08, 'square', 0.25); this.beep(90, 0.12, 'triangle', 0.25, 0.02); },
+            // shaped noise: hisses, rumbles and big explosions
+            noise(dur, freq, vol, type = 'lowpass', when = 0) {
+                if (!this.ctx || this.muted) return;
+                const len = Math.floor(this.ctx.sampleRate * dur);
+                const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+                const d = buf.getChannelData(0);
+                for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 1.5);
+                const src = this.ctx.createBufferSource();
+                src.buffer = buf;
+                const f = this.ctx.createBiquadFilter();
+                f.type = type;
+                f.frequency.value = freq;
+                const g = this.ctx.createGain();
+                g.gain.value = vol;
+                src.connect(f).connect(g).connect(this.ctx.destination);
+                src.start(this.ctx.currentTime + when);
+            },
+            hiss() { this.noise(0.6, 5000, 0.18, 'highpass'); },
+            kaboom() { this.noise(1.2, 380, 0.7); this.beep(55, 0.8, 'sawtooth', 0.3); },
+            rumble() { this.noise(2.5, 120, 0.9); this.beep(38, 2.2, 'sine', 0.35); }
         };
         function setMuted(m) {
             Sound.muted = m;
@@ -3029,15 +3305,15 @@
             drag.cand = null;
             drag.ghost.visible = false;
 
-            if (drag.type === 'booster' || drag.type === 'prop' || drag.type === 'block' || drag.type === 'gun') {
-                // boosters, propellers, blocks and blasters glue to the body, wings, OR other blocks
+            if (drag.type === 'booster' || drag.type === 'prop' || drag.type === 'block' || drag.type === 'gun' || drag.type === 'bomb') {
+                // boosters, propellers, blocks, blasters and bombs glue to the body, wings, OR other blocks
                 const hits = raycaster.intersectObjects([...craft.bodyMeshes, ...craft.wingMeshes, ...craft.blockMeshes], false);
                 if (hits.length) {
                     const h = hits[0];
                     const n = h.face.normal.clone().transformDirection(h.object.matrixWorld).normalize();
                     drag.ghost.position.copy(h.point);
                     // blasters always aim straight ahead; everything else sticks out along the surface
-                    if (drag.type === 'gun') drag.ghost.quaternion.identity();
+                    if (drag.type === 'gun' || drag.type === 'bomb') drag.ghost.quaternion.identity();
                     else drag.ghost.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
                     drag.ghost.visible = true;
                     const pi = partIndexFromObject(h.object);
@@ -3369,9 +3645,10 @@
         }
 
         function partCounts(d) {
-            const n = { booster: 0, prop: 0, wheel: 0, wing: 0, ctrl: 0, block: 0, gun: 0 };
+            const n = { booster: 0, prop: 0, wheel: 0, wing: 0, ctrl: 0, block: 0, gun: 0, bomb: 0 };
             for (const p of d.parts) {
                 if (p.type === 'booster') n.booster++;
+                else if (p.type === 'bomb') n.bomb++;
                 else if (p.type === 'prop') n.prop++;
                 else if (p.type === 'block') n.block++;
                 else if (p.type === 'gun') n.gun++;
@@ -3381,7 +3658,7 @@
             }
             return `🚀${n.booster} &nbsp;🛞${n.wheel} &nbsp;✈️${n.wing}`
                 + (n.prop ? ` &nbsp;🌀${n.prop}` : '') + (n.block ? ` &nbsp;🧱${n.block}` : '')
-                + (n.gun ? ` &nbsp;🔫${n.gun}` : '') + (n.ctrl ? ` &nbsp;🕹️${n.ctrl}` : '');
+                + (n.gun ? ` &nbsp;🔫${n.gun}` : '') + (n.bomb ? ` &nbsp;💣${n.bomb}` : '') + (n.ctrl ? ` &nbsp;🕹️${n.ctrl}` : '');
         }
 
         function openHangar() {
@@ -3496,7 +3773,7 @@
             airTime: 0, maxAlt: 0, landTimer: 0, grounded: true, lowY: 0,
             floating: false, wasFloating: false, chute: null, powerDef: null,
             camPos: new THREE.Vector3(), lastHead: new THREE.Vector3(0, 0, -1),
-            overlayTimer: null, debris: []
+            overlayTimer: null, debris: [], bounceT: 0
         };
         const activeKeys = new Set();
 
@@ -3516,7 +3793,7 @@
             return n;
         }
 
-        // ----- SUPERPOWERS (the + key) — every body has one! -----
+        // ----- SUPERPOWERS (the > key) — every body has one! -----
         const powerState = { held: false, cooldown: 0, antigrav: 0, slowfall: 0, eat: null, regen: 0 };
 
         function getPowerDef() {
@@ -3557,7 +3834,7 @@
                     powerState.held = true;
                     powerSound(def);
                     toast(def.type === 'dive' && flight.floating
-                        ? '🫧 DIVE DIVE DIVE! Periscope up!'
+                        ? `${def.emoji} DIVE DIVE DIVE! Swim all the way to the bottom!`
                         : `${def.emoji} ${def.name}!!`, 1300);
                     updateBoosterButtonStates();
                 }
@@ -3977,7 +4254,7 @@
             }
         }
 
-        // ----- BLASTERS (Enter key) — pew pew at balloons and robots! -----
+        // ----- BLASTERS (< or Enter) — pew pew at balloons and robots! -----
         let gunHeld = false;
         let gunCooldown = 0;
         const bullets = [];
@@ -4016,6 +4293,77 @@
         function clearBullets() {
             for (const b of bullets) { scene.remove(b.mesh); bulletPool.push(b); }
             bullets.length = 0;
+        }
+
+        // ----- BOMBS (0 key) — drop them on robots from way up high! -----
+        const liveBombs = [];
+        function dropBombs() {
+            if (mode !== 'flight' || !craft.bombs.length || flight.broken || flight.finished || flight.chute) return;
+            let n = 0;
+            for (const e of craft.bombs) {
+                if (e.reload > 0) continue;
+                const mesh = buildBomb();
+                e.group.userData.bomb.getWorldPosition(mesh.position);
+                scene.add(mesh);
+                liveBombs.push({ mesh, vel: phys.vel.clone().add(tmpV1.set(0, -1.5, 0)) });
+                e.reload = 0.9;
+                e.group.userData.bomb.visible = false;
+                n++;
+            }
+            if (n) Sound.beep(700, 0.25, 'sine', 0.12);
+            if (n) Sound.beep(300, 0.5, 'sine', 0.1, 0.1);   // wheeeee-oooo
+        }
+        function updateBombs(dt) {
+            for (const e of craft.bombs) {
+                if (e.reload > 0) {
+                    e.reload -= dt;
+                    if (e.reload <= 0) e.group.userData.bomb.visible = true;
+                }
+            }
+            for (let i = liveBombs.length - 1; i >= 0; i--) {
+                const b = liveBombs[i];
+                b.vel.y -= G * dt;
+                b.mesh.position.addScaledVector(b.vel, dt);
+                b.mesh.lookAt(tmpV1.copy(b.mesh.position).sub(b.vel));   // nose points where it's going
+                const p = b.mesh.position;
+                const inWater = waterAt(p.x, p.z);
+                const floor = inWater ? 0 : groundHeightAt(p.x, p.z);
+                if (p.y <= floor) {
+                    p.y = floor;
+                    explode(p, 16, !!inWater);
+                    scene.remove(b.mesh);
+                    disposeObject(b.mesh);
+                    liveBombs.splice(i, 1);
+                }
+            }
+        }
+        function clearBombs() {
+            for (const b of liveBombs) { scene.remove(b.mesh); disposeObject(b.mesh); }
+            liveBombs.length = 0;
+        }
+        // one big KABOOM: hurts every robot, balloon (and critter) nearby
+        const blastListeners = [];
+        function explode(pos, radius, water = false) {
+            Sound.kaboom();
+            for (let i = 0; i < 22; i++) {
+                const hot = i < 10;
+                spawnPuff(pos.clone().add(tmpV1.set(rand(-2, 2), rand(0, 2), rand(-2, 2))),
+                    new THREE.Vector3(rand(-6, 6), rand(3, 12), rand(-6, 6)),
+                    water ? (hot ? 0xffffff : 0x8fd3ff) : (hot ? [0xff5a1a, 0xffb347, 0xffe14d][i % 3] : 0x555555),
+                    rand(2, 4), rand(0.8, 1.5));
+            }
+            if (pos.distanceTo(phys.pos) < 60) {
+                $('flash').style.background = '#ffb347';
+                $('flash').style.opacity = 0.3;
+                setTimeout(() => { $('flash').style.opacity = 0; }, 120);
+            }
+            if (battle.active) {
+                for (const bot of battle.bots)
+                    if (!bot.dead && bot.pos.distanceTo(pos) < radius) { hitBot(bot); if (!bot.dead) hitBot(bot); }
+            }
+            for (const bal of balloons)
+                if (bal.visible && bal.position.distanceTo(pos) < radius + 7) popBalloon(bal);
+            for (const fn of blastListeners) fn(pos, radius);
         }
 
         function popBalloon(bal) {
@@ -4241,6 +4589,8 @@
             editorEnv.visible = false;
             scene.background = new THREE.Color(0x87c8f0);
             scene.fog = new THREE.Fog(0xcfe8f7, 550, 5200);
+            underwaterView = false;
+            skyFog = scene.fog;
             setShadowBox(16);
             resetFlight();
 
@@ -4267,8 +4617,9 @@
             }
             const extras = [];
             if (nThrust >= 2) extras.push('<b>SPACE</b> = ALL at once!');
-            if (flight.powerDef) extras.push(`<b>+</b> = ${flight.powerDef.emoji} <b>${flight.powerDef.name}</b>`);
-            if (craft.guns.length) extras.push('<b>−</b> = 🔫 FIRE!');
+            if (flight.powerDef) extras.push(`<b>&gt;</b> = ${flight.powerDef.emoji} <b>${flight.powerDef.name}</b>`);
+            if (craft.guns.length) extras.push('<b>&lt;</b> = 🔫 FIRE!');
+            if (craft.bombs.length) extras.push('<b>0</b> = 💣 BOMBS AWAY!');
             extras.push('<b>?</b> = 🪂');
             hint += `<br><span style="font-size:13px;color:#777">${extras.join(' &nbsp;·&nbsp; ')}`
                 + (craft.bodyDef.power === 'hotdog' ? '<br>psst… SAVE it named “Hot Dog 2.0” (or 3.0, or 4.0…) for SECRET powers! 🤫' : '')
@@ -4327,6 +4678,7 @@
             camera.lookAt(phys.pos);
 
             clearBullets();
+            clearBombs();
             gunHeld = false;
             gunCooldown = 0;
             battle.won = false;
@@ -4346,6 +4698,8 @@
             clearChute();
             clearBots();
             clearBullets();
+            clearBombs();
+            setUnderwaterView(false);
             battle.active = false;
             gunHeld = false;
             spaceAll = false;
@@ -4400,18 +4754,26 @@
                 const fb = document.createElement('button');
                 fb.className = 'bbtn fire-btn';
                 fb.textContent = '🔫';
-                fb.title = 'FIRE! (- key, or Enter)';
+                fb.title = 'FIRE! (< key, or Enter)';
                 fb.addEventListener('pointerdown', (e) => { e.preventDefault(); gunHeld = true; if (gunCooldown <= 0) fireGuns(); });
                 for (const evName of ['pointerup', 'pointerleave', 'pointercancel'])
                     fb.addEventListener(evName, () => { gunHeld = false; });
                 boosterBtnsEl.appendChild(fb);
             }
+            if (craft.bombs.length) {
+                const bb = document.createElement('button');
+                bb.className = 'bbtn fire-btn';
+                bb.textContent = '💣';
+                bb.title = 'Drop a bomb! (0 key)';
+                bb.addEventListener('pointerdown', (e) => { e.preventDefault(); dropBombs(); });
+                boosterBtnsEl.appendChild(bb);
+            }
             if (flight.powerDef) {
                 const pb = document.createElement('button');
                 pb.className = 'bbtn power-btn';
                 pb.id = 'power-btn';
-                pb.textContent = '➕';
-                pb.title = `Superpower: ${flight.powerDef.name} (+ key)`;
+                pb.textContent = '⚡';
+                pb.title = `Superpower: ${flight.powerDef.name} (> key)`;
                 pb.addEventListener('pointerdown', (e) => { e.preventDefault(); powerPress(); });
                 for (const evName of ['pointerup', 'pointerleave', 'pointercancel'])
                     pb.addEventListener(evName, () => powerRelease());
@@ -4505,7 +4867,7 @@
                 }
                 return;
             }
-            if (e.key === '+' || e.key === '=') {                  // + : SUPERPOWER!
+            if (e.key === '>' || e.key === '.') {                  // > : SUPERPOWER!
                 if (!e.repeat) { Sound.init(); powerPress(); }
                 return;
             }
@@ -4513,8 +4875,12 @@
                 if (!e.repeat) { Sound.init(); deployParachute(); }
                 return;
             }
-            if (e.key === 'Enter' || e.key === '-' || e.key === '_') {   // MINUS (or Enter): FIRE THE BLASTERS!
+            if (e.key === 'Enter' || e.key === '<' || e.key === ',') {   // < (or Enter): FIRE THE BLASTERS!
                 if (!e.repeat) { Sound.init(); gunHeld = true; if (gunCooldown <= 0) fireGuns(); }
+                return;
+            }
+            if (e.key === '0' || e.key === ')') {                  // 0 : BOMBS AWAY!
+                if (!e.repeat) { Sound.init(); dropBombs(); }
                 return;
             }
             if (e.repeat) return;
@@ -4528,8 +4894,8 @@
                 return;
             }
             if (e.key === ' ') { if (flight.chute) closeChuteCanopy(); setSpaceAll(false); return; }
-            if (e.key === '+' || e.key === '=') { powerRelease(); return; }
-            if (e.key === 'Enter' || e.key === '-' || e.key === '_') { gunHeld = false; return; }
+            if (e.key === '>' || e.key === '.') { powerRelease(); return; }
+            if (e.key === 'Enter' || e.key === '<' || e.key === ',') { gunHeld = false; return; }
             const k = e.key.toUpperCase();
             if (KEY_ORDER.includes(k)) releaseKey(k);
         });
@@ -4652,10 +5018,15 @@
             const angDamp = 0.9 + 1.1 * Math.min(craft.wingCount, 2) + (flight.broken ? 1.5 : 0);
             phys.angVel.multiplyScalar(Math.exp(-h * angDamp));
             phys.pos.addScaledVector(phys.vel, h);
-            // periscope depth: deep enough to hide the hull, shallow enough to see out
-            if (powerState.held && flight.powerDef && flight.powerDef.type === 'dive' && phys.pos.y < -1.6) {
-                phys.pos.y = -1.6;
-                if (phys.vel.y < 0) phys.vel.y = 0;
+            // floaters stop at periscope depth — but swimmers (sub + fish) dive all
+            // the way down to the bottom of the lake or ocean!
+            if (craft.bodyDef.floats && phys.pos.y < -1.6) {
+                const w = craft.bodyDef.swims ? waterAt(phys.pos.x, phys.pos.z) : null;
+                const floor = w ? -waterDepth(w) + 1.2 : -1.6;
+                if (phys.pos.y < floor) {
+                    phys.pos.y = floor;
+                    if (phys.vel.y < 0) phys.vel.y = 0;
+                }
             }
 
             const w = phys.angVel;
@@ -4668,6 +5039,7 @@
         function resolveContacts(h) {
             let maxPen = 0, grounded = false, minY = Infinity;
             let submerged = 0, buoy = 0;
+            let snapped = null;   // wings that scraped the ground this step
             const fwd = AXIS_FWD.clone().applyQuaternion(phys.quat);
             const fwdG = tmpV3.set(fwd.x, 0, fwd.z);
             if (fwdG.lengthSq() > 0.01) fwdG.normalize(); else fwdG.set(0, 0, -1);
@@ -4690,19 +5062,30 @@
                 minY = Math.min(minY, py - gLevel);
                 if (py >= gLevel) continue;
 
+                // a wing tip hit the ground: the WING snaps off — but you keep flying!
+                if (c.part && !flight.broken && !flight.finished) {
+                    (snapped || (snapped = new Set())).add(c.part);
+                    continue;
+                }
+
                 grounded = true;
                 maxPen = Math.max(maxPen, gLevel - py);
 
                 const vP = phys.vel.clone().add(tmpV1.copy(phys.angVel).cross(r));
                 const vn = vP.y;
+                const bouncy = craft.bodyDef.bouncy && !c.wheel;
 
                 if (!flight.broken && !flight.finished) {
                     if (water) { triggerCrash(true); }
-                    else if (vn < -(c.wheel ? CRASH_WHEEL_V : CRASH_BODY_V)) { triggerCrash(false); }
+                    else if (!bouncy && vn < -(c.wheel ? CRASH_WHEEL_V : CRASH_BODY_V)) { triggerCrash(false); }
+                }
+                if (bouncy && vn < -4 && flight.bounceT <= 0) {   // BOING — soccer balls never crash
+                    Sound.kick();
+                    flight.bounceT = 0.25;
                 }
 
                 if (vn < 0) {
-                    const e = c.wheel ? 0.18 : 0.08;
+                    const e = c.wheel ? 0.18 : (bouncy && vn < -1.5 ? 0.78 : 0.08);
                     const rn = new THREE.Vector3().crossVectors(r, WORLD_UP);
                     const kEff = 1 / phys.m + rn.lengthSq() / phys.I;
                     const j = -(1 + e) * vn / kEff;
@@ -4731,15 +5114,23 @@
                 }
             }
             if (maxPen > 0) phys.pos.y += maxPen * 0.85;
+            if (snapped) breakOffParts([...snapped]);
 
             // buoyancy: bob on the water like a rubber ducky in a tub
             flight.floating = submerged > 0;
             if (flight.floating) {
                 const f = clamp(buoy / 2, 0, 1.6);
                 // a diving submarine fights its own buoyancy
-                const diveDamp = (powerState.held && flight.powerDef && flight.powerDef.type === 'dive') ? 0.12 : 1;
-                phys.vel.y += h * G * (1.15 + 0.9 * f) * f * diveDamp;
-                phys.vel.y *= Math.exp(-h * (diveDamp < 1 ? 0.8 : 4) * f);
+                const diving = powerState.held && flight.powerDef && flight.powerDef.type === 'dive';
+                const diveDamp = diving ? 0.12 : 1;
+                if (craft.bodyDef.swims && phys.pos.y < -2.5) {
+                    // deep underwater, swimmers hover like fish — and drift up slowly when you let go
+                    phys.vel.y += h * G;
+                    if (!diving) phys.vel.y += (3 - phys.vel.y) * Math.min(1, h * 1.2);
+                } else {
+                    phys.vel.y += h * G * (1.15 + 0.9 * f) * f * diveDamp;
+                    phys.vel.y *= Math.exp(-h * (diveDamp < 1 ? 0.8 : 4) * f);
+                }
                 phys.vel.x *= Math.exp(-h * 0.9 * f);
                 phys.vel.z *= Math.exp(-h * 0.9 * f);
                 phys.angVel.multiplyScalar(Math.exp(-h * 2.5 * f));
@@ -4765,8 +5156,10 @@
             checkObstacles();
             updatePowers(dt);
             gunCooldown -= dt;
+            flight.bounceT -= dt;
             if (gunHeld && gunCooldown <= 0) fireGuns();
             updateBullets(dt);
+            updateBombs(dt);
             updateBattle(dt);
 
             // control-surface animation
@@ -4872,8 +5265,61 @@
             balloon: 'You flew into a hot air balloon! 🎈💥',
             turbine: 'You flew into a wind turbine! 🌬️💥',
             volcano: 'You crashed into the VOLCANO! 🌋',
+            eruption: 'The VOLCANO ERUPTED right under you!! 🌋🔥 It was a 50/50… try your luck again!',
+            lava: 'You got hit by a flying LAVA BOMB! 🌋🔥',
             shot: 'The robots shot you down! 🤖 Glue on more 🔫 blasters and get revenge!'
         };
+        function detachAsDebris(e) {
+            const wp = new THREE.Vector3(), wq = new THREE.Quaternion();
+            e.group.getWorldPosition(wp);
+            e.group.getWorldQuaternion(wq);
+            craft.group.remove(e.group);
+            e.group.position.copy(wp);
+            e.group.quaternion.copy(wq);
+            if (e.group.userData.flame) e.group.userData.flame.visible = false;
+            scene.add(e.group);
+            flight.debris.push({
+                mesh: e.group,
+                vel: phys.vel.clone().multiplyScalar(0.6).add(new THREE.Vector3(rand(-4, 4), rand(2, 6), rand(-4, 4))),
+                angVel: new THREE.Vector3(rand(-6, 6), rand(-6, 6), rand(-6, 6)),
+                resting: false
+            });
+        }
+
+        // A wing scraped the ground: it (and anything glued to it) rips off,
+        // and you keep flying with whatever is left!
+        function breakOffParts(list) {
+            const ids = new Set(list.map(e => e.data.id).filter(Boolean));
+            let grew = true;
+            while (grew) {
+                grew = false;
+                for (const e of craft.partEntries)
+                    if (e.data.parent && ids.has(e.data.parent) && e.data.id && !ids.has(e.data.id)) { ids.add(e.data.id); grew = true; }
+            }
+            const gone = craft.partEntries.filter(e => list.includes(e) || (e.data.id && ids.has(e.data.id)));
+            if (!gone.length) return;
+            for (const e of gone) {
+                detachAsDebris(e);
+                activeKeys.delete(e.key);
+            }
+            craft.partEntries = craft.partEntries.filter(e => !gone.includes(e));
+            craft.guns = craft.partEntries.filter(e => e.data.type === 'gun');
+            craft.bombs = craft.partEntries.filter(e => e.data.type === 'bomb');
+            craft.wheels = craft.partEntries.filter(e => e.data.type === 'wheel');
+            craft.wingCount = craft.partEntries.filter(e => e.data.type === 'wingL' || e.data.type === 'wingR').length;
+            craft.aileronCount = craft.partEntries.filter(e => e.data.type === 'aileron').length;
+            flight.contacts = buildContacts(craft, true);
+            buildBoosterButtons();
+            updateBoosterButtonStates();
+            updateArrowPad();
+            Sound.crash();
+            for (let i = 0; i < 8; i++)
+                spawnPuff(phys.pos.clone().add(tmpV1.set(rand(-1.5, 1.5), 0, rand(-1.5, 1.5))),
+                    new THREE.Vector3(rand(-2, 2), rand(1, 3), rand(-2, 2)), 0x8a7a5f, rand(0.6, 1.2), 0.8);
+            const wings = gone.filter(e => e.data.type === 'wingL' || e.data.type === 'wingR').length;
+            toast(wings > 1 ? '💥 BOTH WINGS SNAPPED OFF!! Keep going!!' : wings ? '💥 Your wing snapped off!! Keep flying!' : '💥 CRUNCH! Something snapped off!', 2200);
+        }
+
         function triggerCrash(splash, what) {
             if (flight.broken || flight.finished) return;
             flight.broken = true;
@@ -4892,22 +5338,7 @@
             }
 
             // parts pop off!
-            for (const e of craft.partEntries) {
-                const wp = new THREE.Vector3(), wq = new THREE.Quaternion();
-                e.group.getWorldPosition(wp);
-                e.group.getWorldQuaternion(wq);
-                craft.group.remove(e.group);
-                e.group.position.copy(wp);
-                e.group.quaternion.copy(wq);
-                if (e.group.userData.flame) e.group.userData.flame.visible = false;
-                scene.add(e.group);
-                flight.debris.push({
-                    mesh: e.group,
-                    vel: phys.vel.clone().multiplyScalar(0.6).add(new THREE.Vector3(rand(-4, 4), rand(2, 6), rand(-4, 4))),
-                    angVel: new THREE.Vector3(rand(-6, 6), rand(-6, 6), rand(-6, 6)),
-                    resting: false
-                });
-            }
+            for (const e of craft.partEntries) detachAsDebris(e);
             flight.contacts = buildContacts(craft, false);
             const puffColor = splash ? 0x9fd3f2 : 0x555555;
             for (let i = 0; i < 16; i++)
@@ -5012,8 +5443,12 @@
             if (head.lengthSq() > 0.04) flight.lastHead.copy(head.normalize());
             const dist = 9 + phys.vel.length() * 0.12;
             const desired = phys.pos.clone().addScaledVector(flight.lastHead, -dist).add(tmpV2.set(0, 3.5, 0));
+            // swimming underwater? the camera dives in with you
+            const under = phys.pos.y < -0.9 && waterAt(phys.pos.x, phys.pos.z);
+            if (under) desired.y = Math.min(desired.y, phys.pos.y + 2.2, -0.6);
             flight.camPos.lerp(desired, 1 - Math.exp(-2.8 * dt));
-            flight.camPos.y = Math.max(flight.camPos.y, terrainY(flight.camPos.x, flight.camPos.z) + 1.2);
+            const camW = under ? waterAt(flight.camPos.x, flight.camPos.z) : null;
+            flight.camPos.y = Math.max(flight.camPos.y, camW ? -waterDepth(camW) + 0.8 : terrainY(flight.camPos.x, flight.camPos.z) + 1.2);
             camera.position.copy(flight.camPos);
             const look = phys.pos.clone().addScaledVector(phys.vel, 0.12).add(tmpV2.set(0, 0.8, 0));
             camera.lookAt(look);
@@ -5046,7 +5481,106 @@
             const battleBit = battle.active
                 ? `${'❤️'.repeat(Math.max(0, battle.hp))} &nbsp;🤖×${battle.bots.filter(b => !b.dead).length} &nbsp;&nbsp;`
                 : '';
-            hudEl.innerHTML = `${battleBit}⬆ ${alt} m &nbsp;&nbsp; 💨 ${spd} m/s`;
+            const deep = phys.pos.y < -1 && waterAt(phys.pos.x, phys.pos.z);
+            hudEl.innerHTML = deep
+                ? `${battleBit}🐟 ${Math.round(-phys.pos.y)} m DEEP &nbsp;&nbsp; 💨 ${spd} m/s`
+                : `${battleBit}⬆ ${alt} m &nbsp;&nbsp; 💨 ${spd} m/s`;
+        }
+
+        // ----- VOLCANOES: fly over one and it's a 50/50 coin flip… -----
+        let nextShowEruption = 40;
+        function eruptVolcano(V, deadly) {
+            V.fx.eruptT = 4.5;
+            const near = Math.hypot(phys.pos.x - V.x, phys.pos.z - V.z) < 2500;
+            if (near) Sound.rumble();
+            if (deadly) {
+                V.fx.killT = 0.7;
+                toast('🌋🔥 KA-BOOOOM!!! THE VOLCANO ERUPTED!!!', 2600);
+                $('flash').style.background = '#ff5a1a';
+                $('flash').style.opacity = 0.45;
+                setTimeout(() => { $('flash').style.opacity = 0; }, 250);
+            }
+        }
+        function updateVolcanoes(dt) {
+            if (!flightEnv) return;
+            for (const V of VOLCANOES) {
+                const fx = V.fx;
+                if (!fx) continue;
+                const erupting = fx.eruptT > 0;
+                if (erupting) fx.eruptT -= dt;
+                // smoke plume (black and HUGE while erupting)
+                for (const sp of fx.smoke) {
+                    sp.userData.t += dt * (erupting ? 0.5 : 0.07);
+                    if (sp.userData.t > 1) sp.userData.t -= 1;
+                    const t = sp.userData.t;
+                    const big = erupting ? 2.2 : 1;
+                    sp.position.set(fx.top.x + Math.sin(t * 5 + V.x) * 8 + t * 60, fx.top.y + t * 260 * big, fx.top.z + Math.cos(t * 4) * 8);
+                    const s = (25 + t * 110) * big;
+                    sp.scale.set(s, s, 1);
+                    sp.material.opacity = 0.55 * Math.sin(t * Math.PI);
+                    sp.material.color.setHex(erupting ? (t < 0.2 ? 0xff7a2a : 0x2b2826) : 0x6a6460);
+                }
+                if (erupting) {   // fling lava bombs everywhere
+                    for (let k = 0; k < 3; k++) {
+                        const ball = lavaBalls.find(b => !b.visible);
+                        if (!ball) break;
+                        ball.visible = true;
+                        ball.position.copy(fx.top).add(tmpV1.set(rand(-10, 10), 4, rand(-10, 10)));
+                        ball.userData.vel.set(rand(-35, 35), rand(55, 115), rand(-35, 35));
+                        ball.scale.setScalar(rand(2, 5));
+                    }
+                }
+                // are YOU flying over it?
+                if (mode === 'flight' && !flight.broken && !flight.finished && !flight.chute) {
+                    const d = Math.hypot(phys.pos.x - V.x, phys.pos.z - V.z);
+                    const over = d < V.r * 0.6 && phys.pos.y < 1500;
+                    if (over && !fx.inside) {
+                        fx.inside = true;
+                        if (Math.random() < 0.5) eruptVolcano(V, true);
+                        else {
+                            Sound.noise(1.2, 90, 0.5);
+                            toast('😰 The volcano RUMBLES… but it did NOT erupt. PHEW! (this time…)', 2600);
+                        }
+                    } else if (!over && d > V.r * 0.75) fx.inside = false;
+                    if (fx.killT > 0) {
+                        fx.killT -= dt;
+                        if (fx.killT <= 0 && d < V.r * 0.9) triggerCrash(false, 'eruption');
+                    }
+                }
+            }
+            // every so often a far-away volcano puts on a (harmless) show
+            nextShowEruption -= dt;
+            if (nextShowEruption <= 0) {
+                nextShowEruption = rand(45, 100);
+                const V = VOLCANOES[(Math.random() * VOLCANOES.length) | 0];
+                if (V.fx && V.fx.eruptT <= 0 && Math.hypot(phys.pos.x - V.x, phys.pos.z - V.z) > 1500) eruptVolcano(V, false);
+            }
+            for (const ball of lavaBalls) {
+                if (!ball.visible) continue;
+                const v = ball.userData.vel;
+                v.y -= G * dt;
+                ball.position.addScaledVector(v, dt);
+                if (ball.position.y < groundHeightAt(ball.position.x, ball.position.z)) { ball.visible = false; continue; }
+                if (mode === 'flight' && !flight.broken && !flight.finished && !flight.chute
+                    && ball.position.distanceTo(phys.pos) < ball.scale.x + 1.5) triggerCrash(false, 'lava');
+            }
+        }
+
+        // ----- underwater: everything goes blue and murky -----
+        let underwaterView = false, skyFog = null;
+        const waterFog = new THREE.Fog(0x1d6fa5, 1, 75);
+        function setUnderwaterView(on) {
+            if (on === underwaterView) return;
+            underwaterView = on;
+            if (on) {
+                scene.fog = waterFog;
+                scene.background = new THREE.Color(0x1d6fa5);
+            } else if (mode === 'flight') {
+                scene.fog = skyFog;
+                scene.background = new THREE.Color(0x87c8f0);
+            }
+            if (skyDome) skyDome.visible = !on;
+            if (sunSprite) sunSprite.visible = !on;
         }
 
         // ----- flight buttons -----
@@ -5076,6 +5610,7 @@
             if (mode === 'flight') {
                 stepPhysics(dt);
                 updateFlightCamera(dt);
+                setUnderwaterView(camera.position.y < 0 && !!waterAt(camera.position.x, camera.position.z));
                 updateHUD(dt);
                 if (skyDome) skyDome.position.copy(camera.position);
                 for (const c of clouds) {
@@ -5098,6 +5633,7 @@
                     if (b.position.x > 6400) b.position.x = -6400;
                 }
                 for (const t of turbines) t.userData.rotor.rotation.z += dt * t.userData.spin;
+                updateVolcanoes(dt);
                 for (const b of birds) {
                     const u = b.userData;
                     u.a += dt * u.speed;
@@ -5121,7 +5657,7 @@
             get powerState() { return powerState; }, get colliders() { return colliders; },
             get battle() { return battle; }, get bullets() { return bullets; }, get balloons() { return balloons; },
             get camera() { return camera; }, get turbines() { return turbines; }, get birds() { return birds; },
-            step(dt = 1 / 60, n = 1) { if (mode === 'flight') for (let i = 0; i < n; i++) stepPhysics(dt); }
+            step(dt = 1 / 60, n = 1) { if (mode === 'flight') for (let i = 0; i < n; i++) { stepPhysics(dt); updateVolcanoes(dt); } }
         };
 
         // ================= BOOT =================
