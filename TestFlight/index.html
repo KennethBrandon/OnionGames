@@ -644,7 +644,7 @@
         <button id="music-btn" class="sketch" title="Music is ON">🎵</button>
 
         <div id="editor-hint" class="sketch">
-            1️⃣ Tap <b>Bodies</b> to pick a body &nbsp; 2️⃣ Drag on 🚀 🌀 🛞 🧱 and wings &nbsp; 3️⃣ Press <b>Start!</b><br>
+            1️⃣ Tap <b>Bodies</b> to pick a body &nbsp; 2️⃣ Tap or drag on 🚀 🌀 🛞 🧱 and wings &nbsp; 3️⃣ Press <b>Start!</b><br>
             <span style="font-size:13px;color:#777">(Tap a glued part to take it off. DRAG a glued part to move it! Drag empty space to spin the view. Every body has a ⚡ SUPERPOWER in flight — press the &gt; key!)</span>
         </div>
 
@@ -2779,6 +2779,11 @@
                 const matl = waterMap
                     ? new THREE.MeshStandardMaterial({ color: 0xffffff, map: waterMap, roughness: 0.12, metalness: 0.5, transparent: true, opacity: 0.88 })
                     : new THREE.MeshLambertMaterial({ color });
+                // these sit only a few cm above the ground, and from far away the depth buffer can't
+                // tell them apart → flicker. Polygon offset makes each layer always win over the one
+                // below: ground < beaches/deserts/snow < water < island < runways.
+                const layer = y <= 0 ? 0 : waterMap ? 2 : y >= 0.038 ? 3 : 1;
+                if (layer) Object.assign(matl, { polygonOffset: true, polygonOffsetFactor: -layer, polygonOffsetUnits: -4 * layer });
                 const m = new THREE.Mesh(new THREE.CircleGeometry(r, seg), matl);
                 m.rotation.x = -Math.PI / 2;
                 m.position.set(cx, y, cz);
@@ -2787,7 +2792,7 @@
             };
 
             // ----- airstrips everywhere (find and land on all 5!) -----
-            const runwayMat = new THREE.MeshLambertMaterial({ map: makeRunwayTexture() });
+            const runwayMat = new THREE.MeshLambertMaterial({ map: makeRunwayTexture(), polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -16 });
             for (const rw of RUNWAYS) {
                 const strip = new THREE.Mesh(new THREE.PlaneGeometry(26, 250), runwayMat);
                 strip.rotation.x = -Math.PI / 2;
@@ -3869,8 +3874,93 @@
             });
             ghost.visible = false;
             scene.add(ghost);
-            drag = { type, ghost, cand: null, key: ghostData.key, c: ghostData.c };
+            drag = { type, ghost, cand: null, key: ghostData.key, c: ghostData.c, startX: ev.clientX, startY: ev.clientY, moved: false };
             ev.target.setPointerCapture?.(ev.pointerId);
+        }
+
+        // Just TAP a tray tile (no drag) → the part goes where you'd most expect it.
+        // Parts you can have lots of try a few slots and take the first empty one.
+        function quickPlaceCand(type) {
+            const b = craft.bbox, s = craft.size, c = craft.center;
+            const near = (pos, t) => design.parts.some(p => p.type === t &&
+                Math.hypot(p.pos[0] - pos[0], p.pos[1] - pos[1], p.pos[2] - pos[2]) < 0.2);
+            const yMid = clamp(c.y, b.min.y + s.y * 0.25, b.max.y - s.y * 0.05);
+            if (type === 'wingL' || type === 'wingR') {
+                const pos = [type === 'wingL' ? b.min.x + 0.03 : b.max.x - 0.03, yMid, c.z];
+                return near(pos, type) ? null : { pos, normal: [type === 'wingL' ? -1 : 1, 0, 0] };
+            }
+            if (type === 'aileron') {   // toward the back, so it doesn't sit on top of the wings
+                const pos = [b.max.x - 0.03, yMid, b.max.z - s.z * 0.12];
+                return near(pos, type) ? null : { pos, normal: [1, 0, 0] };
+            }
+            if (type === 'tail') {
+                const pos = [0, clamp(b.min.y + s.y * 0.6, b.min.y + s.y * 0.25, b.max.y - s.y * 0.05), b.max.z - 0.02];
+                return near(pos, type) ? null : { pos, normal: [0, 0, 1] };
+            }
+            if (type === 'wheel') {   // tricycle: nose wheel, then back-left, back-right
+                const fz = b.min.z + 0.1 + s.z * 0.1, rz = b.max.z - 0.1 - s.z * 0.1;
+                const wx = Math.max(0, s.x * 0.5 - 0.15);
+                for (const [x, z] of [[0, fz], [-wx, rz], [wx, rz]]) {
+                    const pos = [c.x + x, b.min.y + 0.02, z];
+                    if (!near(pos, 'wheel')) return { pos, normal: [0, -1, 0] };
+                }
+                return null;
+            }
+            // everything else glues onto the body surface: shoot a ray in from outside and stick where it hits
+            const far = Math.max(s.x, s.y, s.z) + 5;
+            const ox = s.x * 0.25, oy = s.y * 0.2, oz = s.z * 0.25;
+            const rays = {   // [x, y, z offsets from center], direction the ray travels
+                booster: { dir: [0, 0, -1], axis: [0, 0, 1], offs: [[0, 0], [-ox, 0], [ox, 0], [0, oy], [-ox, oy], [ox, oy]] },
+                prop: { dir: [0, 0, 1], axis: [0, 0, -1], offs: [[0, 0], [-ox, 0], [ox, 0]] },
+                bomb: { dir: [0, 1, 0], offs: [[0, 0], [-ox, 0], [ox, 0], [0, -oz], [0, oz]] },
+                block: { dir: [0, -1, 0], offs: [[0, 0], [0, -oz], [0, oz], [-ox, 0], [ox, 0]] },
+                gun: { side: true, offs: [[1, 0], [-1, 0], [1, -oz], [-1, -oz], [0, 0]] },
+            }[type];
+            if (!rays) return null;
+            if (type === 'gun') {   // blasters go on the wings first — on top, alternating right/left so it stays balanced
+                const wings = craft.partEntries.filter(e => e.data.type === 'wingR' || e.data.type === 'wingL')
+                    .sort((a, b) => (a.data.type === 'wingR' ? 0 : 1) - (b.data.type === 'wingR' ? 0 : 1));
+                for (const frac of [0.5, 0.75]) {   // halfway out, then further toward the tip
+                    for (const e of wings) {
+                        const wb = new THREE.Box3().setFromObject(e.group);
+                        const wingMeshes = [];
+                        e.group.traverse((o) => { if (o.isMesh) wingMeshes.push(o); });
+                        const x = e.data.type === 'wingL' ? wb.max.x - frac * (wb.max.x - wb.min.x) : wb.min.x + frac * (wb.max.x - wb.min.x);
+                        raycaster.set(new THREE.Vector3(x, wb.max.y + 5, (wb.min.z + wb.max.z) / 2), new THREE.Vector3(0, -1, 0));
+                        const h = raycaster.intersectObjects(wingMeshes, false)[0];
+                        if (!h) continue;
+                        const pos = h.point.toArray();
+                        if (!near(pos, 'gun')) return { pos, normal: [0, 1, 0], parent: e.data.id };
+                    }
+                }
+            }
+            const meshes = [...craft.bodyMeshes, ...craft.blockMeshes];
+            for (const [a, bOff] of rays.offs) {
+                let origin, dir;
+                if (rays.side && a === 0) {   // last resort: on top of the body
+                    dir = new THREE.Vector3(0, -1, 0);
+                    origin = new THREE.Vector3(c.x, c.y + far, c.z + bOff);
+                } else if (rays.side) {   // no wings: one on each side of the body, pointing forward
+                    dir = new THREE.Vector3(-a, 0, 0);
+                    origin = new THREE.Vector3(c.x + a * far, c.y, c.z + bOff);
+                } else {
+                    dir = new THREE.Vector3().fromArray(rays.dir);
+                    origin = c.clone().addScaledVector(dir, -far);
+                    if (dir.z !== 0) { origin.x += a; origin.y += bOff; }
+                    else { origin.x += a; origin.z += bOff; }
+                }
+                raycaster.set(origin, dir);
+                const h = raycaster.intersectObjects(meshes, false)[0];
+                if (!h) continue;
+                const pos = h.point.toArray();
+                if (near(pos, type)) continue;
+                // boosters/propellers point straight back/forward so a single one flies straight
+                const normal = rays.axis ? rays.axis.slice()
+                    : h.face.normal.clone().transformDirection(h.object.matrixWorld).normalize().toArray();
+                const pi = partIndexFromObject(h.object);
+                return { pos, normal, parent: pi !== null ? design.parts[pi].id : undefined };
+            }
+            return null;
         }
 
         function updateTrayDrag(cx, cy) {
@@ -4019,8 +4109,22 @@
                 ev.preventDefault();
                 beginTrayDrag(tile.dataset.type, ev);
             });
-            tile.addEventListener('pointermove', (ev) => { if (drag) updateTrayDrag(ev.clientX, ev.clientY); });
-            tile.addEventListener('pointerup', () => endTrayDrag());
+            tile.addEventListener('pointermove', (ev) => {
+                if (!drag) return;
+                if (Math.hypot(ev.clientX - drag.startX, ev.clientY - drag.startY) > 10) drag.moved = true;
+                updateTrayDrag(ev.clientX, ev.clientY);
+            });
+            tile.addEventListener('pointerup', () => {
+                if (drag && !drag.move && !drag.moved && craft) {
+                    drag.cand = quickPlaceCand(drag.type);
+                    if (!drag.cand) {   // no good spot left — they can still drag it wherever
+                        toast('No empty spot left — drag it where you want! 👆', 1800);
+                        scene.remove(drag.ghost); disposeObject(drag.ghost); drag = null;
+                        return;
+                    }
+                }
+                endTrayDrag();
+            });
             tile.addEventListener('pointercancel', () => endTrayDrag());
         }
 
