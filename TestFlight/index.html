@@ -278,6 +278,28 @@
         }
         .bpower { font-size: 11px; color: #b8860b; font-weight: bold; }
 
+        /* ---------- elevator ride (the doors close, the floors count up, DING!) ---------- */
+        #elevator-ov {
+            position: fixed; inset: 0; z-index: 40; pointer-events: none;
+            display: flex; align-items: center; justify-content: center;
+            background: #6b6f76; opacity: 0; transition: opacity 0.25s;
+        }
+        #elevator-ov.on { opacity: 1; }
+        #elevator-ov .edoor {
+            position: absolute; top: 0; bottom: 0; width: 50%;
+            background: repeating-linear-gradient(90deg, #b8bcc4 0 18px, #c8ccd4 18px 36px);
+            border: 4px solid #2b2b2b; transition: transform 0.45s ease-in-out;
+        }
+        #elevator-ov .edoor.l { left: 0; transform: translateX(-100%); }
+        #elevator-ov .edoor.r { right: 0; transform: translateX(100%); }
+        #elevator-ov.shut .edoor { transform: translateX(0); }
+        #elevator-ov .efloor {
+            position: relative; z-index: 1; font-size: 64px; font-weight: bold;
+            background: #1c1c22; color: #ff6a3d; padding: 10px 30px; border-radius: 14px;
+            border: 4px solid #2b2b2b; font-family: 'Courier New', monospace; text-align: center;
+        }
+        #elevator-ov .efloor small { display: block; font-size: 20px; color: #ffe14d; }
+
         /* ---------- flight mode picker ---------- */
         #mode-dialog {
             position: fixed;
@@ -848,6 +870,7 @@
     </div>
 
     <div id="toast" class="sketch"></div>
+    <div id="elevator-ov"><div class="edoor l"></div><div class="edoor r"></div><div class="efloor"><small>🛗 GOING UP</small><span>1</span></div></div>
 
     <script type="importmap">
         { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
@@ -2094,6 +2117,169 @@
                 }
             },
             {
+                name: 'Shark', emoji: '🦈', mass: 3.5, floats: true, swims: true,
+                power: { name: 'CHOMP DASH', emoji: '🦈', type: 'dive', a: 34, color: 0x8fd3ff, snd: 'bite' },
+                build() {
+                    const g = new THREE.Group();
+                    const grey = 0x7d8c99, dark = 0x6b7a87;
+                    sph(g, 0.5, grey, 0, 0.6, 0, 0.8, 0.8, 2.4);                  // long body
+                    sph(g, 0.42, 0xf0f0ea, 0, 0.45, -0.1, 0.75, 0.45, 2.1);       // white belly
+                    const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.75, 4), mat(dark));
+                    dorsal.position.set(0, 1.25, 0.1);                            // THE fin
+                    dorsal.scale.set(0.25, 1, 1);
+                    dorsal.rotation.x = 0.25;
+                    dorsal.castShadow = true;
+                    g.add(dorsal);
+                    for (const sx of [-1, 1]) box(g, 0.6, 0.06, 0.3, dark, sx * 0.5, 0.4, -0.3).rotation.z = sx * -0.4;
+                    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.7, 4), mat(dark));
+                    tail.rotation.x = -Math.PI / 2;
+                    tail.scale.set(0.25, 1, 1);
+                    tail.position.set(0, 0.7, 1.4);
+                    tail.castShadow = true;
+                    g.add(tail);
+                    box(g, 0.44, 0.04, 0.02, 0x2b2b2b, 0, 0.5, -1.18);            // grin
+                    for (let i = 0; i < 5; i++)                                   // pointy teeth
+                        box(g, 0.05, 0.07, 0.03, 0xffffff, -0.16 + i * 0.08, 0.53, -1.18).castShadow = false;
+                    sph(g, 0.06, 0x1c1c22, -0.26, 0.72, -0.95);                   // eyes
+                    sph(g, 0.06, 0x1c1c22, 0.26, 0.72, -0.95);
+                    return g;
+                }
+            },
+            {
+                name: 'Unicorn', emoji: '🦄', mass: 3,
+                power: { name: 'RAINBOW BLAST', emoji: '🌈', type: 'boost', a: 40, color: 'rainbow', snd: 'chord' },
+                build() {
+                    const g = new THREE.Group();
+                    const white = 0xfffefb;
+                    box(g, 0.6, 0.6, 1.4, white, 0, 1.0, 0);                      // body
+                    const neck = box(g, 0.32, 0.7, 0.36, white, 0, 1.45, -0.7);
+                    neck.rotation.x = 0.45;
+                    box(g, 0.34, 0.34, 0.6, white, 0, 1.8, -1.0);                 // head
+                    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.55, 8), mat(0xffe14d));
+                    horn.position.set(0, 2.2, -1.05);                             // magic horn
+                    horn.rotation.x = -0.4;
+                    horn.castShadow = true;
+                    g.add(horn);
+                    const rainbow = [0xff5544, 0xffb347, 0xffe14d, 0x7ed957, 0x4f9edb, 0xc47ed9];
+                    rainbow.forEach((c, i) => box(g, 0.1, 0.16, 0.14, c, 0, 1.95 - i * 0.12, -0.85 + i * 0.1));   // mane
+                    rainbow.forEach((c, i) => box(g, 0.1, 0.1, 0.16, c, 0, 1.15 - i * 0.1, 0.75 + i * 0.06));     // tail
+                    sph(g, 0.05, 0x1c1c22, -0.17, 1.85, -1.1);
+                    sph(g, 0.05, 0x1c1c22, 0.17, 1.85, -1.1);
+                    for (const [x, z] of [[-0.2, -0.5], [0.2, -0.5], [-0.2, 0.5], [0.2, 0.5]]) {
+                        box(g, 0.14, 0.7, 0.14, white, x, 0.4, z);                // legs
+                        box(g, 0.16, 0.1, 0.16, 0xf0909a, x, 0.05, z);            // pink hooves
+                    }
+                    return g;
+                }
+            },
+            {
+                name: 'Helicopter', emoji: '🚁', mass: 4,
+                power: { name: 'CHOPPER HOVER', emoji: '🚁', type: 'hover', color: 0xdddddd, snd: 'zap' },
+                build() {
+                    const g = new THREE.Group();
+                    const red = 0xd0302a;
+                    sph(g, 0.6, red, 0, 0.8, -0.2, 1, 0.95, 1.3);                 // cabin
+                    sph(g, 0.45, 0x8fd3ff, 0, 0.9, -0.55, 0.95, 0.8, 0.9);        // big window
+                    box(g, 0.2, 0.2, 1.6, red, 0, 0.95, 1.1);                     // tail boom
+                    box(g, 0.06, 0.55, 0.3, red, 0, 1.2, 1.85);                   // tail fin
+                    box(g, 0.05, 0.6, 0.06, 0x2b2b2b, 0.08, 1.2, 1.9);            // tail rotor
+                    cyl(g, 0.05, 0.05, 0.35, 0x2b2b2b, 0, 1.55, -0.2, 8);         // rotor mast
+                    box(g, 3.2, 0.04, 0.16, 0x2b2b2b, 0, 1.72, -0.2);             // big rotor blades
+                    box(g, 0.16, 0.04, 3.2, 0x2b2b2b, 0, 1.72, -0.2);
+                    for (const sx of [-1, 1]) {                                   // landing skids
+                        box(g, 0.07, 0.07, 1.6, 0x55595f, sx * 0.45, 0.05, -0.2);
+                        box(g, 0.05, 0.3, 0.05, 0x55595f, sx * 0.45, 0.2, -0.6);
+                        box(g, 0.05, 0.3, 0.05, 0x55595f, sx * 0.45, 0.2, 0.2);
+                    }
+                    return g;
+                }
+            },
+            {
+                name: 'Army Tank', emoji: '🪖', mass: 7,
+                power: { name: 'TANK JUMP', emoji: '💥', type: 'jump', v: 15, color: 0xffb347, snd: 'boing' },
+                build() {
+                    const g = new THREE.Group();
+                    const green = 0x4a6a3a, dark = 0x2b2b2b;
+                    box(g, 1.3, 0.45, 2.1, green, 0, 0.55, 0);                    // hull
+                    for (const sx of [-1, 1]) {
+                        box(g, 0.32, 0.45, 2.3, dark, sx * 0.78, 0.25, 0);        // treads
+                        for (let i = 0; i < 4; i++) {
+                            const w = cyl(g, 0.17, 0.17, 0.34, 0x55595f, sx * 0.78, 0.22, -0.8 + i * 0.53, 10);
+                            w.rotation.z = Math.PI / 2;
+                        }
+                    }
+                    cyl(g, 0.5, 0.55, 0.35, green, 0, 0.95, 0.1, 14);             // turret
+                    const barrel = cyl(g, 0.08, 0.08, 1.5, green, 0, 1.0, -0.8, 10);
+                    barrel.rotation.x = Math.PI / 2;
+                    cyl(g, 0.07, 0.07, 0.25, dark, 0.25, 1.22, 0.25, 8);          // hatch
+                    box(g, 0.3, 0.02, 0.3, 0xffe14d, -0.35, 0.78, 0.7).castShadow = false;   // star
+                    return g;
+                }
+            },
+            {
+                name: 'Taco', emoji: '🌮', mass: 2.5,
+                power: { name: 'SPICY BOOST', emoji: '🌶️', type: 'boost', a: 38, color: 0xff5544, snd: 'zap' },
+                build() {
+                    const g = new THREE.Group();
+                    const shell = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 1.6, 20, 1, true, Math.PI / 2, Math.PI),
+                        new THREE.MeshLambertMaterial({ color: 0xf2c14e, side: THREE.DoubleSide }));
+                    shell.rotation.x = Math.PI / 2;                               // a folded tortilla, open side up
+                    shell.position.set(0, 0.85, 0);
+                    shell.castShadow = true;
+                    g.add(shell);
+                    box(g, 1.0, 0.25, 1.5, 0x6b4226, 0, 0.35, 0);                 // meat
+                    box(g, 1.1, 0.12, 1.5, 0x7ed957, 0, 0.52, 0);                 // lettuce
+                    for (let i = 0; i < 6; i++) {                                 // tomatoes + cheese
+                        box(g, 0.18, 0.1, 0.18, 0xd0202a, rand(-0.35, 0.35), 0.62, rand(-0.6, 0.6)).castShadow = false;
+                        box(g, 0.06, 0.05, 0.3, 0xffd21f, rand(-0.35, 0.35), 0.64, rand(-0.6, 0.6)).castShadow = false;
+                    }
+                    return g;
+                }
+            },
+            {
+                name: 'Pirate Ship', emoji: '🏴‍☠️', mass: 5, floats: true,
+                power: { name: 'CANNON JUMP', emoji: '💣', type: 'jump', v: 15, color: 0x55595f, snd: 'boing' },
+                build() {
+                    const g = new THREE.Group();
+                    const wood = 0x8d5524, dark = 0x5a3416;
+                    box(g, 1.1, 0.55, 2.2, wood, 0, 0.45, 0);                     // hull
+                    const bow = box(g, 0.78, 0.55, 0.78, wood, 0, 0.45, -1.1);    // pointy front
+                    bow.rotation.y = Math.PI / 4;
+                    box(g, 1.1, 0.35, 0.5, dark, 0, 0.9, 0.85);                   // captain's deck
+                    cyl(g, 0.06, 0.06, 2.0, dark, 0, 1.7, -0.1, 8);               // mast
+                    box(g, 1.2, 0.9, 0.04, 0xfdf6e8, 0, 1.75, -0.1);              // sail
+                    box(g, 0.45, 0.3, 0.02, 0x1c1c22, 0.24, 2.6, -0.1);           // jolly roger flag
+                    sph(g, 0.06, 0xffffff, 0.24, 2.62, -0.08).castShadow = false;
+                    for (const sx of [-1, 1]) for (const z of [-0.4, 0.3]) {      // cannons!
+                        const c = cyl(g, 0.07, 0.07, 0.3, 0x1c1c22, sx * 0.6, 0.55, z, 8);
+                        c.rotation.z = Math.PI / 2;
+                    }
+                    return g;
+                }
+            },
+            {
+                name: 'Octopus', emoji: '🐙', mass: 3, floats: true, swims: true,
+                power: { name: 'INK SQUIRT', emoji: '🐙', type: 'dive', a: 32, color: 0x2b2b3a, snd: 'splash' },
+                build() {
+                    const g = new THREE.Group();
+                    const red = 0xe0503a;
+                    sph(g, 0.6, red, 0, 1.05, 0.1, 1, 1.2, 1.05);                 // big squishy head
+                    sph(g, 0.13, 0xffffff, -0.24, 1.0, -0.45);                    // googly eyes
+                    sph(g, 0.13, 0xffffff, 0.24, 1.0, -0.45);
+                    sph(g, 0.06, 0x1c1c22, -0.24, 1.0, -0.57);
+                    sph(g, 0.06, 0x1c1c22, 0.24, 1.0, -0.57);
+                    for (let i = 0; i < 8; i++) {                                 // EIGHT arms
+                        const a = i / 8 * Math.PI * 2;
+                        const arm = box(g, 0.16, 0.16, 0.9, 0xd04030, Math.cos(a) * 0.6, 0.3, Math.sin(a) * 0.6);
+                        arm.rotation.y = -a + Math.PI / 2;
+                        arm.rotation.x = 0.35;
+                        for (let j = 0; j < 2; j++)                               // suction cups
+                            sph(g, 0.05, 0xf0a0a0, Math.cos(a) * (0.45 + j * 0.3), 0.2, Math.sin(a) * (0.45 + j * 0.3)).castShadow = false;
+                    }
+                    return g;
+                }
+            },
+            {
                 // ALWAYS keep this one last: it's the "make your own body" card
                 name: 'My Block Body', emoji: '🧱', mass: 3, custom: true,
                 power: { name: 'BLOCK PARTY', emoji: '🧱', type: 'jump', v: 15, color: 'confetti', snd: 'boing' },
@@ -2101,6 +2287,16 @@
             }
         ];
         const CUSTOM_BODY = BODIES.length - 1;
+        // Saves remember bodies by NUMBER, so adding bodies moves "My Block Body".
+        // BODY_VER counts those moves; CUSTOM_AT says where it used to live.
+        const BODY_VER = 2, CUSTOM_AT = { 1: 49 };
+        function fixBodyIndex(d) {
+            if (!d || typeof d.bodyIndex !== 'number') return d;
+            const v = d.bv || 1;
+            if (v < BODY_VER && d.bodyIndex === CUSTOM_AT[v]) d.bodyIndex = CUSTOM_BODY;
+            d.bv = BODY_VER;
+            return d;
+        }
 
         // ----- block bodies: every block is a 0.5 m toy brick on a grid -----
         const BUILD_COLORS = [0xd0302a, 0xff8c1a, 0xffd21f, 0x4fae4a, 0x4f9edb, 0x6a3fa0, 0xf0909a, 0xf4f4f0, 0x2b2b2b, 0x8d5524];
@@ -2683,7 +2879,8 @@
             pad.rotation.x = -Math.PI / 2;
             pad.position.set(cx, 0.05, cz + tz + 1.2);
             env.add(pad);
-            const room = { x: cx, z: cz, hw: w / 2, hd: d / 2, lh, h, doorHalf, hinge, open: 0, gun, gunPos: new THREE.Vector3(cx, 0, cz + tz + 1.0) };
+            const room = { x: cx, z: cz, hw: w / 2, hd: d / 2, lh, h, doorHalf, hinge, open: 0, gun, gunPos: new THREE.Vector3(cx, 0, cz + tz + 1.0),
+                elev: h >= 12 ? { x: cx - w / 2 + 1.5, z: cz - d / 2 + 1.5 } : null, extras: false };
             rooms.push(room);
             colliders.push({ x: cx, z: cz, r: Math.max(w, d) * 0.62, h, cone: false, what, room });
         }
@@ -3211,7 +3408,7 @@
                 addAnimal(env, 'camel', D.x + Math.cos(a) * r, D.z + Math.sin(a) * r, 60);
             }
             for (const w of WATERS) {
-                const schools = w.r > 500 ? 10 : 1;
+                const schools = w.r > 500 ? (IS_MOBILE ? 18 : 30) : 3;
                 for (let sI = 0; sI < schools; sI++) {
                     const a = rand(0, Math.PI * 2), r = rand(0, w.r * 0.7);
                     const cx = w.x + Math.cos(a) * r, cz = w.z + Math.sin(a) * r;
@@ -3219,6 +3416,19 @@
                     const depth = waterDepth(w);
                     const col = [0xff8c1a, 0x4f9edb, 0xffe14d, 0xc47ed9, 0x7ed957][sI % 5];
                     for (let i = 0; i < 7; i++) addFish(env, cx, cz, rand(-depth + 2, -2), col);
+                }
+                // …and the big stuff! sharks + whales only in the two seas
+                const big = w.r > 500;
+                const seaKinds = big
+                    ? [['shark', IS_MOBILE ? 4 : 7], ['whale', 2], ['jelly', IS_MOBILE ? 6 : 10], ['turtle', 6], ['puffer', 6], ['octopus', 4]]
+                    : [['jelly', 2], ['turtle', 1], ['puffer', 2], ['octopus', 1]];
+                for (const [kind, n] of seaKinds) for (let i = 0; i < n; i++) {
+                    const a = rand(0, Math.PI * 2), r = big ? rand(80, w.r * 0.75) : rand(0, w.r * 0.5);
+                    const cx = w.x + Math.cos(a) * r, cz = w.z + Math.sin(a) * r;
+                    if (!waterAt(cx, cz)) continue;
+                    const depth = waterDepth(w);
+                    const y = kind === 'whale' ? -depth * 0.55 : kind === 'octopus' ? -depth + 1.5 : rand(-depth + 3, -2.5);
+                    addSeaCritter(env, kind, cx, cz, y);
                 }
             }
 
@@ -3245,7 +3455,8 @@
 
         // ================= ANIMALS =================
         const animals = [], fishes = [];
-        const ANIMAL_EMOJI = { cow: '🐄', sheep: '🐑', pig: '🐖', horse: '🐎', deer: '🦌', penguin: '🐧', camel: '🐫', fish: '🐟', bird: '🐦' };
+        let fishClock = 0;
+        const ANIMAL_EMOJI = { cow: '🐄', sheep: '🐑', pig: '🐖', horse: '🐎', deer: '🦌', penguin: '🐧', camel: '🐫', fish: '🐟', bird: '🐦', shark: '🦈', whale: '🐋', jelly: '🪼', turtle: '🐢', puffer: '🐡', octopus: '🐙' };
         // a leg hangs from its hip, so it can swing when the animal walks
         function animalLeg(g, x, y, z, len, w, color) {
             const hip = new THREE.Group();
@@ -3334,7 +3545,103 @@
             sph(g, 0.05, 0x1c1c22, -0.14, 0.08, -0.25).castShadow = false;
             g.scale.setScalar(1.5);
             env.add(g);
-            fishes.push({ g, kind: 'fish', cx: cx + rand(-6, 6), cz: cz + rand(-6, 6), y, r: rand(6, 16), a: rand(0, Math.PI * 2), speed: rand(0.3, 0.6) * (Math.random() < 0.5 ? 1 : -1), dead: 0, tail });
+            fishes.push({ g, kind: 'fish', cx: cx + rand(-6, 6), cz: cz + rand(-6, 6), y, r: rand(6, 16), a: rand(0, Math.PI * 2), speed: rand(0.3, 0.6) * (Math.random() < 0.5 ? 1 : -1), dead: 0, tail, hitR: 0.9 });
+        }
+        // ----- bigger sea creatures: sharks, whales, jellyfish, turtles, pufferfish, octopuses -----
+        //       (all models face -Z like the fish, and swim in big lazy circles)
+        function addSeaCritter(env, kind, cx, cz, y) {
+            const g = new THREE.Group();
+            let tail = null, r = rand(8, 20), speed = rand(0.25, 0.5), hitR = 1.2;
+            const finCone = (col, rad, len, z) => {
+                const t = new THREE.Mesh(new THREE.ConeGeometry(rad, len, 4), mat(col));
+                t.rotation.x = -Math.PI / 2;
+                t.scale.set(0.3, 1, 1);
+                t.position.z = z;
+                g.add(t);
+                return t;
+            };
+            const eyes = (x, y0, z, s = 0.06) => {
+                sph(g, s, 0x1c1c22, x, y0, z);
+                sph(g, s, 0x1c1c22, -x, y0, z);
+            };
+            if (kind === 'shark') {
+                sph(g, 0.6, 0x7d8c99, 0, 0, 0, 0.8, 0.75, 2.6);                      // long grey body
+                sph(g, 0.5, 0xf0f0ea, 0, -0.18, -0.1, 0.7, 0.4, 2.2);               // white belly
+                const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.9, 4), mat(0x6b7a87));
+                dorsal.position.set(0, 0.65, 0.1);
+                dorsal.scale.set(0.25, 1, 1);
+                g.add(dorsal);
+                for (const sx of [-1, 1]) box(g, 0.7, 0.06, 0.35, 0x6b7a87, sx * 0.55, -0.2, -0.3).rotation.z = sx * -0.35;
+                box(g, 0.5, 0.05, 0.02, 0x2b2b2b, 0, -0.1, -1.45);                  // big grin
+                eyes(0.3, 0.12, -1.2, 0.07);
+                tail = finCone(0x6b7a87, 0.6, 0.9, 1.75);
+                g.scale.setScalar(1.6);
+                r = rand(18, 40); speed = rand(0.18, 0.3); hitR = 2.6;
+            } else if (kind === 'whale') {
+                sph(g, 1, 0x3d5a80, 0, 0, 0, 1.3, 1, 3);                            // HUGE blue body
+                sph(g, 0.9, 0xc8d8e8, 0, -0.35, -0.3, 1.1, 0.55, 2.4);             // pale belly
+                for (const sx of [-1, 1]) box(g, 1.1, 0.1, 0.6, 0x34507a, sx * 1.3, -0.4, -0.6).rotation.z = sx * -0.4;
+                const fluke = box(g, 2.6, 0.12, 0.7, 0x34507a, 0, 0.1, 3.2);         // tail flukes
+                tail = new THREE.Group();
+                tail.position.z = 2.6;
+                fluke.position.set(0, 0.1, 0.6);
+                g.remove(fluke);
+                tail.add(fluke);
+                g.add(tail);
+                eyes(0.95, 0, -1.6, 0.1);
+                g.scale.setScalar(2.4);
+                r = rand(40, 80); speed = rand(0.08, 0.14); hitR = 6;
+            } else if (kind === 'jelly') {
+                const col = [0xf0a0d8, 0xc4a0f0, 0x8fd3ff][(Math.random() * 3) | 0];
+                const bell = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+                    new THREE.MeshLambertMaterial({ color: col, emissive: col, emissiveIntensity: 0.35, transparent: true, opacity: 0.75 }));
+                g.add(bell);
+                for (let i = 0; i < 6; i++) {                                         // wiggly tentacles
+                    const a = i / 6 * Math.PI * 2;
+                    box(g, 0.04, 1.1, 0.04, col, Math.cos(a) * 0.35, -0.55, Math.sin(a) * 0.35).castShadow = false;
+                }
+                g.scale.setScalar(1.4);
+                r = rand(2, 5); speed = rand(0.1, 0.2);
+            } else if (kind === 'turtle') {
+                sph(g, 0.7, 0x4f8a3a, 0, 0.1, 0, 1, 0.45, 1.2);                     // shell
+                sph(g, 0.62, 0xd8c890, 0, -0.05, 0, 0.95, 0.25, 1.1);               // tummy
+                sph(g, 0.25, 0x8ab85a, 0, 0.05, -0.95);                             // head
+                eyes(0.12, 0.12, -1.13, 0.04);
+                tail = new THREE.Group();                                           // the flippers paddle
+                for (const [x, z, s] of [[-0.7, -0.4, 0.9], [0.7, -0.4, 0.9], [-0.5, 0.6, 0.6], [0.5, 0.6, 0.6]])
+                    box(tail, 0.6 * s, 0.06, 0.3 * s, 0x8ab85a, x, -0.05, z);
+                g.add(tail);
+                g.scale.setScalar(1.5);
+                r = rand(10, 22); speed = rand(0.15, 0.25);
+            } else if (kind === 'puffer') {
+                sph(g, 0.5, 0xffe14d, 0, 0, 0);                                     // PUFFED UP!
+                for (let i = 0; i < 14; i++) {                                        // spikes
+                    const v = new THREE.Vector3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize();
+                    const sp = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.22, 4), mat(0xe8b020));
+                    sp.position.copy(v).multiplyScalar(0.52);
+                    sp.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), v);
+                    g.add(sp);
+                }
+                eyes(0.2, 0.15, -0.42, 0.07);
+                tail = finCone(0xe8b020, 0.2, 0.3, 0.6);
+                g.scale.setScalar(1.3);
+                r = rand(4, 10);
+            } else if (kind === 'octopus') {
+                sph(g, 0.6, 0xe0503a, 0, 0.3, 0, 1, 1.25, 1);                       // big head
+                eyes(0.25, 0.3, -0.52, 0.09);
+                tail = new THREE.Group();                                           // 8 wavy arms
+                for (let i = 0; i < 8; i++) {
+                    const a = i / 8 * Math.PI * 2;
+                    const arm = box(tail, 0.14, 0.9, 0.14, 0xd04030, Math.cos(a) * 0.4, -0.45, Math.sin(a) * 0.4);
+                    arm.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5);
+                }
+                g.add(tail);
+                g.scale.setScalar(1.4);
+                r = rand(3, 8); speed = rand(0.15, 0.3);
+            }
+            g.traverse(o => { if (o.isMesh) o.castShadow = false; });
+            env.add(g);
+            fishes.push({ g, kind, cx, cz, y, r, a: rand(0, Math.PI * 2), speed: speed * (Math.random() < 0.5 ? 1 : -1), dead: 0, tail, hitR });
         }
 
         function updateAnimals(dt) {
@@ -3375,17 +3682,29 @@
                 an.g.rotation.y += d * Math.min(1, dt * 3);
             }
             const near = underwaterView || cam.y < 60;
+            fishClock += dt;
             for (const f of fishes) {
                 if (f.dead > 0) {
                     f.dead -= dt;
-                    if (f.dead <= 0) f.g.visible = true;
                     continue;
                 }
-                if (!near) continue;
+                // only critters near the camera are drawn (the ocean is PACKED)
+                const fdx = f.cx - cam.x, fdz = f.cz - cam.z, far = f.r + 160;
+                const show = near && fdx * fdx + fdz * fdz < far * far;
+                f.g.visible = show;
+                if (!show) continue;
                 f.a += dt * f.speed;
+                if (f.kind === 'jelly') {   // jellyfish bloop up and down instead of zooming around
+                    f.g.position.set(f.cx + Math.cos(f.a) * f.r, f.y + Math.sin(fishClock * 0.8 + f.r) * 1.5, f.cz + Math.sin(f.a) * f.r);
+                    f.g.scale.y = 1.4 * (1 + Math.sin(fishClock * 3 + f.r) * 0.12);
+                    continue;
+                }
                 f.g.position.set(f.cx + Math.cos(f.a) * f.r, f.y + Math.sin(f.a * 3) * 0.4, f.cz + Math.sin(f.a) * f.r);
                 f.g.rotation.y = f.speed > 0 ? -f.a : Math.PI - f.a;
-                f.tail.rotation.y = Math.sin(f.a * 30) * 0.4;
+                if (!f.tail) continue;
+                if (f.kind === 'whale') f.tail.rotation.x = Math.sin(fishClock * 1.2) * 0.3;
+                else if (f.kind === 'turtle' || f.kind === 'octopus') f.tail.rotation.y = Math.sin(fishClock * 2.5 + f.r) * 0.25;
+                else f.tail.rotation.y = Math.sin(fishClock * (f.kind === 'shark' ? 5 : 12) + f.r) * 0.4;
             }
         }
 
@@ -3426,7 +3745,7 @@
             }
             for (const f of fishes) {
                 if (f.dead > 0 || !f.g.visible) continue;
-                if (f.g.position.distanceToSquared(p) < (r + 0.9) * (r + 0.9)) {
+                if (f.g.position.distanceToSquared(p) < (r + f.hitR) * (r + f.hitR)) {
                     poofAnimal(f, f.g.position.clone());
                     hit = true;
                     if (!all) return true;
@@ -3737,6 +4056,7 @@
         const STARTER_PLANE = {
             name: 'Starter Plane',
             bodyIndex: 31,   // the Rocket
+            bv: 2,
             parts: [
                 { id: 'sp-prop', type: 'prop', pos: [0, 0.55, -1.52], normal: [0, 0, -1], key: 'A' },
                 { id: 'sp-b1', type: 'booster', pos: [-0.22, 0.55, 1.0], normal: [0, 0, 1], key: 'B' },
@@ -3757,6 +4077,7 @@
         const genId = () => Date.now().toString(36) + '-' + ((Math.random() * 1e6) | 0);
         // older saves have no part ids — give them some so wing attachments work
         function ensureIds(d) {
+            fixBodyIndex(d);
             for (const p of d.parts) if (!p.id) p.id = genId();
             return d;
         }
@@ -3766,7 +4087,7 @@
         }
         function loadWorkingDesign() {
             try {
-                const d = JSON.parse(localStorage.getItem(LS_DESIGN));
+                const d = fixBodyIndex(JSON.parse(localStorage.getItem(LS_DESIGN)));
                 if (d && typeof d.bodyIndex === 'number' && Array.isArray(d.parts)
                     && d.bodyIndex >= 0 && d.bodyIndex < BODIES.length) {
                     d.parts = d.parts.filter(p => p && PART_MASS[p.type] && Array.isArray(p.pos));
@@ -3777,7 +4098,7 @@
         function loadHangar() {
             try {
                 const h = JSON.parse(localStorage.getItem(LS_HANGAR));
-                if (Array.isArray(h)) return h;
+                if (Array.isArray(h)) { h.forEach(e => e && fixBodyIndex(e.design)); return h; }
             } catch (e) { }
             return [];
         }
@@ -4912,6 +5233,7 @@
         function updateChute(dt) {
             const ch = flight.chute;
             ch.t += dt;
+            buildNearbyExtras(ch.pilot.position, dt);
             if (ch.canopy.visible && !ch.walking && ch.canopy.scale.x < 1)
                 ch.canopy.scale.setScalar(Math.min(1, ch.canopy.scale.x + dt * 3));
 
@@ -4978,6 +5300,8 @@
                     if (ch.canopy.scale.x < 0.05) ch.canopy.visible = false;
                 }
                 if (ch.splat) return;   // face-down in the dirt. RIP.
+                if (ch.elev) { updateElevator(ch, dt); return; }
+                if (ch.turret) { updateTurret(ch, dt); return; }
                 if (ch.balloon) {
                     // riding a hot air balloon!
                     if (!ch.balloon.visible) {   // …someone POPPED it
@@ -5066,6 +5390,20 @@
             }
             ch.room = roomAt(p.x, p.z, ch.groundY);
             if (ch.room && !pilotHasGun && Math.hypot(p.x - ch.room.gunPos.x, p.z - ch.room.gunPos.z) < 2.2) givePilotGun(ch);
+            // step into an elevator (lobby corner, or the hut on the roof)…
+            const ER = ch.room && ch.room.elev ? ch.room : roofRoomAt(p.x, p.z, ch.groundY);
+            if (ER && ER.extras) {
+                const onRoof = ER !== ch.room;
+                const ed = Math.max(Math.abs(p.x - ER.elev.x), Math.abs(p.z - ER.elev.z));
+                if (ed > 1.9) ch.elevArmed = true;
+                else if (ed < 0.9 && ch.elevArmed !== false) { startElevator(ch, ER, !onRoof); return; }
+                // …or sit down in the swivel gun chair
+                if (onRoof) {
+                    const td = Math.hypot(p.x - ER.turret.x, p.z - ER.turret.z);
+                    if (td > 2.6) ch.turretArmed = true;
+                    else if (td < 1.3 && ch.turretArmed !== false) sitInTurret(ch, ER);
+                }
+            }
         }
         function givePilotGun(ch) {
             pilotHasGun = true;
@@ -5112,6 +5450,211 @@
             spawnBullet(from.addScaledVector(dir, 0.6), dir.multiplyScalar(90), 'player');
             if (Room.peer) roomBroadcast({ t: 'shot', id: Room.myId, p: from.toArray(), v: dir.toArray() });
             Sound.pew();
+        }
+
+        // ----- ELEVATORS + ROOFTOP TURRETS: every tall building has an elevator in the
+        //       lobby corner. Ride it to the roof, sit in the SWIVEL CHAIR with the big
+        //       gun: arrows aim, SPACE shoots, ? gets up. (built only when you get close) -----
+        const elevMetal = new THREE.MeshLambertMaterial({ color: 0xb8bcc4 });
+        const elevGlow = new THREE.MeshBasicMaterial({ color: 0x7ed957, transparent: true, opacity: 0.7 });
+        function buildRoomExtras(R) {
+            R.extras = true;
+            const E = R.elev, g = new THREE.Group();
+            const add = (w, h, d, x, y, z, m) => {
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+                mesh.position.set(x, y, z);
+                g.add(mesh);
+                return mesh;
+            };
+            // lobby: a steel elevator with its doors slid open and a glowing floor
+            add(0.15, R.lh - 0.2, 2.2, E.x + 1.1, (R.lh - 0.2) / 2, E.z, elevMetal);
+            add(2.4, 0.5, 0.15, E.x, R.lh - 0.45, E.z + 1.1, elevMetal);
+            add(2.2, R.lh - 0.2, 0.08, E.x, (R.lh - 0.2) / 2, E.z - 1.05, elevMetal);   // steel back…
+            add(0.08, R.lh - 0.2, 2.2, E.x - 1.05, (R.lh - 0.2) / 2, E.z, elevMetal);  // …and side
+            add(1.9, 0.05, 1.9, E.x, 0.12, E.z, elevGlow);
+            const sign = elevatorSign('🛗 ROOF ⬆');
+            sign.position.set(E.x, R.lh - 0.45, E.z + 1.2);
+            g.add(sign);
+            const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.4, 3), mat(0x7ed957));
+            arrow.position.set(E.x, 1.6, E.z - 0.95);
+            g.add(arrow);
+            // roof: the elevator hut, its open door facing +Z
+            const hutMat = mat(0x9aa0a8);
+            add(2.4, 2.8, 0.15, E.x, R.h + 1.4, E.z - 1.1, hutMat);
+            add(0.15, 2.8, 2.4, E.x - 1.15, R.h + 1.4, E.z, hutMat);
+            add(0.15, 2.8, 2.4, E.x + 1.15, R.h + 1.4, E.z, hutMat);
+            add(2.6, 0.2, 2.6, E.x, R.h + 2.9, E.z, hutMat);
+            add(1.9, 0.05, 1.9, E.x, R.h + 0.05, E.z, elevGlow);
+            const sign2 = elevatorSign('🛗 DOWN ⬇');
+            sign2.position.set(E.x, R.h + 2.55, E.z + 1.32);
+            g.add(sign2);
+            const down = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.4, 3), mat(0xffb347));
+            down.rotation.z = Math.PI;
+            down.position.set(E.x, R.h + 1.6, E.z - 0.95);
+            g.add(down);
+            // the swivel chair + big gun, in the middle of the roof
+            const T = { x: R.x + 0.8, z: R.z + 0.8, y: R.h, yaw: 0, pitch: 0.15, barrel: 0 };
+            cyl(g, 0.9, 1.1, 0.3, 0x55595f, T.x, R.h + 0.15, T.z, 14);            // base
+            cyl(g, 0.12, 0.12, 0.5, 0x2b2b2b, T.x, R.h + 0.55, T.z, 8);           // swivel post
+            const yawG = new THREE.Group();
+            yawG.position.set(T.x, R.h + 0.8, T.z);
+            box(yawG, 0.9, 0.15, 0.9, 0xd0302a, 0, 0, 0);                          // red seat
+            box(yawG, 0.9, 0.9, 0.15, 0xd0302a, 0, 0.5, 0.42);                     // backrest
+            box(yawG, 0.1, 0.3, 0.7, 0x2b2b2b, -0.5, 0.2, 0);                      // armrests
+            box(yawG, 0.1, 0.3, 0.7, 0x2b2b2b, 0.5, 0.2, 0);
+            box(yawG, 0.12, 0.9, 0.12, 0x55595f, 0.62, 0.45, -0.3);                 // gun arm
+            const pitchG = new THREE.Group();
+            pitchG.position.set(0, 1.05, -0.3);
+            box(pitchG, 0.9, 0.35, 0.6, 0x4a5a3a, 0, 0, 0);                        // gun body (army green!)
+            T.muzzles = [];
+            for (const sx of [-0.25, 0.25]) {                                      // TWO barrels
+                const b = cyl(pitchG, 0.08, 0.08, 1.6, 0x2b2b2b, sx, 0.02, -1.0, 8);
+                b.rotation.x = Math.PI / 2;
+                const tip = new THREE.Object3D();
+                tip.position.set(sx, 0.02, -1.85);
+                pitchG.add(tip);
+                T.muzzles.push(tip);
+            }
+            box(pitchG, 0.06, 0.2, 0.06, 0xffe14d, 0, 0.26, -0.2);                 // sight
+            yawG.add(pitchG);
+            g.add(yawG);
+            T.yawG = yawG;
+            T.pitchG = pitchG;
+            R.turret = T;
+            g.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = false; });
+            scene.add(g);
+            R.extrasGroup = g;
+        }
+        function elevatorSign(text) {
+            const c = document.createElement('canvas');
+            c.width = 256; c.height = 64;
+            const x = c.getContext('2d');
+            x.fillStyle = '#1c1c22'; x.fillRect(0, 0, 256, 64);
+            x.fillStyle = '#7ed957'; x.font = 'bold 40px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+            x.fillText(text, 128, 34);
+            const m = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.5), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c) }));
+            return m;
+        }
+        let extrasT = 0;
+        function buildNearbyExtras(p, dt) {
+            extrasT -= dt;
+            if (extrasT > 0) return;
+            extrasT = 0.5;
+            for (const R of rooms)
+                if (R.elev && !R.extras && Math.abs(p.x - R.x) < 150 && Math.abs(p.z - R.z) < 150) buildRoomExtras(R);
+        }
+        // which building's ROOF are you standing on?
+        function roofRoomAt(x, z, y) {
+            for (const R of rooms) if (R.elev && y > R.h - 0.6 && inRoom(R, x, z)) return R;
+            return null;
+        }
+        const elevOv = $('elevator-ov');
+        function startElevator(ch, R, up) {
+            const floors = Math.max(2, Math.round(R.h / 3.5));
+            ch.elev = { R, up, t: 0, floors, dur: clamp(2 + floors * 0.12, 2.6, 4.8) };
+            ch.elevArmed = false;
+            activeArrows.clear();
+            updateArrowBtnStates();
+            elevOv.querySelector('small').textContent = up ? '🛗 GOING UP' : '🛗 GOING DOWN';
+            elevOv.querySelector('span').textContent = up ? 'L' : floors;
+            elevOv.classList.add('on');
+            setTimeout(() => elevOv.classList.add('shut'), 30);
+            Sound.beep(520, 0.12, 'sine', 0.12);
+        }
+        function updateElevator(ch, dt) {
+            const E = ch.elev, R = E.R;
+            E.t += dt;
+            const k = clamp((E.t - 0.5) / (E.dur - 1.1), 0, 1);
+            const f = Math.max(1, Math.round((E.up ? k : 1 - k) * E.floors));
+            elevOv.querySelector('span').textContent = f <= 1 ? 'L' : (f >= E.floors ? '🏁 ' + E.floors : f);
+            if (E.t >= E.dur - 0.6 && !E.dinged) {
+                E.dinged = true;
+                Sound.beep(1320, 0.35, 'sine', 0.14);                            // DING!
+                elevOv.classList.remove('shut');
+                const p = ch.pilot.position;
+                p.x = R.elev.x;
+                p.z = R.elev.z + 2.3;
+                ch.groundY = E.up ? R.h : groundHeightAt(p.x, p.z, 0);
+                p.y = ch.groundY;
+                ch.fallV = 0;
+                ch.pilot.rotation.y = 0;
+                flight.camPos.set(p.x, p.y + 2.4, p.z + 6.5);
+                ch.room = E.up ? null : R;
+            }
+            if (E.t >= E.dur) {
+                elevOv.classList.remove('on');
+                ch.elev = null;
+                toast(E.up ? '🏙️ THE ROOF!! Walk to the <b>swivel chair</b> to use the BIG GUN!' : '🚪 Back in the lobby!', 3000);
+            }
+        }
+        function sitInTurret(ch, R) {
+            ch.turret = R.turret;
+            activeArrows.clear();
+            updateArrowBtnStates();
+            Sound.success();
+            toast('🎯 You sat in the <b>SWIVEL GUN</b>!! Arrows = aim · <b>SPACE</b> = shoot · <b>?</b> = get up', 3800);
+            const mk = (id, txt, title) => {
+                const btn = document.createElement('button');
+                btn.className = 'bbtn fire-btn';
+                btn.id = id;
+                btn.textContent = txt;
+                btn.title = title;
+                boosterBtnsEl.appendChild(btn);
+                return btn;
+            };
+            const fb = mk('turret-fire', '💥', 'Shoot! (SPACE)');
+            fb.addEventListener('pointerdown', (e) => { e.preventDefault(); turretHeld = true; turretShoot(); });
+            for (const evName of ['pointerup', 'pointerleave', 'pointercancel']) fb.addEventListener(evName, () => { turretHeld = false; });
+            mk('turret-off', '🚶', 'Get up (?)').addEventListener('pointerdown', (e) => { e.preventDefault(); leaveTurret(); });
+            gtag('event', 'turret_sit', { game_name: 'Test Flight' });
+        }
+        function leaveTurret() {
+            const ch = flight.chute;
+            turretHeld = false;
+            $('turret-fire')?.remove();
+            $('turret-off')?.remove();
+            if (!ch || !ch.turret) return;
+            const T = ch.turret;
+            ch.turret = null;
+            ch.turretArmed = false;
+            const p = ch.pilot.position;
+            p.set(T.x + 1.6, T.y, T.z + 1.2);
+            ch.groundY = T.y;
+            ch.pilot.rotation.set(0, 0, 0);
+            Sound.pop();
+            toast('🚶 You got up. Walk into the 🛗 hut to go back down!', 2200);
+        }
+        let turretHeld = false, turretCd = 0;
+        const turretAim = new THREE.Vector3();
+        function turretDir(T, out) {
+            return out.set(-Math.sin(T.yaw) * Math.cos(T.pitch), Math.sin(T.pitch), -Math.cos(T.yaw) * Math.cos(T.pitch));
+        }
+        function turretShoot() {
+            const ch = flight.chute;
+            if (!ch || !ch.turret || ch.splat || turretCd > 0) return;
+            const T = ch.turret;
+            turretCd = 0.09;
+            T.barrel ^= 1;
+            const from = T.muzzles[T.barrel].getWorldPosition(new THREE.Vector3());
+            const vel = turretDir(T, new THREE.Vector3()).multiplyScalar(160);
+            spawnBullet(from, vel, 'player');
+            spawnPuff(from.clone(), vel.clone().multiplyScalar(0.02), 0xffe14d, 0.5, 0.25);
+            if (Room.peer) roomBroadcast({ t: 'shot', id: Room.myId, p: from.toArray(), v: vel.toArray() });
+            Sound.pew();
+        }
+        function updateTurret(ch, dt) {
+            const T = ch.turret;
+            const ax = (activeArrows.has('ArrowRight') ? 1 : 0) - (activeArrows.has('ArrowLeft') ? 1 : 0);
+            const ay = (activeArrows.has('ArrowUp') ? 1 : 0) - (activeArrows.has('ArrowDown') ? 1 : 0);
+            T.yaw -= ax * 1.6 * dt;                         // left/right spins the chair
+            T.pitch = clamp(T.pitch + ay * 1.0 * dt, -0.5, 1.2);   // up/down tilts the gun
+            T.yawG.rotation.y = T.yaw;
+            T.pitchG.rotation.x = T.pitch;
+            if (ax && Math.random() < dt * 8) Sound.beep(90, 0.05, 'sawtooth', 0.03);   // squeaky swivel
+            // the pilot sits in the chair and spins with it
+            ch.pilot.position.set(T.x, T.y + 0.45, T.z);
+            ch.pilot.rotation.set(0, T.yaw, 0);
+            if (turretHeld && turretCd <= 0) turretShoot();
         }
 
         // ----- BLASTERS (< or Enter) — pew pew at balloons and robots! -----
@@ -5703,6 +6246,10 @@
             pilotHasGun = false;
             pilotGunHeld = false;
             $('pilot-fire')?.remove();
+            $('turret-fire')?.remove();
+            $('turret-off')?.remove();
+            turretHeld = false;
+            elevOv.classList.remove('on', 'shut');
             gunHeld = false;
             gunCooldown = 0;
             battle.won = false;
@@ -5724,6 +6271,10 @@
             clearBullets();
             clearBombs();
             setUnderwaterView(false);
+            elevOv.classList.remove('on', 'shut');
+            $('turret-fire')?.remove();
+            $('turret-off')?.remove();
+            turretHeld = false;
             battle.active = false;
             gunHeld = false;
             spaceAll = false;
@@ -5889,7 +6440,8 @@
                 e.preventDefault();
                 if (!e.repeat) {
                     Sound.init();
-                    if (flight.chute) openChuteCanopy();
+                    if (flight.chute && flight.chute.turret) { turretHeld = true; turretShoot(); }
+                    else if (flight.chute) openChuteCanopy();
                     else setSpaceAll(true);
                 }
                 return;
@@ -5901,7 +6453,9 @@
             if (e.key === '?' || e.key === '/') {                  // ? : parachute! (or SHOOT, on foot with a blaster)
                 if (!e.repeat) {
                     Sound.init();
-                    if (flight.chute && flight.chute.walking && pilotHasGun) { pilotGunHeld = true; pilotShoot(); }
+                    if (flight.chute && flight.chute.turret) leaveTurret();
+                    else if (flight.chute && flight.chute.elev) { /* no bailing out mid-elevator */ }
+                    else if (flight.chute && flight.chute.walking && pilotHasGun) { pilotGunHeld = true; pilotShoot(); }
                     else deployParachute();
                 }
                 return;
@@ -5924,7 +6478,7 @@
                 updateArrowBtnStates();
                 return;
             }
-            if (e.key === ' ') { if (flight.chute) closeChuteCanopy(); setSpaceAll(false); return; }
+            if (e.key === ' ') { turretHeld = false; if (flight.chute) closeChuteCanopy(); setSpaceAll(false); return; }
             if (e.key === '>' || e.key === '.') { powerRelease(); return; }
             if (e.key === '?' || e.key === '/') { pilotGunHeld = false; return; }
             if (e.key === 'Enter' || e.key === '<' || e.key === ',') { gunHeld = false; return; }
@@ -6191,6 +6745,7 @@
             updatePowers(dt);
             gunCooldown -= dt;
             pilotGunCd -= dt;
+            turretCd -= dt;
             if (pilotGunHeld && pilotGunCd <= 0) pilotShoot();
             flight.bounceT -= dt;
             if (gunHeld && gunCooldown <= 0) fireGuns();
@@ -6466,6 +7021,15 @@
             if (flight.chute) {
                 const ch = flight.chute;
                 const p = ch.pilot.position;
+                if (ch.turret) {   // over-the-shoulder view down the gun barrels
+                    const T = ch.turret, aim = turretDir(T, turretAim);
+                    const flat = Math.hypot(aim.x, aim.z) || 1;
+                    const want = tmpV1.set(T.x - aim.x / flat * 5.5, T.y + 3.2, T.z - aim.z / flat * 5.5);
+                    flight.camPos.lerp(want, 1 - Math.exp(-10 * dt));
+                    camera.position.copy(flight.camPos);
+                    camera.lookAt(T.x + aim.x * 40, T.y + 1.8 + aim.y * 40, T.z + aim.z * 40);
+                    return;
+                }
                 const desired = tmpV1.set(p.x, p.y + (ch.walking ? 2.4 : 3.2), p.z + (ch.walking ? 6.5 : 8));
                 if (ch.room) {   // indoors: tuck the camera inside the lobby
                     desired.set(p.x, Math.min(p.y + 2.2, ch.room.lh - 0.5), Math.min(p.z + 3.4, ch.room.z + ch.room.hd - 0.5));
@@ -6505,10 +7069,13 @@
             if (flight.chute) {
                 hudEl.innerHTML = flight.chute.splat
                     ? '💀 ouch…'
+                    : flight.chute.turret ? '🎯 SWIVEL GUN · arrows aim · SPACE shoot · ? get up'
+                    : flight.chute.elev ? '🛗 riding the elevator…'
                     : flight.chute.balloon
                         ? `🎈 riding a balloon! ⬆ ${Math.round(flight.chute.pilot.position.y)} m`
                         : flight.chute.walking
                             ? (flight.chute.room ? (pilotHasGun ? '🔫 got the blaster! press ? to shoot' : '🚪 inside! grab the 🔫 on the table!')
+                                + (flight.chute.room.elev ? ' · 🛗 elevator in the corner!' : '')
                                 : flight.chute.groundY > 2
                                 ? `🧗 climbing! ⬆ ${Math.round(flight.chute.groundY)} m`
                                 : '🚶 exploring the world!')
@@ -6945,6 +7512,7 @@
             }
         }
         function validDesign(d) {
+            fixBodyIndex(d);
             return d && typeof d.bodyIndex === 'number' && d.bodyIndex >= 0 && d.bodyIndex < BODIES.length && Array.isArray(d.parts)
                 && d.parts.every(p => p && PART_MASS[p.type] && Array.isArray(p.pos));
         }
