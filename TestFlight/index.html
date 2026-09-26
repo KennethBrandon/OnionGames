@@ -5284,7 +5284,16 @@
                     ch.groundY = gh;
                     ch.walking = true;
                     ch.pilot.rotation.x = ch.pilot.rotation.z = 0;
-                    if (ch.vel.y < -16) {
+                    const wetLanding = gh < 0.5 && waterAt(ch.pilot.position.x, ch.pilot.position.z);
+                    if (wetLanding && ch.vel.y < -16) {
+                        // no chute? no problem — water is soft! a HUGE cannonball splash
+                        Sound.splash();
+                        for (let i = 0; i < 24; i++)
+                            spawnPuff(ch.pilot.position.clone().add(tmpV1.set(rand(-1.5, 1.5), 0.2, rand(-1.5, 1.5))),
+                                new THREE.Vector3(rand(-4, 4), rand(5, 12), rand(-4, 4)), 0x8fd3ff, rand(0.8, 1.6), rand(0.8, 1.4));
+                        confetti(40);
+                        toast('🌊 CANNONBALL!!! You landed in the water with NO parachute! Swim with the arrow keys!', 3200);
+                    } else if (ch.vel.y < -16) {
                         pilotSplat();   // hit the ground with the chute still packed…
                     } else {
                         Sound.success();
@@ -5353,7 +5362,7 @@
                     ch.groundY = Math.max(gh, ch.groundY + ch.fallV * dt);
                     if (ch.groundY <= gh + 0.001) {
                         ch.groundY = gh;
-                        if (ch.fallV < -16) {
+                        if (ch.fallV < -16 && !(gh < 0.5 && waterAt(p.x, p.z))) {
                             pilotSplat();   // buildings are too tall to jump off. who knew!
                         } else if (ch.fallV < -9) {
                             Sound.boing();
