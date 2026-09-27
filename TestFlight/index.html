@@ -953,7 +953,28 @@
         FLATS.push({ x: ISLAND.x, z: ISLAND.z, r: ISLAND.r, fade: 90 });
         for (const V of VOLCANOES) FLATS.push({ x: V.x, z: V.z, r: V.r + 30, fade: 160 });
 
+        // ----- CRATERS: bombs dig REAL holes in the ground (🔄 fills them back in) -----
+        const MAX_CRATERS = 40;
+        const craters = [];   // { x, z, R, D, mesh }
+        function craterShape(s, D) {   // s = distance / crater radius → how far up or down the dirt goes
+            const H = 0.7;   // the dirt that got thrown up makes a little rim
+            if (s < 1) return -D * (1 - s * s) + H * s * s * s * s * s * s;
+            if (s < 1.3) { const t = 1 - (s - 1) / 0.3; return H * t * t; }
+            return 0;
+        }
+        function craterDip(x, z) {
+            let dip = 0;
+            for (const c of craters) {
+                const dx = x - c.x, dz = z - c.z, rr = c.R * 1.3;
+                if (dx * dx + dz * dz < rr * rr) dip += craterShape(Math.sqrt(dx * dx + dz * dz) / c.R, c.D);
+            }
+            return Math.max(dip, -30);   // bomb the same spot over and over to dig DEEP
+        }
         function terrainY(x, z) {
+            const y = baseTerrainY(x, z);
+            return craters.length ? y + craterDip(x, z) : y;
+        }
+        function baseTerrainY(x, z) {
             const rad2 = x * x + z * z;
             if (rad2 > 7800 * 7800) return 0;                    // beyond the hills it's flat
             let f = 1;
@@ -2280,6 +2301,68 @@
                 }
             },
             {
+                // a real CAR: the arrow keys DRIVE it (⬆ gas, ⬇ reverse, ⬅➡ turn the steering wheel)
+                name: 'Car', emoji: '🚗', mass: 4.5, drives: true,
+                power: { name: 'HONK HONK', emoji: '📯', type: 'boost', a: 34, color: 0x8fd3ff, snd: 'zap' },
+                wheelContacts: [[-0.6, 0, -0.8], [0.6, 0, -0.8], [-0.6, 0, 0.85], [0.6, 0, 0.85]],
+                bottomClearance: 0.16,
+                build() {
+                    const g = new THREE.Group();
+                    const blue = 0x2f7fe0;
+                    box(g, 1.1, 0.34, 2.3, blue, 0, 0.42, 0.02);                  // body
+                    box(g, 1.02, 0.18, 0.62, blue, 0, 0.66, -0.78);               // hood
+                    box(g, 1.02, 0.2, 0.55, blue, 0, 0.68, 0.85);                 // trunk
+                    box(g, 0.14, 0.1, 0.04, 0xfff4b0, -0.36, 0.5, -1.17);         // headlights
+                    box(g, 0.14, 0.1, 0.04, 0xfff4b0, 0.36, 0.5, -1.17);
+                    box(g, 0.14, 0.08, 0.04, 0xff3030, -0.38, 0.54, 1.18);        // tail lights
+                    box(g, 0.14, 0.08, 0.04, 0xff3030, 0.38, 0.54, 1.18);
+                    box(g, 1.14, 0.08, 0.1, 0xd8d8e0, 0, 0.3, -1.18);             // bumpers
+                    box(g, 1.14, 0.08, 0.1, 0xd8d8e0, 0, 0.3, 1.2);
+                    const glass = box(g, 0.96, 0.3, 0.05, 0xbfe4ff, 0, 0.9, -0.44, { transparent: true, opacity: 0.55 });   // windshield
+                    glass.rotation.x = -0.35;
+                    glass.castShadow = false;
+                    box(g, 0.98, 0.06, 0.9, 0x6b3a22, 0, 0.61, 0.08);             // comfy seats
+                    box(g, 0.42, 0.34, 0.1, 0x6b3a22, -0.24, 0.8, 0.38);
+                    box(g, 0.42, 0.34, 0.1, 0x6b3a22, 0.24, 0.8, 0.38);
+                    // the driver (a little pilot) holding the wheel
+                    const driver = buildPilot();
+                    driver.position.set(-0.24, 0.42, 0.15);
+                    g.add(driver);
+                    // THE STEERING WHEEL — it really turns when you press ⬅➡
+                    const col = cyl(g, 0.025, 0.025, 0.3, 0x2b2b2b, -0.24, 0.78, -0.2, 8);
+                    col.rotation.x = -1.0;
+                    const wheel = new THREE.Group();
+                    wheel.position.set(-0.24, 0.86, -0.07);
+                    wheel.rotation.x = -1.0 + Math.PI / 2;
+                    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.022, 8, 20), mat(0x2b2b2b));
+                    wheel.add(rim);
+                    const spoke = box(wheel, 0.24, 0.03, 0.02, 0x2b2b2b, 0, 0, 0);
+                    spoke.castShadow = false;
+                    box(wheel, 0.03, 0.12, 0.02, 0x2b2b2b, 0, -0.06, 0).castShadow = false;
+                    box(wheel, 0.06, 0.06, 0.03, 0xd03a2c, 0, 0, 0).castShadow = false;   // horn button
+                    const tilt = new THREE.Group();   // tilt the wheel toward the driver, spin it around its own axis
+                    tilt.position.copy(wheel.position);
+                    tilt.rotation.x = -0.9;
+                    wheel.position.set(0, 0, 0);
+                    wheel.rotation.set(0, 0, 0);
+                    tilt.add(wheel);
+                    g.add(tilt);
+                    const fronts = [];
+                    for (const [x, z] of [[-0.6, -0.8], [0.6, -0.8], [-0.6, 0.85], [0.6, 0.85]]) {
+                        const hubG = new THREE.Group();   // front tires pivot here to steer
+                        hubG.position.set(x, 0.26, z);
+                        const tire = cyl(hubG, 0.26, 0.26, 0.2, 0x1c1c22, 0, 0, 0, 16);
+                        tire.rotation.z = Math.PI / 2;
+                        const hub = cyl(hubG, 0.11, 0.11, 0.22, 0xd8d8e0, 0, 0, 0, 10);
+                        hub.rotation.z = Math.PI / 2;
+                        g.add(hubG);
+                        if (z < 0) fronts.push(hubG);
+                    }
+                    g.userData.carSteer = { wheel, fronts, angle: 0 };
+                    return g;
+                }
+            },
+            {
                 // ALWAYS keep this one last: it's the "make your own body" card
                 name: 'My Block Body', emoji: '🧱', mass: 3, custom: true,
                 power: { name: 'BLOCK PARTY', emoji: '🧱', type: 'jump', v: 15, color: 'confetti', snd: 'boing' },
@@ -2289,7 +2372,7 @@
         const CUSTOM_BODY = BODIES.length - 1;
         // Saves remember bodies by NUMBER, so adding bodies moves "My Block Body".
         // BODY_VER counts those moves; CUSTOM_AT says where it used to live.
-        const BODY_VER = 2, CUSTOM_AT = { 1: 49 };
+        const BODY_VER = 3, CUSTOM_AT = { 1: 49, 2: 56 };
         function fixBodyIndex(d) {
             if (!d || typeof d.bodyIndex !== 'number') return d;
             const v = d.bv || 1;
@@ -2954,7 +3037,7 @@
             // ----- ground: REAL rolling terrain near the action, flat beyond -----
             const groundTexFar = makeGroundTexture();
             const ground = new THREE.Mesh(new THREE.PlaneGeometry(40000, 40000),
-                new THREE.MeshLambertMaterial({ map: groundTexFar }));
+                holeyGround(new THREE.MeshLambertMaterial({ map: groundTexFar })));
             ground.rotation.x = -Math.PI / 2;
             ground.position.y = -0.35;
             ground.receiveShadow = true;
@@ -2962,12 +3045,12 @@
 
             const terrTex = makeGroundTexture();
             terrTex.repeat.set(6.4, 6.4);
-            const tg = new THREE.PlaneGeometry(16000, 16000, IS_MOBILE ? 110 : 170, IS_MOBILE ? 110 : 170);
+            const tg = new THREE.PlaneGeometry(16000, 16000, TERRAIN_SEGS, TERRAIN_SEGS);
             tg.rotateX(-Math.PI / 2);
             const tpos = tg.attributes.position;
-            for (let i = 0; i < tpos.count; i++) tpos.setY(i, terrainY(tpos.getX(i), tpos.getZ(i)));
+            for (let i = 0; i < tpos.count; i++) tpos.setY(i, baseTerrainY(tpos.getX(i), tpos.getZ(i)));
             tg.computeVertexNormals();
-            const terrain = new THREE.Mesh(tg, new THREE.MeshLambertMaterial({ map: terrTex }));
+            const terrain = new THREE.Mesh(tg, holeyGround(new THREE.MeshLambertMaterial({ map: terrTex })));
             terrain.receiveShadow = true;
             env.add(terrain);
 
@@ -2981,6 +3064,7 @@
                 // below: ground < beaches/deserts/snow < water < island < runways.
                 const layer = y <= 0 ? 0 : waterMap ? 2 : y >= 0.038 ? 3 : 1;
                 if (layer) Object.assign(matl, { polygonOffset: true, polygonOffsetFactor: -layer, polygonOffsetUnits: -4 * layer });
+                if (!waterMap && y >= 0) holeyGround(matl);   // bombs dig through sand and snow too
                 const m = new THREE.Mesh(new THREE.CircleGeometry(r, seg), matl);
                 m.rotation.x = -Math.PI / 2;
                 m.position.set(cx, y, cz);
@@ -2989,7 +3073,7 @@
             };
 
             // ----- airstrips everywhere (find and land on all 5!) -----
-            const runwayMat = new THREE.MeshLambertMaterial({ map: makeRunwayTexture(), polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -16 });
+            const runwayMat = holeyGround(new THREE.MeshLambertMaterial({ map: makeRunwayTexture(), polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -16 }));
             for (const rw of RUNWAYS) {
                 const strip = new THREE.Mesh(new THREE.PlaneGeometry(26, 250), runwayMat);
                 strip.rotation.x = -Math.PI / 2;
@@ -3450,6 +3534,7 @@
                 clouds.push(g);
                 env.add(g);
             }
+            spawnPeople(env, houseSpots);   // last, so adding people didn't move anything else in the seeded world
             return env;
         }
 
@@ -3753,6 +3838,282 @@
             }
             return hit;
         }
+        // ================= PEOPLE =================
+        // Townspeople walk around the cities, airstrips, houses and beaches.
+        // Walk up and they WAVE, buzz them low and they RUN, and if they get
+        // bonked (bullets, bombs, planes) they fall flat… then get back up. "OUCH!"
+        const people = [];
+        const PERSON_SKIN = [0xf0c090, 0xe0ac7a, 0xc68c5a, 0x9a6a42, 0x6e4a2e, 0xf6d2b0];
+        const PERSON_SHIRT = [0x3a6ad0, 0x7ed957, 0xffb347, 0xe85d9a, 0x9b59d0, 0xffe14d, 0x2bb3a8, 0xf4f4f0, 0x2b2b2b, 0xd03a2c];
+        const PERSON_PANTS = [0x2b3a6a, 0x3a3a3a, 0x6b4a2e, 0x8a8a92, 0x1f4f8f, 0xc4a068];
+        const PERSON_HAIR = [0x2b1a10, 0x704214, 0xd9b04c, 0x1a1a1a, 0xb0502a, 0xdcdcdc];
+        const PERSON_HI = ['Hi! 👋', 'Hello pilot!', 'Nice plane!', 'Can I fly?', 'Hey! 😄', 'Cool helmet!', 'Howdy!', 'Wanna race?'];
+        const PERSON_EEK = ['AAAH!', 'EEEK!', 'RUN!!', 'WHOA!', 'LOW PLANE!!', 'MOMMY!'];
+        const PERSON_OUCH = ['OUCH!', 'Oof!', 'Hey!! 😠', 'My head…', 'Not cool!', 'Ow ow ow!'];
+        const personGeo = new THREE.BoxGeometry(1, 1, 1), personHead = new THREE.SphereGeometry(1, 12, 10);
+        const personMats = new Map();
+        function personMat(c) {
+            if (!personMats.has(c)) personMats.set(c, new THREE.MeshLambertMaterial({ color: c }));
+            return personMats.get(c);
+        }
+        function pbox(g, w, h, d, c, x, y, z) {
+            const m = new THREE.Mesh(personGeo, personMat(c));
+            m.scale.set(w, h, d);
+            m.position.set(x, y, z);
+            m.castShadow = true;
+            g.add(m);
+            return m;
+        }
+        function limb(g, x, y, w, len, c) {   // hangs from a pivot so it can swing
+            const pivot = new THREE.Group();
+            pivot.position.set(x, y, 0);
+            pbox(pivot, w, len, w * 1.2, c, 0, -len / 2, 0);
+            g.add(pivot);
+            return pivot;
+        }
+        function buildPerson() {
+            const g = new THREE.Group(), body = new THREE.Group();
+            g.add(body);
+            const pick = (a) => a[(Math.random() * a.length) | 0];
+            const skin = pick(PERSON_SKIN), shirt = pick(PERSON_SHIRT), pants = pick(PERSON_PANTS), hair = pick(PERSON_HAIR);
+            const dress = Math.random() < 0.25;
+            pbox(body, 0.28, 0.32, 0.17, shirt, 0, 0.5, 0);                                      // torso
+            if (dress) pbox(body, 0.34, 0.16, 0.21, shirt, 0, 0.3, 0);                            // skirt
+            const legL = limb(body, -0.075, 0.34, 0.1, 0.34, dress ? skin : pants);
+            const legR = limb(body, 0.075, 0.34, 0.1, 0.34, dress ? skin : pants);
+            const armL = limb(body, -0.19, 0.64, 0.075, 0.28, shirt);
+            const armR = limb(body, 0.19, 0.64, 0.075, 0.28, shirt);
+            const head = new THREE.Mesh(personHead, personMat(skin));
+            head.scale.setScalar(0.12);
+            head.position.set(0, 0.77, 0);
+            head.castShadow = true;
+            body.add(head);
+            const style = Math.random();
+            if (style < 0.35) pbox(body, 0.25, 0.07, 0.25, hair, 0, 0.86, 0.01);                 // short hair
+            else if (style < 0.65) { pbox(body, 0.26, 0.08, 0.26, hair, 0, 0.86, 0.01); pbox(body, 0.25, 0.26, 0.07, hair, 0, 0.72, 0.1); }   // long hair
+            else if (style < 0.85) { pbox(body, 0.27, 0.07, 0.27, pick(PERSON_SHIRT), 0, 0.88, 0); pbox(body, 0.27, 0.03, 0.14, pick(PERSON_SHIRT), 0, 0.855, -0.18); }   // ball cap
+            // (the rest are bald — that's fine too)
+            const kid = Math.random() < 0.25;
+            g.scale.setScalar(kid ? 0.8 : rand(1.1, 1.25));
+            return { g, body, legL, legR, armL, armR };
+        }
+        // one speech bubble texture per phrase, shared by everybody
+        const bubbleTex = new Map();
+        function bubbleFor(text) {
+            if (!bubbleTex.has(text)) {
+                const c = document.createElement('canvas');
+                c.width = 256; c.height = 80;
+                const x = c.getContext('2d');
+                x.fillStyle = '#fffefb'; x.strokeStyle = '#2b2b2b'; x.lineWidth = 5;
+                x.beginPath(); x.roundRect(4, 4, 248, 56, 20); x.fill(); x.stroke();
+                x.beginPath(); x.moveTo(110, 58); x.lineTo(128, 76); x.lineTo(140, 58); x.fill(); x.stroke();
+                x.fillRect(112, 54, 26, 6);
+                x.fillStyle = '#2b2b2b';
+                x.font = 'bold 28px "Comic Sans MS", sans-serif';
+                x.textAlign = 'center'; x.textBaseline = 'middle';
+                x.fillText(text, 128, 33);
+                bubbleTex.set(text, new THREE.CanvasTexture(c));
+            }
+            return bubbleTex.get(text);
+        }
+        function personSay(p, text, time = 2.2) {
+            if (!p.bubble) {
+                p.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false }));
+                p.bubble.scale.set(2.4, 0.75, 1);
+                p.bubble.renderOrder = 20;
+                scene.add(p.bubble);
+            }
+            p.bubble.material.map = bubbleFor(text);
+            p.bubble.material.needsUpdate = true;
+            p.bubble.visible = true;
+            p.sayT = time;
+        }
+        // lane: 'x' or 'z' keeps city folks walking along their street (not into buildings)
+        function addPerson(env, x, z, range, lane) {
+            if (waterAt(x, z)) return;
+            const parts = buildPerson();
+            parts.g.position.set(x, terrainY(x, z), z);
+            env.add(parts.g);
+            const heading = lane === 'x' ? (Math.random() < 0.5 ? Math.PI / 2 : -Math.PI / 2)
+                : lane === 'z' ? (Math.random() < 0.5 ? 0 : Math.PI) : rand(0, Math.PI * 2);
+            people.push({ ...parts, x, z, home: { x, z }, range, lane, heading, face: heading, moving: Math.random() < 0.6, moveT: rand(1, 5),
+                step: rand(0, 6), state: 'walk', stateT: 0, down: 0, sayT: 0, bubble: null, hiT: 0 });
+        }
+        function spawnPeople(env, houseSpots) {
+            for (const C of CITIES) {   // busy sidewalks between the towers
+                const n = IS_MOBILE ? 10 : 18;
+                for (let i = 0; i < n; i++) {
+                    const street = ((Math.random() * 4) | 0) - 2;   // the gaps between building columns/rows
+                    if (Math.random() < 0.5) addPerson(env, C.x + street * 42 + 21 + rand(-3, 3), C.z + rand(-60, 100), 45, 'z');
+                    else addPerson(env, C.x + rand(-90, 90), C.z + street * 42 + 21 + rand(-3, 3), 45, 'x');
+                }
+            }
+            for (const rw of RUNWAYS) {   // plane-spotters at every airstrip
+                for (let i = 0; i < 3; i++) {
+                    const side = Math.random() < 0.5 ? -1 : 1;
+                    addPerson(env, rw.x + side * rand(20, 30), rw.z + rand(-110, 110), 14);
+                }
+            }
+            houseSpots.forEach((hs, i) => {   // folks hanging out by their houses
+                if (i % 3) return;
+                const a = rand(0, Math.PI * 2), d = Math.max(hs.w, hs.d) * 0.7 + 2;
+                addPerson(env, hs.x + Math.cos(a) * d, hs.z + Math.sin(a) * d, 8);
+            });
+            for (const w of WATERS) if (w.r > 500) {   // a day at the beach
+                for (let i = 0; i < (IS_MOBILE ? 6 : 12); i++) {
+                    const a = rand(0, Math.PI * 2), r = w.r + rand(10, 38);
+                    addPerson(env, w.x + Math.cos(a) * r, w.z + Math.sin(a) * r, 12);
+                }
+            }
+            for (const D of DESERTS) addPerson(env, D.x + rand(-40, 40), D.z + rand(-40, 40), 30);   // lost in the desert!
+        }
+        function knockDown(p, why) {
+            if (p.down > 0) return;
+            p.down = rand(4, 6);
+            p.state = 'down';
+            p.body.rotation.set(-Math.PI / 2, 0, 0);   // FLAT on their face
+            p.body.position.y = 0.12;
+            Sound.beep(260, 0.1, 'square', 0.1);
+            Sound.beep(140, 0.18, 'square', 0.09, 0.08);
+            const at = tmpV2.set(p.x, p.g.position.y + 0.5, p.z).clone();
+            for (let i = 0; i < 6; i++)
+                spawnPuff(at.clone().add(tmpV1.set(rand(-0.5, 0.5), rand(0, 0.5), rand(-0.5, 0.5))),
+                    new THREE.Vector3(rand(-2, 2), rand(1, 3), rand(-2, 2)), i % 2 ? 0xffe14d : 0xffffff, rand(0.3, 0.6), 0.7);
+            personSay(p, why || '💫💫💫', 2.5);
+        }
+        // did something at `p` bonk a person? (radius r)
+        function hitPeopleAt(pos, r, all = false) {
+            let hit = false;
+            for (const p of people) {
+                if (p.down > 0) continue;
+                const dx = pos.x - p.x, dz = pos.z - p.z;
+                if (Math.abs(dx) > r + 1 || Math.abs(dz) > r + 1) continue;
+                const dy = pos.y - (p.g.position.y + 0.5 * p.g.scale.y);
+                if (dx * dx + dz * dz + dy * dy < (r + 0.55) * (r + 0.55)) {
+                    knockDown(p);
+                    hit = true;
+                    if (!all) return true;
+                }
+            }
+            return hit;
+        }
+        function panicPeopleNear(pos, r) {
+            for (const p of people) {
+                if (p.down > 0) continue;
+                const dx = p.x - pos.x, dz = p.z - pos.z;
+                if (dx * dx + dz * dz > r * r) continue;
+                startPanic(p, Math.atan2(dx, dz));
+            }
+        }
+        function startPanic(p, awayHeading) {
+            if (p.state !== 'panic') personSay(p, PERSON_EEK[(Math.random() * PERSON_EEK.length) | 0], 1.6);
+            p.state = 'panic';
+            p.stateT = rand(3, 5);
+            p.heading = awayHeading + rand(-0.4, 0.4);
+        }
+        function updatePeople(dt) {
+            const cam = camera.position;
+            const ch = flight.chute;
+            const walker = ch && ch.walking && !ch.splat ? ch.pilot.position : null;
+            const planeLow = !ch && !flight.broken && mode === 'flight' ? phys.pos : null;
+            for (const p of people) {
+                const cdx = p.x - cam.x, cdz = p.z - cam.z;
+                const show = cdx * cdx + cdz * cdz < 450 * 450;
+                p.g.visible = show;
+                if (p.bubble) {
+                    p.sayT -= dt;
+                    p.bubble.visible = show && p.sayT > 0;
+                    if (p.bubble.visible) p.bubble.position.set(p.x, p.g.position.y + 1.25 * p.g.scale.y + 0.3, p.z);
+                }
+                if (!show) continue;
+                const gy = terrainY(p.x, p.z);
+                if (p.down > 0) {   // lying flat… then back up, grumpy
+                    p.down -= dt;
+                    p.g.position.set(p.x, gy, p.z);
+                    if (p.down <= 0) {
+                        p.body.rotation.set(0, 0, 0);
+                        p.body.position.y = 0;
+                        p.state = 'walk';
+                        personSay(p, PERSON_OUCH[(Math.random() * PERSON_OUCH.length) | 0]);
+                    }
+                    continue;
+                }
+                p.hiT -= dt;
+                // a low plane zooming by → RUN!
+                if (planeLow && p.state !== 'panic') {
+                    const dx = p.x - planeLow.x, dz = p.z - planeLow.z;
+                    if (dx * dx + dz * dz < 28 * 28 && planeLow.y - gy < 22) startPanic(p, Math.atan2(dx, dz));
+                }
+                // got run over by a plane? BONK
+                if (planeLow) {
+                    const dx = p.x - planeLow.x, dz = p.z - planeLow.z, dy = planeLow.y - (gy + 0.5);
+                    const rr = clamp(craft.size.length() * 0.4, 1.0, 3) + 0.4;
+                    if (dx * dx + dz * dz + dy * dy < rr * rr) { knockDown(p, 'BONK! 💫'); continue; }
+                }
+                let speed = 0;
+                if (p.state === 'panic') {
+                    p.stateT -= dt;
+                    if (p.stateT <= 0) { p.state = 'walk'; p.moving = false; p.moveT = rand(1, 3); }
+                    speed = 4.2;
+                    p.face = p.heading;
+                } else if (walker && (p.x - walker.x) ** 2 + (p.z - walker.z) ** 2 < 7 * 7) {
+                    // the pilot walked up — stop and WAVE
+                    p.state = 'wave';
+                    p.face = Math.atan2(walker.x - p.x, walker.z - p.z);
+                    if (p.hiT <= 0) { personSay(p, PERSON_HI[(Math.random() * PERSON_HI.length) | 0]); p.hiT = 10; }
+                } else {
+                    p.state = 'walk';
+                    p.moveT -= dt;
+                    if (p.moveT <= 0) {
+                        p.moving = Math.random() < 0.65;
+                        p.moveT = rand(2, 7);
+                        if (p.lane === 'x') p.heading = Math.random() < 0.5 ? Math.PI / 2 : -Math.PI / 2;
+                        else if (p.lane === 'z') p.heading = Math.random() < 0.5 ? 0 : Math.PI;
+                        else p.heading = rand(0, Math.PI * 2);
+                        if (Math.hypot(p.x - p.home.x, p.z - p.home.z) > p.range)
+                            p.heading = p.lane === 'x' ? (p.home.x > p.x ? Math.PI / 2 : -Math.PI / 2)
+                                : p.lane === 'z' ? (p.home.z > p.z ? 0 : Math.PI)
+                                : Math.atan2(p.home.x - p.x, p.home.z - p.z);   // head back home
+                    }
+                    if (p.moving) { speed = 1.3; p.face = p.heading; }
+                }
+                if (speed) {
+                    const nx = p.x + Math.sin(p.heading) * speed * dt, nz = p.z + Math.cos(p.heading) * speed * dt;
+                    if (waterAt(nx, nz) || (p.state === 'panic' && Math.hypot(nx - p.home.x, nz - p.home.z) > p.range + 40)) { p.heading += Math.PI; p.moveT = 2; }
+                    else { p.x = nx; p.z = nz; }
+                    p.step += dt * speed * 5;
+                }
+                // arms + legs
+                const sw = speed ? Math.sin(p.step) * (speed > 2 ? 0.9 : 0.5) : 0;
+                p.legL.rotation.x = sw; p.legR.rotation.x = -sw;
+                if (p.state === 'panic') {   // arms up, flailing!
+                    p.armL.rotation.set(0, 0, -2.8 + Math.sin(p.step * 2) * 0.3);
+                    p.armR.rotation.set(0, 0, 2.8 - Math.sin(p.step * 2) * 0.3);
+                } else if (p.state === 'wave') {
+                    p.armL.rotation.set(0, 0, 0);
+                    p.armR.rotation.set(0, 0, 2.6 + Math.sin(performance.now() / 120) * 0.4);
+                } else {
+                    p.armL.rotation.set(-sw, 0, 0);
+                    p.armR.rotation.set(sw, 0, 0);
+                }
+                p.g.position.set(p.x, gy + (speed > 2 ? Math.abs(Math.sin(p.step)) * 0.06 : 0), p.z);
+                const target = p.face + Math.PI;   // models face -Z
+                let d = target - p.g.rotation.y;
+                d = Math.atan2(Math.sin(d), Math.cos(d));
+                p.g.rotation.y += d * Math.min(1, dt * 6);
+            }
+        }
+        function resetPeople() {   // 🔄 gets everybody back on their feet
+            for (const p of people) {
+                p.down = 0;
+                p.state = 'walk';
+                p.body.rotation.set(0, 0, 0);
+                p.body.position.y = 0;
+                p.sayT = 0;
+                if (p.bubble) p.bubble.visible = false;
+            }
+        }
+
         // ----- crashing into the world -----
         function checkObstacles() {
             if (flight.broken || flight.finished) return;
@@ -5172,6 +5533,9 @@
                 if (why === 'zapped') {
                     bigTitle.textContent = '🤖 ZAPPED!';
                     bigSub.innerHTML = armyScoreText();
+                } else if (why === 'pvp') {
+                    bigTitle.textContent = '💥 GOT YOU!';
+                    bigSub.innerHTML = pvpText();
                 } else {
                     bigTitle.textContent = '💀 SPLAT!';
                     bigSub.textContent = 'You jumped off something WAY too tall! Parachutes only work when they are open…';
@@ -5672,7 +6036,7 @@
         const bullets = [];
         const bulletPool = [];
 
-        function spawnBullet(pos, vel, from) {
+        function spawnBullet(pos, vel, from, owner) {
             let b = bulletPool.pop();
             if (!b) {
                 b = {
@@ -5686,6 +6050,7 @@
             b.vel.copy(vel);
             b.life = 3;
             b.from = from;
+            b.owner = owner || null;
             scene.add(b.mesh);
             bullets.push(b);
         }
@@ -5744,18 +6109,100 @@
                 if (p.y <= floor) {
                     p.y = floor;
                     explode(p, 16, !!inWater);
+                    bombCrater(p, !!inWater);
+                    if (Room.peer) roomBroadcast({ t: 'boom', id: Room.myId, p: p.toArray().map(v => +v.toFixed(2)), w: !!inWater });
                     scene.remove(b.mesh);
                     disposeObject(b.mesh);
                     liveBombs.splice(i, 1);
                 }
             }
         }
+        // the ground shader skips drawing inside craters, and a dirt BOWL mesh fills the hole
+        const TERRAIN_SEGS = IS_MOBILE ? 110 : 170;
+        const craterU = { list: { value: Array.from({ length: MAX_CRATERS }, () => new THREE.Vector4()) }, n: { value: 0 } };
+        function holeyGround(matl) {
+            matl.onBeforeCompile = (sh) => {
+                sh.uniforms.craterList = craterU.list;
+                sh.uniforms.craterN = craterU.n;
+                sh.vertexShader = 'varying vec2 vCraterXZ;\n' + sh.vertexShader.replace('#include <project_vertex>',
+                    '#include <project_vertex>\n\tvCraterXZ = (modelMatrix * vec4(transformed, 1.0)).xz;');
+                sh.fragmentShader = `uniform vec4 craterList[${MAX_CRATERS}];\nuniform int craterN;\nvarying vec2 vCraterXZ;\n`
+                    + sh.fragmentShader.replace('void main() {', `void main() {
+                        for (int i = 0; i < ${MAX_CRATERS}; i++) {
+                            if (i >= craterN) break;
+                            vec2 d = vCraterXZ - craterList[i].xy;
+                            if (dot(d, d) < craterList[i].z * craterList[i].z) discard;
+                        }`);
+            };
+            return matl;
+        }
+        // the terrain MESH is triangles between grid points, so match it exactly (not the smooth hills)
+        function renderedGroundY(x, z) {
+            if (Math.abs(x) >= 8000 || Math.abs(z) >= 8000) return 0;
+            const cell = 16000 / TERRAIN_SEGS;
+            const ix = Math.floor((x + 8000) / cell), iz = Math.floor((z + 8000) / cell);
+            const x0 = -8000 + ix * cell, z0 = -8000 + iz * cell;
+            const u = (x - x0) / cell, v = (z - z0) / cell;
+            const ha = baseTerrainY(x0, z0), hb = baseTerrainY(x0, z0 + cell), hd = baseTerrainY(x0 + cell, z0);
+            if (u + v <= 1) return ha + u * (hd - ha) + v * (hb - ha);
+            const hc = baseTerrainY(x0 + cell, z0 + cell);
+            return hc + (1 - u) * (hb - hc) + (1 - v) * (hd - hc);
+        }
+        const craterMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8 });
+        const craterCols = [new THREE.Color(0x2e241c), new THREE.Color(0x6b4a2e), new THREE.Color(0x9a7a52)];
+        function shapeCraterMesh(c) {
+            const pos = c.mesh.geometry.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                const x = c.x + pos.getX(i), z = c.z + pos.getZ(i);
+                pos.setY(i, renderedGroundY(x, z) + craterDip(x, z));
+            }
+            pos.needsUpdate = true;
+            c.mesh.geometry.computeVertexNormals();
+        }
+        function makeCrater(x, z) {
+            if (craters.length >= MAX_CRATERS) { const old = craters.shift(); scene.remove(old.mesh); old.mesh.geometry.dispose(); }
+            const c = { x, z, R: 7, D: 3 };
+            const geo = new THREE.RingGeometry(0.01, c.R * 1.3, 48, 18);
+            geo.rotateX(-Math.PI / 2);
+            const pos = geo.attributes.position, cols = new Float32Array(pos.count * 3), tc = new THREE.Color();
+            for (let i = 0; i < pos.count; i++) {
+                const s = Math.hypot(pos.getX(i), pos.getZ(i)) / c.R;   // scorched middle → dirt → sprayed dirt at the rim
+                if (s < 0.9) tc.copy(craterCols[0]).lerp(craterCols[1], s / 0.9);
+                else tc.copy(craterCols[1]).lerp(craterCols[2], Math.min(1, (s - 0.9) / 0.4));
+                tc.toArray(cols, i * 3);
+            }
+            geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+            c.mesh = new THREE.Mesh(geo, craterMat);
+            c.mesh.position.set(x, 0, z);
+            c.mesh.receiveShadow = true;
+            scene.add(c.mesh);
+            craters.push(c);
+            // reshape this bowl and any old ones it overlaps (holes on holes go deeper!)
+            for (const o of craters)
+                if (Math.hypot(o.x - x, o.z - z) < (o.R + c.R) * 1.3) shapeCraterMesh(o);
+            syncCraterHoles();
+        }
+        function syncCraterHoles() {
+            craterU.n.value = craters.length;
+            craters.forEach((c, i) => craterU.list.value[i].set(c.x, c.z, c.R, 0));
+        }
+        function clearCraters() {
+            for (const c of craters) { scene.remove(c.mesh); c.mesh.geometry.dispose(); }
+            craters.length = 0;
+            syncCraterHoles();
+        }
+        // a bomb that lands on real ground (not water, not a roof) digs a crater
+        function bombCrater(p, water) {
+            if (water || Math.abs(p.y - terrainY(p.x, p.z)) > 0.6) return;
+            makeCrater(p.x, p.z);
+        }
         function clearBombs() {
             for (const b of liveBombs) { scene.remove(b.mesh); disposeObject(b.mesh); }
             liveBombs.length = 0;
         }
         // one big KABOOM: hurts every robot, balloon (and critter) nearby
-        const blastListeners = [(pos, radius) => hitAnimalsAt(pos, radius, true)];
+        const blastListeners = [(pos, radius) => hitAnimalsAt(pos, radius, true),
+            (pos, radius) => { hitPeopleAt(pos, radius * 0.6, true); panicPeopleNear(pos, radius * 3); }];
         function explode(pos, radius, water = false) {
             Sound.kaboom();
             for (let i = 0; i < 22; i++) {
@@ -5795,6 +6242,7 @@
                 const b = bullets[i];
                 b.life -= dt;
                 b.vel.y -= 2.5 * dt;
+                const prev = tmpV3.copy(b.mesh.position);
                 b.mesh.position.addScaledVector(b.vel, dt);
                 let dead = b.life <= 0
                     || (b.mesh.position.y < 40 && b.mesh.position.y < terrainY(b.mesh.position.x, b.mesh.position.z));
@@ -5808,6 +6256,7 @@
                         }
                     }
                     if (!dead && hitAnimalsAt(b.mesh.position, 0.3)) dead = true;
+                    if (!dead && hitPeopleAt(b.mesh.position, 0.2)) dead = true;
                     if (!dead && battle.active) {
                         for (const bot of battle.bots) {
                             if (bot.dead) continue;
@@ -5817,6 +6266,13 @@
                                 break;
                             }
                         }
+                    }
+                } else if (!dead && b.from === 'remote') {
+                    // ROOMS: your friends' blasters can get you!
+                    const me = pvpTarget();
+                    if (me && nearSegment(prev, b.mesh.position, me.pos, me.r)) {
+                        pvpHit(b.owner, 1);
+                        dead = true;
                     }
                 } else if (!dead && b.from === 'bot' && flight.chute && !flight.chute.splat) {
                     // the robots hunt you on foot too!
@@ -5838,6 +6294,69 @@
                     bullets.splice(i, 1);
                     bulletPool.push(b);
                 }
+            }
+        }
+
+        // ----- ROOMS: blast your friends! 5 hearts, a blaster shot takes 1, a bomb takes 3.
+        //       Each player checks hits on THEMSELVES and tells everyone. -----
+        const PVP_HP = 5;
+        const pvp = { hp: PVP_HP, safe: 0, kills: 0, by: '' };
+        function nearSegment(a, b, p, r) {   // does the line a→b pass within r of p?
+            const ab = tmpV1.copy(b).sub(a), ap = tmpV2.copy(p).sub(a);
+            const t = clamp(ap.dot(ab) / Math.max(ab.lengthSq(), 1e-6), 0, 1);
+            return ap.sub(ab.multiplyScalar(t)).length() < r;
+        }
+        function pvpTarget() {   // where am I, and how big a target? (null = can't be hit right now)
+            if (!Room.peer || mode !== 'flight' || pvp.safe > 0 || flight.finished) return null;
+            if (flight.chute) {
+                if (flight.chute.splat) return null;
+                return { pos: flight.chute.pilot.position.clone().setY(flight.chute.pilot.position.y + 0.5), r: 1.1 };
+            }
+            if (flight.broken) return null;
+            return { pos: phys.pos.clone(), r: clamp(craft.size.length() * 0.35, 1.0, 2.6) };
+        }
+        function remoteName(id) {
+            if (id === Room.myId) return Room.name;
+            const r = Room.remotes.get(id);
+            return r ? r.name : 'Somebody';
+        }
+        function pvpHit(by, dmg) {
+            if (pvp.hp <= 0) return;
+            pvp.hp = Math.max(0, pvp.hp - dmg);
+            Sound.boom();
+            $('flash').style.background = '#ff5544';
+            $('flash').style.opacity = 0.35;
+            setTimeout(() => { $('flash').style.opacity = 0; }, 150);
+            roomBroadcast({ t: 'hit', id: Room.myId, by, hp: pvp.hp });
+            if (pvp.hp <= 0) {
+                pvp.by = remoteName(by);
+                if (flight.chute) pilotSplat('pvp');
+                else triggerCrash(false, 'pvp');
+                gtag('event', 'room_ko', { game_name: 'Test Flight' });
+            } else {
+                toast(`⚠️ ${escapeHtml(remoteName(by))} hit you!! ${'❤️'.repeat(pvp.hp)} left!`, 1600);
+            }
+        }
+        function pvpText() {
+            return `💥 <b>${escapeHtml(pvp.by)}</b> got you!<br>You've got <b>${pvp.kills}</b> friend${pvp.kills === 1 ? '' : 's'} so far in this room.`
+                + '<br><span style="font-size:14px">Hit 🔄 to get back out there and get revenge!</span>';
+        }
+        function onPvpHit(msg) {   // somebody in the room got hit
+            if (typeof msg.by !== 'string' || typeof msg.hp !== 'number') return;
+            const victim = remoteName(msg.id), shooter = remoteName(msg.by);
+            const ko = msg.hp <= 0;
+            if (msg.by === Room.myId) {
+                if (ko) { pvp.kills++; toast(`🏆 You got ${escapeHtml(victim)}!! 💥`, 2200); }
+                else toast(`🎯 You hit ${escapeHtml(victim)}! (${'❤️'.repeat(msg.hp)} left)`, 1100);
+            } else if (ko) toast(`💥 ${escapeHtml(shooter)} got ${escapeHtml(victim)}!`, 2000);
+            const r = Room.remotes.get(msg.id);
+            if (ko && r && mode === 'flight') {
+                const at = r.chute ? r.pilot.position : r.pos;
+                Sound.kaboom();
+                for (let i = 0; i < 18; i++)
+                    spawnPuff(at.clone().add(tmpV1.set(rand(-1.5, 1.5), rand(-1, 1.5), rand(-1.5, 1.5))),
+                        new THREE.Vector3(rand(-5, 5), rand(2, 9), rand(-5, 5)),
+                        i < 8 ? [0xff5a1a, 0xffb347, 0xffe14d][i % 3] : 0x555555, rand(1.5, 3), rand(0.8, 1.4));
             }
         }
 
@@ -6131,6 +6650,18 @@
             if (battle.bots.length > 60) battle.bots = battle.bots.filter(b => !b.gone);
         }
 
+        function updateCarSteer(dt) {
+            if (craft._steer === undefined) {
+                craft._steer = null;
+                craft.group.traverse(o => { if (o.userData.carSteer) craft._steer = o.userData.carSteer; });
+            }
+            const S = craft._steer;
+            if (!S) return;
+            const want = flight.chute || flight.broken ? 0 : -getControls().roll * 0.5;
+            S.angle += (want - S.angle) * Math.min(1, dt * 8);
+            S.wheel.rotation.z = S.angle * 3;   // the wheel turns a LOT more than the tires
+            for (const t of S.fronts) t.rotation.y = S.angle;
+        }
         function syncCraftTransform() {
             craft.group.quaternion.copy(phys.quat);
             craft.group.position.copy(phys.pos)
@@ -6177,7 +6708,10 @@
                 ? (craft.tailCount > 0
                     ? ' Steer with the arrow keys — hold ⬇ to pull the nose UP, like a real pilot!'
                     : ' Steer with ⬅➡ once you\'re moving!') : '';
-            let hint = nThrust === 0
+            let hint = craft.bodyDef.drives
+                ? '🚗 <b>DRIVE with the arrow keys!</b> ⬆ gas · ⬇ brake/reverse · ⬅➡ turn the steering wheel!'
+                    + (nThrust ? ' Your boosters still work too! 🚀' : '')
+                : nThrust === 0
                 ? '😅 No boosters or propellers! Go back to the editor and drag some 🚀 on!'
                 : (nThrust === 1
                     ? `Hold <b>${thrustParts[0].key}</b> (key or button) to blast off! 🚀 Then land gently on your wheels.${steerHint}`
@@ -6205,6 +6739,8 @@
 
         function resetFlight() {
             clearChute();
+            clearCraters();
+            resetPeople();
             rebuildCraft();
             for (const d of flight.debris) { scene.remove(d.mesh); disposeObject(d.mesh); }
             flight.debris = [];
@@ -6214,6 +6750,8 @@
             flight.splash = false;
             flight.airTime = 0;
             flight.maxAlt = 0;
+            pvp.hp = PVP_HP;
+            pvp.safe = 3;
             flight.landTimer = 0;
             flight.floating = false;
             flight.wasFloating = false;
@@ -6279,6 +6817,7 @@
             clearBots();
             clearBullets();
             clearBombs();
+            clearCraters();
             setUnderwaterView(false);
             elevOv.classList.remove('on', 'shut');
             $('turret-fire')?.remove();
@@ -6407,7 +6946,8 @@
                 btn.classList.toggle('pressed', activeArrows.has(btn.dataset.arrow));
         }
         function updateArrowPad() {
-            const hasAil = craft.aileronCount > 0, hasTail = craft.tailCount > 0;
+            const drives = !!craft.bodyDef.drives;
+            const hasAil = craft.aileronCount > 0 || drives, hasTail = craft.tailCount > 0 || drives;
             $('arrow-pad').classList.toggle('hidden', !hasAil && !hasTail);
             $('ab-left').style.display = hasAil ? '' : 'none';
             $('ab-right').style.display = hasAil ? '' : 'none';
@@ -6595,6 +7135,20 @@
                     const rightAxis = new THREE.Vector3(1, 0, 0).applyQuaternion(phys.quat);
                     T.addScaledVector(rightAxis, 3.2 * phys.I * airFactor * Math.min(craft.tailCount, 2) * ctrl.pitch);
                 }
+                if (craft.bodyDef.drives && flight.grounded) {
+                    // 🚗 CAR: ⬆ gas, ⬇ reverse, ⬅➡ turn the wheel (steers like a real car: turns more when you go faster)
+                    const gas = -ctrl.pitch, steer = ctrl.roll;
+                    const fwdG = tmpV2.set(fwd.x, 0, fwd.z);
+                    if (fwdG.lengthSq() > 0.01) {
+                        fwdG.normalize();
+                        const vF = phys.vel.dot(fwdG);
+                        if (gas > 0 && vF < 24) F.addScaledVector(fwdG, phys.m * 10);
+                        else if (gas < 0) F.addScaledVector(fwdG, -phys.m * (vF > 0.5 ? 16 : 6));   // brake, then back up
+                        const wantYaw = -steer * 1.7 * clamp(vF / 5, -1, 1);
+                        const yawNow = phys.angVel.dot(WORLD_UP);
+                        T.addScaledVector(WORLD_UP, phys.I * 10 * (wantYaw - yawNow));
+                    }
+                }
                 if (craft.tailCount > 0 && phys.vel.lengthSq() > 9) {
                     // the tail weathervanes the nose toward the flight path (pitch AND yaw),
                     // so a dive points you downhill and picks up speed naturally —
@@ -6750,6 +7304,7 @@
             const sub = 3, h = dt / sub;
             for (let s = 0; s < sub; s++) substep(h);
             syncCraftTransform();
+            updateCarSteer(dt);
             checkObstacles();
             updatePowers(dt);
             gunCooldown -= dt;
@@ -6760,6 +7315,7 @@
             if (gunHeld && gunCooldown <= 0) fireGuns();
             updateBullets(dt);
             updateBombs(dt);
+            if (pvp.safe > 0) pvp.safe -= dt;
             updateBattle(dt);
 
             // control-surface animation
@@ -6953,6 +7509,7 @@
                         ? 'You landed in the water! Aircraft are not fish.'
                         : (CRASH_MSGS[what] || 'Back to the drawing board!');
                     if (what === 'shot') bigSub.innerHTML = armyScoreText();
+                    if (what === 'pvp') { bigTitle.textContent = '💥 SHOT DOWN!'; bigSub.innerHTML = pvpText(); }
                     bigOverlay.classList.remove('hidden');
                 }, 1400);
             }
@@ -7075,8 +7632,10 @@
             hudTimer -= dt;
             if (hudTimer > 0) return;
             hudTimer = 0.1;
+            const roomBit = Room.peer && Room.remotes.size && !battle.active
+                ? `${'❤️'.repeat(pvp.hp)}${pvp.safe > 0 ? ' 🛡️' : ''} &nbsp;🏆${pvp.kills}<br>` : '';
             if (flight.chute) {
-                hudEl.innerHTML = flight.chute.splat
+                hudEl.innerHTML = roomBit + (flight.chute.splat
                     ? '💀 ouch…'
                     : flight.chute.turret ? '🎯 SWIVEL GUN · arrows aim · SPACE shoot · ? get up'
                     : flight.chute.elev ? '🛗 riding the elevator…'
@@ -7090,7 +7649,7 @@
                                 : '🚶 exploring the world!')
                             : flight.chute.opened
                                 ? `🪂 ⬆ ${Math.max(0, Math.round(flight.chute.pilot.position.y))} m`
-                                : `😱 FALLING! hold SPACE! ⬆ ${Math.max(0, Math.round(flight.chute.pilot.position.y))} m`;
+                                : `😱 FALLING! hold SPACE! ⬆ ${Math.max(0, Math.round(flight.chute.pilot.position.y))} m`);
                 return;
             }
             const alt = Math.max(0, Math.round(flight.lowY));
@@ -7099,9 +7658,9 @@
                 ? `${'❤️'.repeat(Math.max(0, battle.hp))} &nbsp;💥${battle.kills} &nbsp;🤖${(ARMY_SIZE - battle.kills).toLocaleString()} left<br>`
                 : '';
             const deep = phys.pos.y < -1 && waterAt(phys.pos.x, phys.pos.z);
-            hudEl.innerHTML = deep
+            hudEl.innerHTML = roomBit + (deep
                 ? `${battleBit}🐟 ${Math.round(-phys.pos.y)} m DEEP &nbsp;&nbsp; 💨 ${spd} m/s`
-                : `${battleBit}⬆ ${alt} m &nbsp;&nbsp; 💨 ${spd} m/s`;
+                : `${battleBit}⬆ ${alt} m &nbsp;&nbsp; 💨 ${spd} m/s`);
         }
 
         // ----- VOLCANOES: fly over one and it's a 50/50 coin flip… -----
@@ -7515,7 +8074,17 @@
                 if (r) applyRemoteState(r, msg);
             } else if (msg.t === 'shot') {
                 if (mode === 'flight' && Array.isArray(msg.p) && Array.isArray(msg.v))
-                    spawnBullet(new THREE.Vector3().fromArray(msg.p), new THREE.Vector3().fromArray(msg.v), 'remote');
+                    spawnBullet(new THREE.Vector3().fromArray(msg.p), new THREE.Vector3().fromArray(msg.v), 'remote', msg.id);
+            } else if (msg.t === 'boom') {
+                if (mode === 'flight' && Array.isArray(msg.p)) {
+                    const at = new THREE.Vector3().fromArray(msg.p);
+                    explode(at, 16, !!msg.w);
+                    bombCrater(at, !!msg.w);
+                    const me = pvpTarget();
+                    if (me && me.pos.distanceTo(at) < 16) pvpHit(msg.id, 3);
+                }
+            } else if (msg.t === 'hit') {
+                onPvpHit(msg);
             } else if (msg.t === 'bye') {
                 dropRemote(msg.id);
             }
@@ -7708,6 +8277,7 @@
                 for (const t of turbines) t.userData.rotor.rotation.z += dt * t.userData.spin;
                 updateVolcanoes(dt);
                 updateAnimals(dt);
+                updatePeople(dt);
                 for (const b of birds) {
                     const u = b.userData;
                     if (u.dead > 0) { u.dead -= dt; if (u.dead <= 0) b.visible = true; continue; }
@@ -7735,9 +8305,9 @@
             get powerState() { return powerState; }, get colliders() { return colliders; },
             get battle() { return battle; }, get bullets() { return bullets; }, get balloons() { return balloons; },
             get camera() { return camera; }, get turbines() { return turbines; }, get birds() { return birds; },
-            get animals() { return animals; }, get fishes() { return fishes; }, get weather() { return Weather; },
-            step(dt = 1 / 60, n = 1) { if (mode === 'flight') for (let i = 0; i < n; i++) { stepPhysics(dt); updateVolcanoes(dt); sendRoomState(dt); updateRemotes(dt); } },
-            get room() { return Room; }
+            get animals() { return animals; }, get people() { return people; }, get fishes() { return fishes; }, get weather() { return Weather; },
+            step(dt = 1 / 60, n = 1) { if (mode === 'flight') for (let i = 0; i < n; i++) { stepPhysics(dt); updateVolcanoes(dt); updatePeople(dt); sendRoomState(dt); updateRemotes(dt); } },
+            get room() { return Room; }, get pvp() { return pvp; }, pvpHit, onRoomMsg, craters, makeCrater, terrainY
         };
 
         // ================= BOOT =================
