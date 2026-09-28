@@ -1196,6 +1196,7 @@
             let base = 0, hasUV = true;
             const v = new THREE.Vector3(), nm = new THREE.Matrix3();
             return {
+                get nv() { return base; }, get ni() { return idx.length; },   // where the next add() lands
                 add(geo, matrix, color, ranges) {
                     const pa = geo.attributes.position, na = geo.attributes.normal, ua = geo.attributes.uv;
                     if (!pa || !na) return;
@@ -1245,12 +1246,14 @@
             group.add(m);
             return m;
         }
-        // bake every never-moving mesh under `env` into merged chunk meshes (skipping the `dynamic` subtrees)
+        // bake every never-moving mesh under `env` into merged chunk meshes (skipping the `dynamic` subtrees).
+        // Things you can wreck (userData.wreck, inherited by children) remember which vertices are theirs.
         function bakeStatics(env, dynamic) {
             env.updateMatrixWorld(true);
             const CH = 800, buckets = new Map(), gone = [];
-            const visit = (o) => {
-                if (dynamic.has(o)) return;
+            const visit = (o, w) => {
+                w = o.userData.wreck || w;
+                if (dynamic.has(o)) { if (w) w.loose.push(o); return; }
                 if (o.isMesh && !o.isInstancedMesh) {
                     const isArr = Array.isArray(o.material);
                     const mats = isArr ? o.material : [o.material];
@@ -1264,22 +1267,27 @@
                             const key = `${fams[mi]}|${cx},${cz}`;
                             let b = buckets.get(key);
                             if (!b) buckets.set(key, b = { fam: fams[mi], sample: m, merger: geometryMerger() });
+                            const v0 = b.merger.nv, i0 = b.merger.ni;
                             b.merger.add(o.geometry, o.matrixWorld, m.color, ranges);
+                            if (w) w.parts.push({ b, v0, vN: b.merger.nv - v0, i0, iN: b.merger.ni - i0 });
                         });
                         gone.push(o);
                         return;
                     }
+                    if (w) { w.loose.push(o); return; }   // a special mesh: gets hidden by hand when wrecked
                 }
-                for (const c of o.children) visit(c);
+                for (const c of o.children) visit(c, w);
             };
-            for (const c of env.children) visit(c);
+            for (const c of env.children) visit(c, null);
             for (const o of gone) { o.parent.remove(o); o.geometry.dispose(); }
             for (const b of buckets.values()) {
                 const m = new THREE.Mesh(b.merger.build(), familyMaterial(b.fam, { vertexColors: true, map: b.sample.map || null }));
                 m.castShadow = m.receiveShadow = true;
                 m.matrixAutoUpdate = false;
                 env.add(m);
+                b.mesh = m;
             }
+            for (const W of wrecks) for (const P of W.parts) if (P.b) { P.mesh = P.b.mesh; delete P.b; }
             const sweep = (o) => {   // the empty groups the baked meshes left behind
                 for (const c of o.children.slice()) sweep(c);
                 if (o.isGroup && !o.children.length && o.parent && !dynamic.has(o)) o.parent.remove(o);
@@ -3134,10 +3142,13 @@
         const padMat = new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.6 });
         function addRoomBuilding(env, cx, cz, w, d, h, lh, towerMat, what) {
             const t = 0.4, doorHalf = 1.2, doorH = 2.8;
+            const W = { what, shape: 'box', x: cx, z: cz, hw: w / 2, hd: d / 2, h, max: what === 'hangar' ? 20 : Math.round(12 + h * 0.35),
+                color: (Array.isArray(towerMat) ? towerMat[0] : towerMat).color.getHex() };
             const addBox = (bw, bh, bd, x, y, z, m) => {
                 const mesh = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), m);
                 mesh.position.set(cx + x, y, cz + z);
                 mesh.castShadow = mesh.receiveShadow = true;
+                mesh.userData.wreck = W;
                 env.add(mesh);
                 return mesh;
             };
@@ -3183,12 +3194,16 @@
                 elev: h >= 12 ? { x: cx - w / 2 + 1.5, z: cz - d / 2 + 1.5 } : null, extras: false };
             rooms.push(room);
             colliders.push({ x: cx, z: cz, r: Math.max(w, d) * 0.62, h, cone: false, what, room });
+            for (const o of [floor, hinge, gun, pad]) o.userData.wreck = W;
+            W.room = room;
+            room.wreck = addWreck(W, colliders[colliders.length - 1]);
+            return room;
         }
         const inRoom = (R, x, z) => Math.abs(x - R.x) < R.hw && Math.abs(z - R.z) < R.hd;
         // walking from (x0,z0) to (x1,z1) at height y: does a lobby wall block it?
         function roomWallBlocks(x0, z0, x1, z1, y) {
             for (const R of rooms) {
-                if (Math.abs(x1 - R.x) > R.hw + 2 || Math.abs(z1 - R.z) > R.hd + 2) continue;
+                if (R.wrecked || Math.abs(x1 - R.x) > R.hw + 2 || Math.abs(z1 - R.z) > R.hd + 2) continue;
                 if (y >= R.lh - 0.6) continue;   // up on the roof: no walls
                 const a = inRoom(R, x0, z0), b = inRoom(R, x1, z1);
                 if (a === b) {
@@ -3205,13 +3220,14 @@
             return false;
         }
         function roomAt(x, z, y) {
-            for (const R of rooms) if (y < R.lh - 0.6 && inRoom(R, x, z)) return R;
+            for (const R of rooms) if (!R.wrecked && y < R.lh - 0.6 && inRoom(R, x, z)) return R;
             return null;
         }
 
         function buildFlightEnv() {
             const env = new THREE.Group();
             colliders = [];
+            wrecks.length = 0;
 
             // ----- sky dome + sun (way nicer than a flat color!) -----
             skyDome = new THREE.Mesh(
@@ -3299,8 +3315,8 @@
                 env.add(strip);
             }
             {   // your own little hangar + windsock at the Home Airstrip (walk in — there's a blaster!)
-                addRoomBuilding(env, -27, 26, 9, 11, 5, 4.5, mat(0xd0202a), 'hangar');
-                box(env, 9.6, 0.5, 11.6, 0xf4f4f0, -27, 4.8, 26);   // 5 cm above the red band's top, or the two coplanar faces z-fight (white/red flicker)
+                const hangar = addRoomBuilding(env, -27, 26, 9, 11, 5, 4.5, mat(0xd0202a), 'hangar');
+                box(env, 9.6, 0.5, 11.6, 0xf4f4f0, -27, 4.8, 26).userData.wreck = hangar.wreck;   // 5 cm above the red band's top, or the two coplanar faces z-fight (white/red flicker)
                 cyl(env, 0.08, 0.08, 6, 0xd8d8e0, 18, 3, 30, 8);
                 const sock = new THREE.Mesh(new THREE.ConeGeometry(0.5, 2.2, 10), mat(0xff8c1a));
                 sock.rotation.z = Math.PI / 2;
@@ -3344,15 +3360,19 @@
                 flatCircle(ISLAND.x, ISLAND.z, ISLAND.r, 0xe8d49a, 0.038, 32);
                 for (const [ox, oz] of [[-70, -40], [60, -60], [-50, 70]]) {
                     const px = ISLAND.x + ox, pz = ISLAND.z + oz;
+                    const W = { what: 'tree', shape: 'cyl', x: px, z: pz, y0: 0.04, r: 1.4, h: 3.6, max: 3 };
                     const trunk = cyl(env, 0.14, 0.2, 3.2, 0x8d5524, px, 1.6 + 0.04, pz, 7);
                     trunk.rotation.z = 0.12;
+                    trunk.userData.wreck = W;
                     for (let i = 0; i < 5; i++) {
                         const a = (i / 5) * Math.PI * 2;
                         const leaf = box(env, 1.5, 0.05, 0.4, 0x3e8a3e, px + Math.cos(a) * 0.7, 3.3, pz + Math.sin(a) * 0.7);
                         leaf.rotation.y = -a;
                         leaf.rotation.z = 0.35;
+                        leaf.userData.wreck = W;
                     }
                     colliders.push({ x: px, z: pz, r: 0.8, h: 3.6, cone: false, what: 'tree' });
+                    addWreck(W, colliders[colliders.length - 1]);
                 }
             }
 
@@ -3372,6 +3392,7 @@
                     g.rotation.y = rand(0, Math.PI * 2);
                     env.add(g);
                     colliders.push({ x: cx, z: cz, r: 0.9, h: h + 1, cone: false, what: 'cactus' });
+                    g.userData.wreck = addWreck({ what: 'cactus', shape: 'cyl', x: cx, z: cz, r: 0.9, h: h + 0.3, max: 2 }, colliders[colliders.length - 1]);
                 }
                 const pr = di === 0 ? 60 : 115, ph = di === 0 ? 75 : 150;   // the far desert has a GIANT pyramid
                 const pyr = new THREE.Mesh(new THREE.ConeGeometry(pr, ph, 4), mat(0xd9b87c));
@@ -3379,6 +3400,8 @@
                 pyr.rotation.y = Math.PI / 4;
                 env.add(pyr);
                 colliders.push({ x: D.x + 40, z: D.z - 40, r: pr * 0.95, h: ph, cone: true, what: 'pyramid' });
+                pyr.userData.wreck = addWreck({ what: 'pyramid', shape: 'cone', x: D.x + 40, z: D.z - 40, r: pr * 0.85, h: ph, max: di === 0 ? 60 : 120, color: 0xd9b87c },
+                    colliders[colliders.length - 1]);
             });
 
             // ----- snow zones (snowmen!) -----
@@ -3397,6 +3420,9 @@
                     g.position.set(cx, 0, cz);
                     env.add(g);
                     colliders.push({ x: cx, z: cz, r: 1.1, h: th + 4.5, cone: false, what: 'tree' });
+                    const lp = leaves.geometry.parameters;
+                    g.userData.wreck = addWreck({ what: 'tree', shape: 'cyl', x: cx, z: cz, r: Math.max(1, lp.radius * 0.8), h: th + 1.4 + lp.height / 2, max: 3 },
+                        colliders[colliders.length - 1]);
                 }
                 for (let i = 0; i < (S.r > 300 ? 5 : 3); i++) {
                     const a = rand(0, Math.PI * 2), r = rand(20, S.r - 60);
@@ -3415,6 +3441,7 @@
                     g.rotation.y = rand(0, Math.PI * 2);
                     env.add(g);
                     colliders.push({ x: cx, z: cz, r: 1.2, h: 3.6, cone: false, what: 'snowman' });
+                    g.userData.wreck = addWreck({ what: 'snowman', shape: 'cyl', x: cx, z: cz, r: 1.1, h: 3.5, max: 2 }, colliders[colliders.length - 1]);
                 }
                 for (const [ox, oz] of [[-70, 60], [80, -50]]) {
                     const mh = rand(90, 130), mr = rand(80, 110);
@@ -3488,8 +3515,8 @@
                     const w = rand(9, 15), d = rand(9, 15);
                     const h = (gx === 0 && gz === 0) ? rand(55, 70) : rand(16, 48);
                     const wall = new THREE.MeshLambertMaterial({ map: winTex, color: cityTints[(Math.random() * cityTints.length) | 0] });
-                    addRoomBuilding(env, cx, cz, w, d, h, 4, [wall, wall, roofMat, roofMat, wall, wall], 'building');
-                    if (gx === 0 && gz === 0) cyl(env, 0.15, 0.15, 8, 0xd03a2c, cx, h + 4, cz, 8);
+                    const R = addRoomBuilding(env, cx, cz, w, d, h, 4, [wall, wall, roofMat, roofMat, wall, wall], 'building');
+                    if (gx === 0 && gz === 0) cyl(env, 0.15, 0.15, 8, 0xd03a2c, cx, h + 4, cz, 8).userData.wreck = R.wreck;   // the antenna
                 }
             }
 
@@ -3539,6 +3566,8 @@
                 dummy.updateMatrix();
                 houseRoof.setMatrixAt(i, dummy.matrix);
                 colliders.push({ x: hs.x, z: hs.z, r: Math.max(hs.w, hs.d) * 0.62, h: hs.h + 2.2, cone: false, what: 'house', y0: ty });
+                addWreck({ what: 'house', shape: 'cyl', x: hs.x, z: hs.z, y0: ty, r: (hs.w + hs.d) * 0.27, h: hs.h + 1.9, max: 8, color: hs.c,
+                    inst: [{ im: houseBox, i }, { im: houseRoof, i }] }, colliders[colliders.length - 1]);
             });
             houseBox.castShadow = houseRoof.castShadow = true;
             env.add(houseBox, houseRoof);
@@ -3564,6 +3593,8 @@
                 dummy.updateMatrix();
                 trunks.setMatrixAt(i, dummy.matrix);
                 colliders.push({ x: t.x, z: t.z, r: 1.0, h: t.th + t.lh, cone: false, what: 'tree', y0: t.ty });
+                t.wreck = addWreck({ what: 'tree', shape: 'cyl', x: t.x, z: t.z, y0: t.ty, r: Math.max(1, t.lr * 0.85), h: t.th + (t.oak ? t.lr * 1.9 : t.lh * 0.92), max: 3,
+                    inst: [{ im: trunks, i, stump: true }] }, colliders[colliders.length - 1]);
             });
             pinesL.forEach((t, i) => {
                 dummy.position.set(t.x, t.ty + t.th + t.lh * 0.42, t.z);
@@ -3571,6 +3602,7 @@
                 dummy.updateMatrix();
                 pineLeaves.setMatrixAt(i, dummy.matrix);
                 pineLeaves.setColorAt(i, leafColor.setHex(i % 3 ? 0x3e8a3e : 0x2f7032));
+                t.wreck.inst.push({ im: pineLeaves, i });
             });
             oaksL.forEach((t, i) => {
                 dummy.position.set(t.x, t.ty + t.th + t.lr * 0.9, t.z);
@@ -3578,6 +3610,7 @@
                 dummy.updateMatrix();
                 oakLeaves.setMatrixAt(i, dummy.matrix);
                 oakLeaves.setColorAt(i, leafColor.setHex(i % 2 ? 0x4d9b3f : 0x5fae4a));
+                t.wreck.inst.push({ im: oakLeaves, i });
             });
             trunks.castShadow = pineLeaves.castShadow = oakLeaves.castShadow = true;
             env.add(trunks, pineLeaves, oakLeaves);
@@ -3663,6 +3696,7 @@
                 env.add(g);
                 turbines.push(g);
                 colliders.push({ x: spot[0], z: spot[1], r: 1.3, h: 23, cone: false, what: 'turbine', y0: tty });
+                g.userData.wreck = addWreck({ what: 'turbine', shape: 'cyl', x: spot[0], z: spot[1], y0: tty, r: 1.3, h: 23.5, max: 10 }, colliders[colliders.length - 1]);
             }
 
             // ----- birds! flocks circling everywhere + seagulls by the sea -----
@@ -3778,6 +3812,8 @@
             for (const t of turbines) mergeChildren(t.userData.rotor);
             for (const R of rooms) mergeChildren(R.hinge, { family: 'lam|0|' });
             const baked = bakeStatics(env, dynamic);
+            buildWreckGrid();
+            env.traverse(o => { delete o.userData.wreck; });   // done with the tags (and clone() would choke on them)
             env.updateMatrixWorld(true);
             env.traverse(o => { o.matrixAutoUpdate = false; });   // frozen…
             for (const o of dynamic) o.matrixAutoUpdate = true;    // …except the things that move
@@ -4381,7 +4417,11 @@
                     const ly = py - (c.y0 || 0);
                     if (ly > c.h || ly < -1) continue;
                     const rr = c.cone ? c.r * (1 - Math.max(0, ly) / c.h) : c.r;
-                    if (dx * dx + dz * dz < rr * rr) { triggerCrash(false, c.what); return; }
+                    if (dx * dx + dz * dz < rr * rr) {
+                        triggerCrash(false, c.what);
+                        if (c.wreck) hitWreck(c.wreck, 10, wv1.copy(phys.pos).addScaledVector(phys.vel, -0.5), true);   // CRUNCH
+                        return;
+                    }
                 }
             }
             // hot air balloons are soft, squishy, and 100% deadly
@@ -4406,7 +4446,7 @@
         }
         const puffTex = makePuffTexture();
         const smokePool = [];
-        for (let i = 0; i < 60; i++) {
+        for (let i = 0; i < 100; i++) {   // (was 60: collapsing buildings kick up a LOT of dust)
             const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex, transparent: true, opacity: 0 }));
             sp.visible = false;
             sp.userData = { life: 0, vel: new THREE.Vector3() };
@@ -6009,6 +6049,7 @@
             const p = ch.pilot.position;
             // doors swing open when you walk up to them
             for (const R of rooms) {
+                if (R.wrecked) continue;
                 const near = Math.abs(p.x - R.x) < R.hw + 4 && Math.abs(p.z - (R.z + R.hd)) < 4 && ch.groundY < R.lh;
                 const target = near ? 1.55 : 0;
                 if (Math.abs(R.open - target) > 0.01) {
@@ -6171,13 +6212,14 @@
             extrasT = 0.5;
             for (const R of rooms) {
                 const near = Math.abs(p.x - R.x) < 150 && Math.abs(p.z - R.z) < 150;
+                if (R.wrecked) continue;
                 if (R.elev && !R.extras && near) buildRoomExtras(R);
                 R.pad.visible = near;   // the glowing blaster pad: only worth drawing when you can walk in
             }
         }
         // which building's ROOF are you standing on?
         function roofRoomAt(x, z, y) {
-            for (const R of rooms) if (R.elev && y > R.h - 0.6 && inRoom(R, x, z)) return R;
+            for (const R of rooms) if (!R.wrecked && R.elev && y > R.h - 0.6 && inRoom(R, x, z)) return R;
             return null;
         }
         const elevOv = $('elevator-ov');
@@ -6306,6 +6348,7 @@
             b.life = 3;
             b.from = from;
             b.owner = owner || null;
+            b.skip = from === 'bot' ? null : wreckAround(pos);   // shooting from a lobby or a roof doesn't hit your own building
             scene.add(b.mesh);
             bullets.push(b);
         }
@@ -6473,7 +6516,7 @@
         // one big KABOOM: hurts every robot, balloon (and critter) nearby
         const blastListeners = [(pos, radius) => hitAnimalsAt(pos, radius, true),
             (pos, radius) => { hitPeopleAt(pos, radius * 0.6, true); panicPeopleNear(pos, radius * 3); }];
-        function explode(pos, radius, water = false) {
+        function explode(pos, radius, water = false, mine = true) {
             Sound.kaboom();
             for (let i = 0; i < 22; i++) {
                 const hot = i < 10;
@@ -6493,7 +6536,7 @@
             }
             for (const bal of balloons)
                 if (bal.visible && bal.position.distanceTo(pos) < radius + 7) popBalloon(bal);
-            for (const fn of blastListeners) fn(pos, radius);
+            for (const fn of blastListeners) fn(pos, radius, mine);
         }
 
         function popBalloon(bal) {
@@ -6507,12 +6550,488 @@
             gtag('event', 'balloon_pop', { game_name: 'Test Flight' });
         }
 
+        // ================= WRECKING THINGS =================
+        // Buildings, houses, trees, cacti, snowmen, wind turbines, your hangar and the pyramids all have
+        // HEALTH. Blaster shots chip it away (they get scorched darker and start to smoke), bombs take big
+        // bites, and at zero: trees + turbines TOPPLE, buildings COLLAPSE into rubble, snowmen go POOF.
+        // Most of them are baked into big chunk meshes (see bakeStatics), so each one remembers WHICH
+        // vertices are its own: wrecking it squashes those to nothing and swaps in a moving copy.
+        // Everything comes back on 🔄 / leaving the flight (like craters).
+        const wrecks = [];
+        const WRECK_INFO = {
+            building: { style: 'collapse', snd: 'stone', dust: 0x8a847c, bits: 0x8a8f96, prio: 5, msg: '🏙️💥 SKYSCRAPER DOWN!!' },
+            hangar: { style: 'collapse', snd: 'stone', dust: 0x8a847c, bits: 0xf4f4f0, prio: 5, msg: '😱 You wrecked your own HANGAR!!' },
+            pyramid: { style: 'collapse', snd: 'stone', dust: 0xd9c08c, bits: 0xc9a86c, prio: 6, msg: '🐫 THE PYRAMID IS CRUMBLING!!!' },
+            house: { style: 'collapse', snd: 'stone', dust: 0xb0a090, bits: 0xa0522d, prio: 4, msg: '🏠💥 KABOOM! A house got wrecked!' },
+            turbine: { style: 'topple', snd: 'metal', dust: 0x9a948c, prio: 3, msg: '🌬️ TIMBERRR! The wind turbine is going DOWN!' },
+            tree: { style: 'topple', snd: 'wood', dust: 0x7a6a4a, prio: 1, msg: '🌳 TIMBER!!' },
+            cactus: { style: 'topple', snd: 'wood', dust: 0xcbb98a, prio: 1, msg: '🌵 Cactus down!' },
+            snowman: { style: 'burst', snd: 'snow', dust: 0xffffff, prio: 2, msg: '⛄ POOF! Bye bye, snowman!' }
+        };
+        const BOMB_DMG = 12;   // blaster shot = 1
+        const wv1 = new THREE.Vector3(), wv2 = new THREE.Vector3(), wv3 = new THREE.Vector3(), bulletFrom = new THREE.Vector3();
+        const wq = new THREE.Quaternion(), wm4 = new THREE.Matrix4(), wCol = new THREE.Color();
+        const ZERO_M4 = new THREE.Matrix4().makeScale(0, 0, 0);
+        function addWreck(W, col) {
+            Object.assign(W, { id: wrecks.length, hp: W.max, state: 0, y0: W.y0 || 0, parts: [], loose: [], inst: W.inst || [] });
+            if (col) { W.col = col; col.wreck = W; W.colOrig = { r: col.r, h: col.h, cone: col.cone, y0: col.y0, room: col.room }; }
+            wrecks.push(W);
+            return W;
+        }
+        // a coarse grid, so a bullet only looks at the few things near it
+        const WG = 40, wreckGrid = new Map();
+        let wreckStamp = 0, solidCones = [];
+        const wreckKey = (ix, iz) => (ix + 2048) * 4096 + (iz + 2048);
+        function buildWreckGrid() {
+            wreckGrid.clear();
+            for (const W of wrecks) {
+                const R = W.shape === 'box' ? Math.hypot(W.hw, W.hd) : W.r;
+                for (let ix = Math.floor((W.x - R) / WG); ix <= Math.floor((W.x + R) / WG); ix++)
+                    for (let iz = Math.floor((W.z - R) / WG); iz <= Math.floor((W.z + R) / WG); iz++) {
+                        const k = wreckKey(ix, iz);
+                        let l = wreckGrid.get(k);
+                        if (!l) wreckGrid.set(k, l = []);
+                        l.push(W);
+                    }
+            }
+            solidCones = colliders.filter(c => c.cone && !c.wreck);   // mountains + volcanoes stop bullets, but never break
+        }
+        function forWrecksNear(x0, z0, x1, z1, fn) {   // every STANDING wreckable near that box, once each
+            const stamp = ++wreckStamp;
+            for (let ix = Math.floor(x0 / WG); ix <= Math.floor(x1 / WG); ix++)
+                for (let iz = Math.floor(z0 / WG); iz <= Math.floor(z1 / WG); iz++) {
+                    const l = wreckGrid.get(wreckKey(ix, iz));
+                    if (l) for (const W of l) {
+                        if (W.state || W.stamp === stamp) continue;
+                        W.stamp = stamp;
+                        fn(W);
+                    }
+                }
+        }
+        // how far OUTSIDE this thing is the point? (0 = inside it)
+        function wreckDist(W, x, y, z) {
+            const dx = x - W.x, dz = z - W.z, ly = y - W.y0;
+            const dh = W.shape === 'box'
+                ? Math.hypot(Math.max(0, Math.abs(dx) - W.hw), Math.max(0, Math.abs(dz) - W.hd))
+                : Math.max(0, Math.hypot(dx, dz) - (W.shape === 'cone' ? W.r * (1 - clamp(ly, 0, W.h) / W.h) : W.r));
+            const dv = ly < 0 ? -ly : Math.max(0, ly - W.h);
+            return dh && dv ? Math.hypot(dh, dv) : dh + dv;
+        }
+        // the first thing a shot flying a→b runs into → { W, t } (t = how far along)
+        function wreckOnSegment(a, b, skip) {
+            let best = null;
+            const n = Math.max(1, Math.ceil(a.distanceTo(b) / 0.5));
+            forWrecksNear(Math.min(a.x, b.x), Math.min(a.z, b.z), Math.max(a.x, b.x), Math.max(a.z, b.z), W => {
+                if (W === skip) return;
+                for (let i = 1; i <= n; i++) {
+                    const t = i / n;
+                    if (best && t >= best.t) return;
+                    if (wreckDist(W, a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t) === 0) { best = { W, t }; return; }
+                }
+            });
+            return best;
+        }
+        // what are you standing in / on top of when you shoot? (so you don't blast your own lobby or roof)
+        function wreckAround(p) {
+            let found = null;
+            forWrecksNear(p.x, p.z, p.x, p.z, W => {
+                if (p.y < W.y0 + W.h + 3 && wreckDist(W, p.x, clamp(p.y, W.y0, W.y0 + W.h), p.z) === 0) found = W;
+            });
+            return found;
+        }
+        function hitsSolid(p) {
+            for (const c of solidCones) {
+                const dx = p.x - c.x, dz = p.z - c.z;
+                if (Math.abs(dx) > c.r || Math.abs(dz) > c.r) continue;
+                const ly = p.y - (c.y0 || 0);
+                if (ly > c.h || ly < -1) continue;
+                const rr = c.r * (1 - Math.max(0, ly) / c.h);
+                if (dx * dx + dz * dz < rr * rr) return true;
+            }
+            return false;
+        }
+
+        const wreckFx = { smashed: 0, toastT: 0, toastPrio: 0, sndT: 0 };
+        const touchedWrecks = new Set();   // everything that needs putting back on 🔄
+        const smoking = new Set();         // hurt buildings + fresh rubble puff smoke
+        const wreckAnims = [];
+        function hitWreck(W, dmg, from, mine) {
+            if (W.state || !(dmg > 0)) return;
+            touchedWrecks.add(W);
+            W.hp -= dmg;
+            if (W.hp <= 0) { destroyWreck(W, from, mine); return; }
+            scorchWreck(W, 0.4 + 0.6 * W.hp / W.max);
+            const info = WRECK_INFO[W.what];
+            if ((info.style === 'collapse' || W.what === 'turbine') && W.hp < W.max * 0.6) smoking.add(W);
+            if (!mine) return;   // (your friends' shots in Rooms still do the damage, just quietly)
+            showWreckBar(W);
+            if (wreckFx.sndT <= 0) { wreckFx.sndT = 0.07; wreckSound(info.snd); }
+        }
+        function wreckSound(kind) {
+            if (kind === 'wood') { Sound.beep(240, 0.06, 'triangle', 0.14); Sound.beep(170, 0.05, 'square', 0.05, 0.01); }
+            else if (kind === 'snow') Sound.noise(0.12, 900, 0.18);
+            else if (kind === 'metal') { Sound.beep(880, 0.08, 'square', 0.05); Sound.beep(1320, 0.12, 'triangle', 0.06); }
+            else { Sound.beep(110, 0.07, 'square', 0.1); Sound.noise(0.1, 700, 0.14); }
+        }
+        // the more it gets hit, the darker (burnt) it looks
+        function scorchWreck(W, f) {
+            for (const P of W.parts) {
+                const ca = P.mesh.geometry.attributes.color;
+                if (!P.col) P.col = ca.array.slice(P.v0 * 3, (P.v0 + P.vN) * 3);
+                for (let i = 0; i < P.col.length; i++) ca.array[P.v0 * 3 + i] = P.col[i] * f;
+                ca.addUpdateRange(P.v0 * 3, P.vN * 3);
+                ca.needsUpdate = true;
+            }
+            for (const I of W.inst) {
+                if (!I.im.instanceColor) continue;
+                if (!I.col) { I.col = new THREE.Color(); I.im.getColorAt(I.i, I.col); }
+                I.im.setColorAt(I.i, wCol.copy(I.col).multiplyScalar(f));
+                I.im.instanceColor.addUpdateRange(I.i * 3, 3);
+                I.im.instanceColor.needsUpdate = true;
+            }
+        }
+        // take it out of the baked world: its vertices all collapse onto one point (= draws nothing)
+        function hideWreck(W) {
+            for (const P of W.parts) {
+                const pa = P.mesh.geometry.attributes.position;
+                if (!P.pos) P.pos = pa.array.slice(P.v0 * 3, (P.v0 + P.vN) * 3);
+                for (let i = P.v0 * 3; i < (P.v0 + P.vN) * 3; i += 3) { pa.array[i] = W.x; pa.array[i + 1] = W.y0 - 50; pa.array[i + 2] = W.z; }
+                pa.addUpdateRange(P.v0 * 3, P.vN * 3);
+                pa.needsUpdate = true;
+            }
+            for (const I of W.inst) {
+                if (!I.m) { I.m = new THREE.Matrix4(); I.im.getMatrixAt(I.i, I.m); }
+                if (I.stump) {   // trees leave a stump behind
+                    I.m.decompose(wv1, wq, wv2);
+                    const sh = Math.min(0.5, wv2.y);
+                    wv1.y = W.y0 + sh / 2;
+                    wv2.y = sh;
+                    I.im.setMatrixAt(I.i, wm4.compose(wv1, wq, wv2));
+                } else I.im.setMatrixAt(I.i, ZERO_M4);
+                I.im.instanceMatrix.addUpdateRange(I.i * 16, 16);
+                I.im.instanceMatrix.needsUpdate = true;
+            }
+            for (const o of W.loose) { if (o.userData.wasVisible === undefined) o.userData.wasVisible = o.visible; o.visible = false; }
+        }
+        function restoreWreck(W) {
+            for (const P of W.parts) {
+                for (const [name, snap] of [['position', P.pos], ['color', P.col]]) {
+                    if (!snap) continue;
+                    const a = P.mesh.geometry.attributes[name];
+                    a.array.set(snap, P.v0 * 3);
+                    a.addUpdateRange(P.v0 * 3, P.vN * 3);
+                    a.needsUpdate = true;
+                }
+            }
+            for (const I of W.inst) {
+                if (I.m) { I.im.setMatrixAt(I.i, I.m); I.im.instanceMatrix.addUpdateRange(I.i * 16, 16); I.im.instanceMatrix.needsUpdate = true; }
+                if (I.col) { I.im.setColorAt(I.i, I.col); I.im.instanceColor.addUpdateRange(I.i * 3, 3); I.im.instanceColor.needsUpdate = true; }
+            }
+            for (const o of W.loose) if (o.userData.wasVisible !== undefined) { o.visible = o.userData.wasVisible; delete o.userData.wasVisible; }
+            if (W.col) Object.assign(W.col, W.colOrig);
+            if (W.room) { W.room.wrecked = false; if (W.room.extrasGroup) W.room.extrasGroup.visible = true; }
+            if (W.rubble) { scene.remove(W.rubble); W.rubble.geometry.dispose(); W.rubble = null; }
+            W.hp = W.max;
+            W.state = 0;
+            W.smolder = 0;
+        }
+        // a moving copy of the thing (pivot = the middle of its base) to topple over or sink away
+        function buildWreckVisual(W, pivot) {
+            const g = new THREE.Group();
+            g.position.copy(pivot);
+            const toLocal = new THREE.Matrix4().makeTranslation(-pivot.x, -pivot.y, -pivot.z);
+            for (const P of W.parts) {
+                const src = P.mesh.geometry, geo = new THREE.BufferGeometry();
+                const pos = (P.pos || src.attributes.position.array.slice(P.v0 * 3, (P.v0 + P.vN) * 3)).slice();
+                for (let i = 0; i < pos.length; i += 3) { pos[i] -= pivot.x; pos[i + 1] -= pivot.y; pos[i + 2] -= pivot.z; }
+                geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+                for (const [name, n] of [['normal', 3], ['uv', 2], ['color', 3]]) {
+                    const a = src.attributes[name];
+                    if (a) geo.setAttribute(name, new THREE.BufferAttribute(a.array.slice(P.v0 * n, (P.v0 + P.vN) * n), n));
+                }
+                const ix = src.index.array, idx = new (P.vN > 65535 ? Uint32Array : Uint16Array)(P.iN);
+                for (let i = 0; i < P.iN; i++) idx[i] = ix[P.i0 + i] - P.v0;
+                geo.setIndex(new THREE.BufferAttribute(idx, 1));
+                const m = new THREE.Mesh(geo, P.mesh.material);
+                m.castShadow = true;
+                m.userData.ownGeo = true;
+                g.add(m);
+            }
+            for (const I of W.inst) {
+                I.im.getMatrixAt(I.i, wm4);
+                wCol.copy(I.im.material.color);
+                if (I.im.instanceColor) { const c = new THREE.Color(); I.im.getColorAt(I.i, c); wCol.multiply(c); }
+                const m = new THREE.Mesh(I.im.geometry, mat(wCol.getHex()));
+                wm4.premultiply(toLocal).decompose(m.position, m.quaternion, m.scale);
+                m.castShadow = true;
+                m.userData.ownMat = true;
+                g.add(m);
+            }
+            const extras = W.room && W.room.extrasGroup && W.room.extrasGroup.visible ? [W.room.extrasGroup] : [];
+            for (const o of [...W.loose, ...extras]) {   // door, turbine blades, elevator + rooftop gun…
+                if (!o.visible) continue;
+                const c = o.clone();
+                wm4.copy(o.matrixWorld).premultiply(toLocal).decompose(c.position, c.quaternion, c.scale);
+                c.traverse(q => { q.matrixAutoUpdate = true; q.matrixWorldAutoUpdate = true; });
+                g.add(c);
+            }
+            scene.add(g);
+            return g;
+        }
+        function disposeWreckVisual(g) {
+            scene.remove(g);
+            g.traverse(o => { if (o.userData.ownGeo) o.geometry.dispose(); if (o.userData.ownMat) o.material.dispose(); });
+        }
+        // what's left of a building: a heap of broken blocks
+        const rubbleMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+        function makeRubble(W, pileH) {
+            const merger = geometryMerger(), p = new THREE.Vector3(), s = new THREE.Vector3(), e = new THREE.Euler();
+            const hw = W.shape === 'box' ? W.hw : W.r * 0.75, hd = W.shape === 'box' ? W.hd : W.r * 0.75;
+            const n = clamp(Math.round(hw * hd / 1.5), 12, 40), chunk = Math.max(0.8, Math.min(hw, hd) * 0.45);
+            const base = new THREE.Color(W.color || 0x9a9590), dark = new THREE.Color(0x4a4642), c = new THREE.Color();
+            for (let i = 0; i < n; i++) {
+                const u = rand(-1, 1), v = rand(-1, 1), k = 1 - Math.max(Math.abs(u), Math.abs(v));   // heaped up in the middle
+                const sz = chunk * rand(0.5, 1.2);
+                p.set(W.x + u * hw * 0.9, W.y0 + pileH * k * 0.75, W.z + v * hd * 0.9);
+                s.set(sz * rand(0.8, 1.8), sz * rand(0.4, 0.9), sz * rand(0.8, 1.6));
+                wq.setFromEuler(e.set(rand(-0.5, 0.5), rand(0, 6.28), rand(-0.5, 0.5)));
+                merger.add(UNIT_GEO.box, wm4.compose(p, wq, s), c.copy(base).lerp(dark, rand(0.1, 0.7)));
+            }
+            const mesh = new THREE.Mesh(merger.build(), rubbleMat);
+            mesh.castShadow = mesh.receiveShadow = true;
+            scene.add(mesh);
+            return mesh;
+        }
+        // flying chunks of wall / snow
+        const wreckBits = [], bitMats = new Map();
+        function throwBits(pos, n, color, size, speed) {
+            let m = bitMats.get(color);
+            if (!m) bitMats.set(color, m = new THREE.MeshLambertMaterial({ color }));
+            for (let i = 0; i < n; i++) {
+                if (wreckBits.length >= 90) scene.remove(wreckBits.shift().m);
+                const b = new THREE.Mesh(UNIT_GEO.box, m), s = size * rand(0.5, 1.2);
+                b.scale.set(s, s * rand(0.5, 1), s * rand(0.6, 1.2));
+                b.position.set(pos.x + rand(-2, 2) * size, pos.y + rand(-1, 1) * size, pos.z + rand(-2, 2) * size);
+                b.rotation.set(rand(0, 6), rand(0, 6), rand(0, 6));
+                scene.add(b);
+                wreckBits.push({ m: b, v: new THREE.Vector3(rand(-1, 1) * speed, rand(0.3, 1.1) * speed, rand(-1, 1) * speed),
+                    av: new THREE.Vector3(rand(-8, 8), rand(-8, 8), rand(-8, 8)), life: rand(2.5, 4) });
+            }
+        }
+
+        function destroyWreck(W, from, mine) {
+            if (W.state) return;
+            touchedWrecks.add(W);
+            W.state = 1;
+            W.hp = 0;
+            smoking.delete(W);
+            const info = WRECK_INFO[W.what];
+            const pivot = new THREE.Vector3(W.x, W.y0, W.z);
+            const near = camera.position.distanceTo(pivot) < 900;
+            // it falls AWAY from whatever hit it
+            let fx = from ? W.x - from.x : 0, fz = from ? W.z - from.z : 0;
+            const fl = Math.hypot(fx, fz);
+            if (fl < 0.01) { const a = rand(0, Math.PI * 2); fx = Math.cos(a); fz = Math.sin(a); } else { fx /= fl; fz /= fl; }
+            const axis = new THREE.Vector3(fz, 0, -fx);   // tips "up" toward (fx, fz)
+            const g = info.style === 'burst' ? null : buildWreckVisual(W, pivot);
+            hideWreck(W);
+            const col = W.col;
+            if (info.style === 'collapse') {
+                W.pileH = W.what === 'pyramid' ? W.h * 0.12 : W.what === 'house' ? 1.8 : clamp(1.5 + W.h * 0.08, 2.5, 7);
+                W.rubble = makeRubble(W, W.pileH);
+                if (col) Object.assign(col, { cone: true, room: null, h: W.pileH, y0: W.y0 });   // a heap you can climb
+                W.smolder = 25;
+                smoking.add(W);
+                wreckAnims.push({ W, g, style: 'collapse', t: 0, dur: clamp(1 + W.h / 25, 1.2, 6), depth: W.h + 3, axis, tilt: rand(0.03, 0.09), dustT: 0, info });
+                const R = W.shape === 'box' ? Math.max(W.hw, W.hd) : W.r;
+                for (let i = 0; i < 14; i++) {   // WHOOMPH: a ring of dust bursts out of the bottom
+                    const a = (i / 14) * Math.PI * 2, s = R * rand(0.8, 1.1);
+                    spawnPuff(wv1.set(W.x + Math.cos(a) * s, W.y0 + rand(0.5, 2), W.z + Math.sin(a) * s),
+                        wv2.set(Math.cos(a) * rand(6, 11), rand(0.5, 2.5), Math.sin(a) * rand(6, 11)), info.dust, Math.min(30, R * 0.6 + 3), rand(2, 3));
+                }
+                const top = wv1.set(W.x, W.y0 + W.h * 0.85, W.z), sz = clamp(0.4 + W.h * 0.02, 0.4, 5);
+                throwBits(top, W.what === 'house' ? 8 : 14, info.bits, sz, 7);
+                if (W.color) throwBits(top, 6, W.color, sz, 6);
+                hitPeopleAt(wv2.set(W.x, W.y0 + 0.5, W.z), R + 2, true);   // bonk! (they get back up)
+                panicPeopleNear(pivot, R + 70);
+                if (near) { if (W.what === 'house') Sound.crash(); else { Sound.rumble(); Sound.crash(); } }
+            } else if (info.style === 'topple') {
+                if (col) Object.assign(col, W.inst.some(I => I.stump) ? { h: 0.45 } : { r: 0, h: 0 });
+                wreckAnims.push({ W, g, style: 'topple', t: 0, axis, ang: 0, w: 0.3, bounces: 0, rest: 0, info });
+                if (near) { Sound.beep(320, 0.3, 'sawtooth', 0.05); Sound.beep(240, 0.4, 'sawtooth', 0.05, 0.2); }   // creeeak
+            } else {   // POOF
+                if (col) Object.assign(col, { r: 0, h: 0 });
+                for (let i = 0; i < 16; i++)
+                    spawnPuff(wv1.set(W.x + rand(-1, 1), W.y0 + rand(0.3, W.h), W.z + rand(-1, 1)),
+                        wv2.set(rand(-4, 4), rand(1, 5), rand(-4, 4)), info.dust, rand(1, 2), rand(0.8, 1.4));
+                throwBits(wv1.set(W.x, W.y0 + W.h * 0.6, W.z), 8, 0xffffff, 0.45, 6);
+                throwBits(wv1, 1, 0xf28c28, 0.3, 6);   // there goes the carrot nose
+                if (near) { Sound.noise(0.5, 1400, 0.45); Sound.pop(); }
+            }
+            if (W.room) wreckRoom(W.room);
+            if (wreckBar.W === W) { wreckBar.sp.visible = false; wreckBar.W = null; }
+            if (mine) {
+                wreckFx.smashed++;
+                const now = performance.now();
+                if (now - wreckFx.toastT > 900 || info.prio > wreckFx.toastPrio) {
+                    wreckFx.toastT = now;
+                    wreckFx.toastPrio = info.prio;
+                    toast(`${info.msg} <small>(💥 ${wreckFx.smashed} smashed)</small>`, 2000);
+                }
+                if (Room.peer) roomBroadcast({ t: 'wreck', id: Room.myId, w: W.id, f: [+(W.x - fx).toFixed(1), +(W.z - fz).toFixed(1)] });
+                gtag('event', 'wreck', { game_name: 'Test Flight', what: W.what });
+            }
+        }
+        // a walk-in building came down: no more door, elevator or rooftop gun (and look out if you're up there!)
+        function wreckRoom(R) {
+            R.wrecked = true;
+            R.open = 0;
+            if (R.extrasGroup) R.extrasGroup.visible = false;
+            const ch = flight.chute;
+            if (!ch || !ch.walking || ch.splat) return;
+            if (ch.elev && ch.elev.R === R) { ch.elev = null; elevOv.classList.remove('on', 'shut'); }
+            if (ch.turret && ch.turret === R.turret) leaveTurret();
+            if (ch.room === R) ch.room = null;
+            const p = ch.pilot.position;
+            if (inRoom(R, p.x, p.z) && ch.groundY > 3) {
+                ch.fallV = 0;
+                toast('😱 The building is falling DOWN!! Press SPACE for your parachute!', 2800);
+            }
+        }
+        function blastWrecks(pos, radius, mine) {
+            forWrecksNear(pos.x - radius, pos.z - radius, pos.x + radius, pos.z + radius, W => {
+                const d = wreckDist(W, pos.x, pos.y, pos.z);
+                if (d < radius) hitWreck(W, BOMB_DMG * (1 - 0.5 * d / radius), pos, mine);
+            });
+        }
+        blastListeners.push(blastWrecks);
+
+        function stepCollapse(A, dt) {   // shake… then sink straight down into a cloud of dust
+            const W = A.W, k = Math.min(1, A.t / A.dur);
+            const shake = (1 - k) * Math.min(0.35, 0.05 + W.h * 0.006);
+            A.g.position.set(W.x + rand(-shake, shake), W.y0 - A.depth * k * k, W.z + rand(-shake, shake));
+            A.g.quaternion.setFromAxisAngle(A.axis, A.tilt * k);
+            A.dustT -= dt;
+            if (A.dustT <= 0 && k < 0.92) {
+                A.dustT = W.what === 'house' ? 0.06 : 0.035;
+                const R = W.shape === 'box' ? Math.max(W.hw, W.hd) : W.r, a = rand(0, Math.PI * 2), s = R * rand(0.7, 1.1);
+                spawnPuff(wv1.set(W.x + Math.cos(a) * s, W.y0 + rand(0.5, 3), W.z + Math.sin(a) * s),
+                    wv2.set(Math.cos(a) * rand(3, 7), rand(1, 4), Math.sin(a) * rand(3, 7)), A.info.dust, Math.min(30, R * rand(0.5, 0.9) + 2), rand(1.4, 2.4));
+            }
+            return A.t >= A.dur;
+        }
+        const TOPPLE_MAX = 1.5;   // ~86°: lying on the ground
+        function stepTopple(A, dt) {   // TIMBERRR: tips over faster and faster, thuds, bounces, then sinks away
+            const W = A.W;
+            if (!A.down) {
+                A.w += (0.3 + (1.5 * G / Math.max(2, W.h)) * Math.sin(A.ang)) * dt;
+                A.ang += A.w * dt;
+                if (A.ang >= TOPPLE_MAX) {
+                    A.ang = TOPPLE_MAX;
+                    if (!A.bounces) toppleLanded(A);
+                    A.w = -A.w * 0.22;
+                    if (++A.bounces >= 3) A.down = true;
+                }
+                A.g.quaternion.setFromAxisAngle(A.axis, A.ang);
+                return false;
+            }
+            A.rest += dt;
+            if (A.rest > 4) A.g.position.y -= dt * (0.6 + W.h * 0.05);
+            return A.rest > 6.5;
+        }
+        function toppleLanded(A) {
+            const W = A.W, top = wv3.set(0, W.h * 0.8, 0).applyQuaternion(A.g.quaternion).add(A.g.position);
+            for (let i = 0; i < 7; i++)
+                spawnPuff(wv1.copy(A.g.position).lerp(top, i / 6).setY(W.y0 + 0.5), wv2.set(rand(-2, 2), rand(1, 3), rand(-2, 2)),
+                    A.info.dust, 1 + W.h * 0.06, rand(0.9, 1.4));
+            if (W.what === 'tree') for (let i = 0; i < 5; i++)
+                spawnPuff(wv1.copy(top).add(wv2.set(rand(-1.5, 1.5), 0.5, rand(-1.5, 1.5))), wv2.set(rand(-2, 2), rand(1, 3), rand(-2, 2)), 0x4d9b3f, rand(0.8, 1.5), 1);
+            hitPeopleAt(top, 1.5 + W.h * 0.08, true);   // look out below!
+            if (camera.position.distanceTo(top) < 600) { Sound.beep(60, 0.35, 'triangle', 0.3); Sound.noise(0.4, 250, 0.45); }
+        }
+
+        // a little health bar over whatever you're shooting
+        const wreckBar = { W: null, t: 0 };
+        {
+            const c = document.createElement('canvas');
+            c.width = 128; c.height = 20;
+            wreckBar.ctx = c.getContext('2d');
+            wreckBar.tex = new THREE.CanvasTexture(c);
+            wreckBar.sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: wreckBar.tex, depthTest: false, depthWrite: false, sizeAttenuation: false, fog: false, toneMapped: false }));
+            wreckBar.sp.scale.set(0.12, 0.019, 1);
+            wreckBar.sp.renderOrder = 998;
+            wreckBar.sp.visible = false;
+            scene.add(wreckBar.sp);
+        }
+        function showWreckBar(W) {
+            const x = wreckBar.ctx, f = clamp(W.hp / W.max, 0, 1);
+            x.clearRect(0, 0, 128, 20);
+            x.fillStyle = 'rgba(25,25,30,0.85)';
+            x.fillRect(0, 0, 128, 20);
+            x.fillStyle = f > 0.6 ? '#7ed957' : f > 0.3 ? '#ffc93c' : '#ff5a3c';
+            x.fillRect(3, 3, Math.max(2, 122 * f), 14);
+            wreckBar.tex.needsUpdate = true;
+            wreckBar.sp.position.set(W.x, W.y0 + W.h + 1.5, W.z);
+            wreckBar.sp.visible = true;
+            wreckBar.W = W;
+            wreckBar.t = 2.2;
+        }
+
+        function updateWrecks(dt) {
+            wreckFx.sndT -= dt;
+            for (let i = wreckAnims.length - 1; i >= 0; i--) {
+                const A = wreckAnims[i];
+                A.t += dt;
+                if (A.style === 'collapse' ? stepCollapse(A, dt) : stepTopple(A, dt)) { disposeWreckVisual(A.g); wreckAnims.splice(i, 1); }
+            }
+            for (let i = wreckBits.length - 1; i >= 0; i--) {
+                const b = wreckBits[i], p = b.m.position;
+                b.life -= dt;
+                if (b.life <= 0) { scene.remove(b.m); wreckBits.splice(i, 1); continue; }
+                b.v.y -= G * dt;
+                p.addScaledVector(b.v, dt);
+                b.m.rotation.x += b.av.x * dt;
+                b.m.rotation.y += b.av.y * dt;
+                b.m.rotation.z += b.av.z * dt;
+                const gy = terrainY(p.x, p.z) + 0.1;
+                if (p.y < gy) { p.y = gy; b.v.set(b.v.x * 0.4, Math.abs(b.v.y) * 0.3, b.v.z * 0.4); b.av.multiplyScalar(0.5); }
+                if (b.life < 0.5) b.m.scale.multiplyScalar(Math.max(0, 1 - dt * 4));
+            }
+            for (const W of smoking) {   // hurt buildings smoke from the top; rubble smolders for a while
+                if (W.state) { W.smolder -= dt; if (W.smolder <= 0) { smoking.delete(W); continue; } }
+                const dx = W.x - camera.position.x, dz = W.z - camera.position.z;
+                if (dx * dx + dz * dz > 900 * 900) continue;
+                const R = W.shape === 'box' ? Math.max(W.hw, W.hd) : W.r;
+                const rate = W.state ? 3 * W.smolder / 25 : 4 * (1 - W.hp / W.max);
+                if (Math.random() > rate * dt) continue;
+                if (W.state) wv1.set(W.x + rand(-0.5, 0.5) * R, W.y0 + W.pileH * 0.6, W.z + rand(-0.5, 0.5) * R);
+                else wv1.set(W.x + rand(-0.3, 0.3) * R, W.y0 + W.h, W.z + rand(-0.3, 0.3) * R);
+                spawnPuff(wv1, wv2.set(rand(-0.5, 0.5), rand(2, 4), rand(-0.5, 0.5)), Math.random() < 0.5 ? 0x3a3a3a : 0x6a6a6a,
+                    Math.min(12, 1.5 + R * 0.3), rand(1.6, 2.4));
+            }
+            if (wreckBar.sp.visible && (wreckBar.t -= dt) <= 0) wreckBar.sp.visible = false;
+        }
+        // 🔄 / back to the hangar: everything stands up again, good as new
+        function resetWrecks() {
+            for (const A of wreckAnims) disposeWreckVisual(A.g);
+            wreckAnims.length = 0;
+            for (const b of wreckBits) scene.remove(b.m);
+            wreckBits.length = 0;
+            for (const W of touchedWrecks) restoreWreck(W);
+            touchedWrecks.clear();
+            smoking.clear();
+            wreckBar.sp.visible = false;
+            wreckBar.W = null;
+            wreckFx.smashed = 0;
+        }
+
         function updateBullets(dt) {
             for (let i = bullets.length - 1; i >= 0; i--) {
                 const b = bullets[i];
                 b.life -= dt;
                 b.vel.y -= 2.5 * dt;
                 const prev = tmpV3.copy(b.mesh.position);
+                bulletFrom.copy(prev);
                 b.mesh.position.addScaledVector(b.vel, dt);
                 let dead = b.life <= 0
                     || (b.mesh.position.y < 40 && b.mesh.position.y < terrainY(b.mesh.position.x, b.mesh.position.z));
@@ -6554,6 +7073,19 @@
                     const hitR = clamp(craft.size.length() * 0.35, 1.0, 2.6);
                     if (b.mesh.position.distanceTo(phys.pos) < hitR) {
                         playerHit();
+                        dead = true;
+                    }
+                }
+                if (!dead && b.from !== 'bot') {
+                    // buildings, trees & co. stop the shot and take the hit; mountains just puff dust
+                    const hit = wreckOnSegment(bulletFrom, b.mesh.position, b.skip);
+                    if (hit) {
+                        b.mesh.position.lerpVectors(bulletFrom, b.mesh.position, hit.t);
+                        hitWreck(hit.W, 1, bulletFrom, b.from === 'player');
+                        spawnPuff(b.mesh.position, wv3.copy(b.vel).multiplyScalar(-0.03).setY(1), WRECK_INFO[hit.W.what].dust, 0.8, 0.5);
+                        dead = true;
+                    } else if (hitsSolid(b.mesh.position)) {
+                        spawnPuff(b.mesh.position, wv3.set(0, 1, 0), 0x9a948c, 0.8, 0.5);
                         dead = true;
                     }
                 }
@@ -7012,6 +7544,7 @@
         function resetFlight() {
             clearChute();
             clearCraters();
+            resetWrecks();
             resetPeople();
             rebuildCraft();
             for (const d of flight.debris) { scene.remove(d.mesh); disposeObject(d.mesh); }
@@ -7090,6 +7623,7 @@
             clearBullets();
             clearBombs();
             clearCraters();
+            resetWrecks();
             setUnderwaterView(false);
             elevOv.classList.remove('on', 'shut');
             $('turret-fire')?.remove();
@@ -8350,11 +8884,14 @@
             } else if (msg.t === 'boom') {
                 if (mode === 'flight' && Array.isArray(msg.p)) {
                     const at = new THREE.Vector3().fromArray(msg.p);
-                    explode(at, 16, !!msg.w);
+                    explode(at, 16, !!msg.w, false);
                     bombCrater(at, !!msg.w);
                     const me = pvpTarget();
                     if (me && me.pos.distanceTo(at) < 16) pvpHit(msg.id, 3);
                 }
+            } else if (msg.t === 'wreck') {   // a friend knocked something down
+                const W = wrecks[msg.w];
+                if (mode === 'flight' && W && Array.isArray(msg.f)) destroyWreck(W, new THREE.Vector3(+msg.f[0], 0, +msg.f[1]), false);
             } else if (msg.t === 'hit') {
                 onPvpHit(msg);
             } else if (msg.t === 'bye') {
@@ -8672,6 +9209,8 @@
                 PERF.lap('animals');
                 updatePeople(dt);
                 PERF.lap('people');
+                updateWrecks(dt);
+                PERF.lap('wrecks');
             }
             updateSmoke(dt);
             updateWeather(dt);
@@ -8698,7 +9237,8 @@
             get battle() { return battle; }, get bullets() { return bullets; }, get balloons() { return balloons; },
             get camera() { return camera; }, get turbines() { return turbines; }, get birds() { return birds; },
             get animals() { return animals; }, get people() { return people; }, get fishes() { return fishes; }, get weather() { return Weather; },
-            step(dt = 1 / 60, n = 1) { if (mode === 'flight') for (let i = 0; i < n; i++) { stepPhysics(dt); updateVolcanoes(dt); updateAnimals(dt); updatePeople(dt); sendRoomState(dt); updateRemotes(dt); } },
+            step(dt = 1 / 60, n = 1) { if (mode === 'flight') for (let i = 0; i < n; i++) { stepPhysics(dt); updateVolcanoes(dt); updateAnimals(dt); updatePeople(dt); updateWrecks(dt); sendRoomState(dt); updateRemotes(dt); } },
+            wrecks, hitWreck, destroyWreck, resetWrecks, get wreckAnims() { return wreckAnims; }, spawnBullet,
             get room() { return Room; }, get pvp() { return pvp; }, pvpHit, onRoomMsg, craters, makeCrater, terrainY,
             get scene() { return scene; }, get renderer() { return renderer; }, get perf() { return PERF; }, get quality() { return Quality; },
             get batch() { return creatureBatch; }, get rooms() { return rooms; }, get worldStats() { return optimizeEnv.stats; },
