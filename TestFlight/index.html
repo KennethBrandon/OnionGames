@@ -562,6 +562,13 @@
         #save-card button { font-size: 18px; padding: 8px 18px; }
 
         /* ---------- toast ---------- */
+        #debug-panel {
+            position: fixed; top: 92px; right: 8px; z-index: 80; pointer-events: none;
+            font: 11px/1.4 Menlo, Consolas, monospace; color: #e8f4e8;
+            background: rgba(10, 14, 18, 0.74); padding: 6px 9px; border-radius: 8px;
+            white-space: pre; text-align: left;
+        }
+        #debug-panel canvas { display: block; margin-top: 5px; width: 240px; height: 40px; }
         #toast {
             position: fixed;
             bottom: 120px;
@@ -870,6 +877,7 @@
     </div>
 
     <div id="toast" class="sketch"></div>
+    <div id="debug-panel" class="hidden"><div id="debug-text"></div><canvas id="debug-graph" width="240" height="40"></canvas></div>
     <div id="elevator-ov"><div class="edoor l"></div><div class="edoor r"></div><div class="efloor"><small>🛗 GOING UP</small><span>1</span></div></div>
 
     <script type="importmap">
@@ -945,7 +953,9 @@
         // Flat pads are kept around runways, water, cities, deserts, snow and
         // the volcano so landings and buildings stay fair.
         const FLATS = [];
-        for (const rw of RUNWAYS) FLATS.push({ rect: true, x: rw.x, z: rw.z, hx: 18, hz: 130, fade: 140 });
+        // the terrain mesh only has a vertex every 94 m, so the flat pad must reach past the nearest
+        // vertex row on every side — otherwise the triangles slope up right beside the strip and bury its edges
+        for (const rw of RUNWAYS) FLATS.push({ rect: true, x: rw.x, z: rw.z, hx: 115, hz: 225, fade: 140 });
         for (const w of WATERS) FLATS.push({ x: w.x, z: w.z, r: w.r + 25, fade: 150 });
         for (const C of CITIES) FLATS.push({ x: C.x, z: C.z, r: C.r + 60, fade: 170 });
         for (const D of DESERTS) FLATS.push({ x: D.x, z: D.z, r: D.r, fade: 220 });
@@ -1039,6 +1049,10 @@
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 1.18;
         container.appendChild(renderer.domElement);
+        // the scene root never moves, and we run the ONE matrix pass per frame ourselves (see animate):
+        // by default three.js re-multiplies every object's matrix every frame, and this world has ~10,000 of them
+        scene.matrixAutoUpdate = false;
+        scene.matrixWorldAutoUpdate = false;
 
         const hemiLight = new THREE.HemisphereLight(0xcfe4ff, 0x8a7a5f, 0.7);
         scene.add(hemiLight);
@@ -1124,6 +1138,208 @@
                 }
             });
         }
+
+        // ================= PERFORMANCE HELPERS =================
+        // The world got BIG: thousands of little boxes and spheres. Two tricks keep it smooth:
+        //  1. creatures (people, animals, fish, birds) keep their little Group "skeletons" for the
+        //     animation code, but are DRAWN by a handful of InstancedMeshes — one draw call per shape
+        //  2. everything that never moves (buildings, cacti, seaweed, mountains…) gets baked into big
+        //     merged meshes, one per material family per 800 m map chunk, colors stored per vertex
+        const UNIT_GEO = { box: new THREE.BoxGeometry(1, 1, 1), sphere: new THREE.SphereGeometry(1, 12, 10), cone: {}, cyl: {} };
+        const WHITE = new THREE.Color(0xffffff);
+        const tmpM4 = new THREE.Matrix4();
+        // → [shapeKey, sharedUnitGeometry, scale] for a box/sphere/cone/cylinder, or null for odd shapes
+        function unitGeoFor(geo) {
+            const P = geo.parameters;
+            if (!P) return null;
+            const full = (P.thetaLength === undefined || P.thetaLength > Math.PI * 2 - 1e-3);
+            switch (geo.type) {
+                case 'BoxGeometry': return ['box', UNIT_GEO.box, new THREE.Vector3(P.width, P.height, P.depth)];
+                case 'SphereGeometry':
+                    if (P.phiLength < Math.PI * 2 - 1e-3 || P.thetaLength < Math.PI - 1e-3) return null;
+                    return ['sphere', UNIT_GEO.sphere, new THREE.Vector3(P.radius, P.radius, P.radius)];
+                case 'ConeGeometry': {
+                    if (P.openEnded || !full) return null;
+                    const k = 'cone' + P.radialSegments;
+                    UNIT_GEO.cone[k] = UNIT_GEO.cone[k] || new THREE.ConeGeometry(1, 1, P.radialSegments);
+                    return [k, UNIT_GEO.cone[k], new THREE.Vector3(P.radius, P.height, P.radius)];
+                }
+                case 'CylinderGeometry': {
+                    if (P.openEnded || !full || P.radiusTop !== P.radiusBottom) return null;
+                    const k = 'cyl' + P.radialSegments;
+                    UNIT_GEO.cyl[k] = UNIT_GEO.cyl[k] || new THREE.CylinderGeometry(1, 1, 1, P.radialSegments);
+                    return [k, UNIT_GEO.cyl[k], new THREE.Vector3(P.radiusTop, P.height, P.radiusTop)];
+                }
+            }
+            return null;
+        }
+        // which shader "family" is this plain material? (null = something special: leave that mesh alone)
+        function matFamily(m, allowMap = false) {
+            if (!m || Array.isArray(m) || m.transparent || m.polygonOffset || m.vertexColors || (m.map && !allowMap)) return null;
+            if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile) return null;   // crater shader etc.
+            if (m.emissive && (m.emissive.r || m.emissive.g || m.emissive.b)) return null;
+            const map = m.map ? m.map.uuid : '';
+            if (m.isMeshStandardMaterial) return `std|${m.side}|${map}|${m.roughness}|${m.metalness}`;
+            if (m.isMeshLambertMaterial) return `lam|${m.side}|${map}`;
+            if (m.isMeshBasicMaterial) return `basic|${m.side}|${map}`;
+            return null;
+        }
+        function familyMaterial(fam, extra = {}) {
+            const [kind, side, , rough, metal] = fam.split('|');
+            if (kind === 'std') return new THREE.MeshStandardMaterial({ color: 0xffffff, side: +side, roughness: +rough, metalness: +metal, ...extra });
+            if (kind === 'lam') return new THREE.MeshLambertMaterial({ color: 0xffffff, side: +side, ...extra });
+            return new THREE.MeshBasicMaterial({ color: 0xffffff, side: +side, ...extra });
+        }
+        // glue many geometries into one (positions/normals/uvs transformed, the color stored per vertex)
+        function geometryMerger() {
+            const pos = [], nrm = [], uv = [], col = [], idx = [];
+            let base = 0, hasUV = true;
+            const v = new THREE.Vector3(), nm = new THREE.Matrix3();
+            return {
+                add(geo, matrix, color, ranges) {
+                    const pa = geo.attributes.position, na = geo.attributes.normal, ua = geo.attributes.uv;
+                    if (!pa || !na) return;
+                    nm.getNormalMatrix(matrix);
+                    for (let i = 0; i < pa.count; i++) {
+                        v.fromBufferAttribute(pa, i).applyMatrix4(matrix); pos.push(v.x, v.y, v.z);
+                        v.fromBufferAttribute(na, i).applyMatrix3(nm).normalize(); nrm.push(v.x, v.y, v.z);
+                        if (ua) uv.push(ua.getX(i), ua.getY(i)); else hasUV = false;
+                        col.push(color.r, color.g, color.b);
+                    }
+                    const ix = geo.index;
+                    for (const r of ranges || [{ start: 0, count: ix ? ix.count : pa.count }])
+                        for (let i = r.start; i < r.start + r.count; i++) idx.push(base + (ix ? ix.getX(i) : i));
+                    base += pa.count;
+                },
+                build() {
+                    const g = new THREE.BufferGeometry();
+                    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+                    g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+                    if (hasUV) g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+                    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+                    g.setIndex(idx);
+                    return g;
+                }
+            };
+        }
+        // collapse a moving group's meshes into ONE mesh (the group itself keeps moving as a whole)
+        function mergeChildren(group, opts = {}) {
+            group.updateMatrixWorld(true);
+            const inv = new THREE.Matrix4().copy(group.matrixWorld).invert(), rel = new THREE.Matrix4();
+            const merger = geometryMerger(), gone = [];
+            let fam = opts.family || (opts.material ? 'keep' : null), sample = null;   // a given material takes everything
+            group.traverse(o => {
+                if (o === group || !o.isMesh || o.isInstancedMesh) return;
+                if (!fam) fam = matFamily(o.material, true);
+                if (!fam) return;
+                sample = sample || o.material;
+                rel.multiplyMatrices(inv, o.matrixWorld);
+                merger.add(o.geometry, rel, o.material.color || WHITE);
+                gone.push(o);
+            });
+            if (!gone.length) return null;
+            for (const o of gone) { o.parent.remove(o); o.geometry.dispose(); }
+            const m = new THREE.Mesh(merger.build(), opts.material || familyMaterial(fam, { vertexColors: true, map: sample.map || null }));
+            m.castShadow = opts.castShadow !== false;
+            m.matrixAutoUpdate = false;
+            group.add(m);
+            return m;
+        }
+        // bake every never-moving mesh under `env` into merged chunk meshes (skipping the `dynamic` subtrees)
+        function bakeStatics(env, dynamic) {
+            env.updateMatrixWorld(true);
+            const CH = 800, buckets = new Map(), gone = [];
+            const visit = (o) => {
+                if (dynamic.has(o)) return;
+                if (o.isMesh && !o.isInstancedMesh) {
+                    const isArr = Array.isArray(o.material);
+                    const mats = isArr ? o.material : [o.material];
+                    const groups = isArr ? o.geometry.groups : null;   // multi-material boxes: split by face group
+                    const fams = mats.map(m => matFamily(m, true));
+                    if (fams.every(Boolean) && (!isArr || (groups && groups.length))) {
+                        const e = o.matrixWorld.elements, cx = Math.floor(e[12] / CH), cz = Math.floor(e[14] / CH);
+                        mats.forEach((m, mi) => {
+                            const ranges = groups ? groups.filter(g => (g.materialIndex || 0) === mi) : null;
+                            if (ranges && !ranges.length) return;
+                            const key = `${fams[mi]}|${cx},${cz}`;
+                            let b = buckets.get(key);
+                            if (!b) buckets.set(key, b = { fam: fams[mi], sample: m, merger: geometryMerger() });
+                            b.merger.add(o.geometry, o.matrixWorld, m.color, ranges);
+                        });
+                        gone.push(o);
+                        return;
+                    }
+                }
+                for (const c of o.children) visit(c);
+            };
+            for (const c of env.children) visit(c);
+            for (const o of gone) { o.parent.remove(o); o.geometry.dispose(); }
+            for (const b of buckets.values()) {
+                const m = new THREE.Mesh(b.merger.build(), familyMaterial(b.fam, { vertexColors: true, map: b.sample.map || null }));
+                m.castShadow = m.receiveShadow = true;
+                m.matrixAutoUpdate = false;
+                env.add(m);
+            }
+            const sweep = (o) => {   // the empty groups the baked meshes left behind
+                for (const c of o.children.slice()) sweep(c);
+                if (o.isGroup && !o.children.length && o.parent && !dynamic.has(o)) o.parent.remove(o);
+            };
+            for (const c of env.children.slice()) sweep(c);
+            return { meshes: gone.length, chunks: buckets.size };
+        }
+        // creatures: the skeletons stay in the scene (invisible) so all the animation code still works;
+        // every frame the visible ones copy their part matrices into a few InstancedMeshes
+        const creatureBatch = {
+            recs: [], ims: new Map(),
+            register(root) {
+                const parts = [];
+                root.traverse(o => {
+                    if (!o.isMesh || o.isInstancedMesh) return;
+                    const fam = matFamily(o.material);
+                    const u = fam && unitGeoFor(o.geometry);
+                    if (!u) return;   // odd shapes (jellyfish bells…) keep drawing themselves
+                    parts.push({ mesh: o, key: fam + '|' + u[0], geo: u[1], fix: u[2], color: o.material.color.clone(), im: null });
+                    o.visible = false;
+                    o.geometry.dispose();
+                    o.geometry = u[1];   // drop the one-off geometry: this alone frees tens of MB
+                });
+                if (parts.length) this.recs.push({ root, parts });
+            },
+            build(env) {
+                const cap = new Map(), geoFor = new Map();
+                for (const r of this.recs) for (const p of r.parts) { cap.set(p.key, (cap.get(p.key) || 0) + 1); geoFor.set(p.key, p.geo); }
+                for (const [key, n] of cap) {
+                    const im = new THREE.InstancedMesh(geoFor.get(key), familyMaterial(key.slice(0, key.lastIndexOf('|'))), n);
+                    im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+                    im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3).setUsage(THREE.DynamicDrawUsage);
+                    im.frustumCulled = false;   // instances are scattered over the whole world
+                    im.castShadow = true;
+                    im.count = 0;
+                    im.matrixAutoUpdate = false;
+                    env.add(im);
+                    this.ims.set(key, im);
+                }
+                for (const r of this.recs) for (const p of r.parts) p.im = this.ims.get(p.key);
+            },
+            update() {   // after the matrix pass: pack the visible creatures' parts to the front of each buffer
+                for (const im of this.ims.values()) im.count = 0;
+                for (const r of this.recs) {
+                    if (!r.root.visible) continue;
+                    for (const p of r.parts) {
+                        const im = p.im, i = im.count++;
+                        im.setMatrixAt(i, tmpM4.copy(p.mesh.matrixWorld).scale(p.fix));
+                        im.setColorAt(i, p.color);
+                    }
+                }
+                for (const im of this.ims.values()) {
+                    if (!im.count) continue;
+                    for (const a of [im.instanceMatrix, im.instanceColor]) {
+                        a.needsUpdate = true;
+                        if (a.clearUpdateRanges) { a.clearUpdateRanges(); a.addUpdateRange(0, im.count * a.itemSize); }   // upload only the used rows
+                    }
+                }
+            }
+        };
 
         // ================= BODIES =================
         // Every body is built facing -Z (that's "forward"), resting on y=0.
@@ -2960,9 +3176,10 @@
             env.add(gun);
             const pad = new THREE.Mesh(new THREE.RingGeometry(1.3, 1.6, 24), padMat);
             pad.rotation.x = -Math.PI / 2;
-            pad.position.set(cx, 0.05, cz + tz + 1.2);
+            pad.position.set(cx, 0.1, cz + tz + 1.2);   // just above the lobby floor (0.09), not under it
+            pad.visible = false;   // only shown while the pilot is on foot nearby (see buildNearbyExtras)
             env.add(pad);
-            const room = { x: cx, z: cz, hw: w / 2, hd: d / 2, lh, h, doorHalf, hinge, open: 0, gun, gunPos: new THREE.Vector3(cx, 0, cz + tz + 1.0),
+            const room = { x: cx, z: cz, hw: w / 2, hd: d / 2, lh, h, doorHalf, hinge, pad, open: 0, gun, gunPos: new THREE.Vector3(cx, 0, cz + tz + 1.0),
                 elev: h >= 12 ? { x: cx - w / 2 + 1.5, z: cz - d / 2 + 1.5 } : null, extras: false };
             rooms.push(room);
             colliders.push({ x: cx, z: cz, r: Math.max(w, d) * 0.62, h, cone: false, what, room });
@@ -3083,7 +3300,7 @@
             }
             {   // your own little hangar + windsock at the Home Airstrip (walk in — there's a blaster!)
                 addRoomBuilding(env, -27, 26, 9, 11, 5, 4.5, mat(0xd0202a), 'hangar');
-                box(env, 9.6, 0.5, 11.6, 0xf4f4f0, -27, 4.75, 26);
+                box(env, 9.6, 0.5, 11.6, 0xf4f4f0, -27, 4.8, 26);   // 5 cm above the red band's top, or the two coplanar faces z-fight (white/red flicker)
                 cyl(env, 0.08, 0.08, 6, 0xd8d8e0, 18, 3, 30, 8);
                 const sock = new THREE.Mesh(new THREE.ConeGeometry(0.5, 2.2, 10), mat(0xff8c1a));
                 sock.rotation.z = Math.PI / 2;
@@ -3248,8 +3465,10 @@
                 V.fx = { top: new THREE.Vector3(V.x, topY, V.z), smoke, inside: false, eruptT: 0, killT: 0 };
             }
             lavaBalls.length = 0;
+            const lavaGeo = new THREE.SphereGeometry(1, 8, 6);
+            const lavaMats = [new THREE.MeshBasicMaterial({ color: 0xffb347 }), new THREE.MeshBasicMaterial({ color: 0xff5a1a })];
             for (let i = 0; i < 60; i++) {
-                const ball = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), new THREE.MeshBasicMaterial({ color: i % 3 ? 0xff5a1a : 0xffb347 }));
+                const ball = new THREE.Mesh(lavaGeo, lavaMats[i % 3 ? 1 : 0]);
                 ball.visible = false;
                 ball.userData.vel = new THREE.Vector3();
                 env.add(ball);
@@ -3538,6 +3757,35 @@
             return env;
         }
 
+        // one-time makeover of the freshly built world (see PERFORMANCE HELPERS): instanced creatures,
+        // one mesh per cloud/balloon/rotor/door, everything static baked into chunk meshes, and
+        // matrices frozen for anything that never moves
+        function optimizeEnv(env) {
+            const t0 = performance.now();
+            const dynamic = new Set([skyDome, sunSprite, ...clouds, ...balloons, ...turbines.map(t => t.userData.rotor), ...birds, ...lavaBalls, ...rooms.map(R => R.hinge)]);
+            for (const b of birds) { dynamic.add(b.userData.wl); dynamic.add(b.userData.wr); }
+            for (const an of animals) { dynamic.add(an.g); for (const l of an.legs) dynamic.add(l); }
+            for (const f of fishes) { dynamic.add(f.g); if (f.tail) dynamic.add(f.tail); }
+            for (const p of people) for (const o of [p.g, p.body, p.legL, p.legR, p.armL, p.armR]) dynamic.add(o);
+            for (const V of VOLCANOES) if (V.fx) for (const sp of V.fx.smoke) dynamic.add(sp);
+            for (const an of animals) creatureBatch.register(an.g);
+            for (const f of fishes) creatureBatch.register(f.g);
+            for (const p of people) creatureBatch.register(p.g);
+            for (const b of birds) creatureBatch.register(b);
+            creatureBatch.build(env);
+            for (const c of clouds) mergeChildren(c, { material: cloudMatRef, castShadow: false });
+            for (const b of balloons) mergeChildren(b, { castShadow: false });
+            for (const t of turbines) mergeChildren(t.userData.rotor);
+            for (const R of rooms) mergeChildren(R.hinge, { family: 'lam|0|' });
+            const baked = bakeStatics(env, dynamic);
+            env.updateMatrixWorld(true);
+            env.traverse(o => { o.matrixAutoUpdate = false; });   // frozen…
+            for (const o of dynamic) o.matrixAutoUpdate = true;    // …except the things that move
+            baked.ms = Math.round(performance.now() - t0);
+            optimizeEnv.stats = baked;
+            return baked;
+        }
+
         // ================= ANIMALS =================
         const animals = [], fishes = [];
         let fishClock = 0;
@@ -3741,7 +3989,9 @@
                     continue;
                 }
                 const dx = an.x - cam.x, dz = an.z - cam.z;
-                if (dx * dx + dz * dz > 900 * 900) continue;   // too far away to bother
+                const near = dx * dx + dz * dz < 900 * 900;   // too far away to see (or to bother animating)
+                an.g.visible = an.g.matrixWorldAutoUpdate = near;
+                if (!near) continue;
                 an.moveT -= dt;
                 if (an.moveT <= 0) {
                     an.moving = Math.random() < 0.6;
@@ -3776,7 +4026,7 @@
                 // only critters near the camera are drawn (the ocean is PACKED)
                 const fdx = f.cx - cam.x, fdz = f.cz - cam.z, far = f.r + 160;
                 const show = near && fdx * fdx + fdz * fdz < far * far;
-                f.g.visible = show;
+                f.g.visible = f.g.matrixWorldAutoUpdate = show;
                 if (!show) continue;
                 f.a += dt * f.speed;
                 if (f.kind === 'jelly') {   // jellyfish bloop up and down instead of zooming around
@@ -3828,6 +4078,7 @@
                     if (!all) return true;
                 }
             }
+            if (p.y > 8) return hit;   // fish live underwater: nothing way up here can touch them
             for (const f of fishes) {
                 if (f.dead > 0 || !f.g.visible) continue;
                 if (f.g.position.distanceToSquared(p) < (r + f.hitR) * (r + f.hitR)) {
@@ -4019,7 +4270,7 @@
             for (const p of people) {
                 const cdx = p.x - cam.x, cdz = p.z - cam.z;
                 const show = cdx * cdx + cdz * cdz < 450 * 450;
-                p.g.visible = show;
+                p.g.visible = p.g.matrixWorldAutoUpdate = show;
                 if (p.bubble) {
                     p.sayT -= dt;
                     p.bubble.visible = show && p.sayT > 0;
@@ -4357,12 +4608,16 @@
                     o.start(t); o.stop(t + 0.22);
                     return;
                 }
-                const len = Math.floor(ctx.sampleRate * (kind === 'snare' ? 0.14 : 0.04));
-                const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-                const d = buf.getChannelData(0);
-                for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+                // one shared burst of noise per drum (a fresh buffer 4× a second was a steady memory churn)
+                this.noiseBufs = this.noiseBufs || {};
+                if (!this.noiseBufs[kind]) {
+                    const len = Math.floor(ctx.sampleRate * (kind === 'snare' ? 0.14 : 0.04));
+                    const buf = this.noiseBufs[kind] = ctx.createBuffer(1, len, ctx.sampleRate);
+                    const d = buf.getChannelData(0);
+                    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+                }
                 const src = ctx.createBufferSource();
-                src.buffer = buf;
+                src.buffer = this.noiseBufs[kind];
                 const f = ctx.createBiquadFilter();
                 f.type = 'highpass';
                 f.frequency.value = kind === 'snare' ? 1500 : 7000;
@@ -5546,6 +5801,7 @@
         }
 
         function clearChute() {
+            for (const R of rooms) R.pad.visible = false;
             if (!flight.chute) return;
             scene.remove(flight.chute.pilot);
             disposeObject(flight.chute.pilot);
@@ -5913,8 +6169,11 @@
             extrasT -= dt;
             if (extrasT > 0) return;
             extrasT = 0.5;
-            for (const R of rooms)
-                if (R.elev && !R.extras && Math.abs(p.x - R.x) < 150 && Math.abs(p.z - R.z) < 150) buildRoomExtras(R);
+            for (const R of rooms) {
+                const near = Math.abs(p.x - R.x) < 150 && Math.abs(p.z - R.z) < 150;
+                if (R.elev && !R.extras && near) buildRoomExtras(R);
+                R.pad.visible = near;   // the glowing blaster pad: only worth drawing when you can walk in
+            }
         }
         // which building's ROOF are you standing on?
         function roofRoomAt(x, z, y) {
@@ -6035,17 +6294,13 @@
         let gunCooldown = 0;
         const bullets = [];
         const bulletPool = [];
+        const bulletGeo = new THREE.SphereGeometry(0.13, 8, 6);
+        const bulletMats = { player: new THREE.MeshBasicMaterial({ color: 0xffe14d }), bot: new THREE.MeshBasicMaterial({ color: 0xff4433 }) };
 
         function spawnBullet(pos, vel, from, owner) {
             let b = bulletPool.pop();
-            if (!b) {
-                b = {
-                    mesh: new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6),
-                        new THREE.MeshBasicMaterial({ color: 0xffe14d })),
-                    vel: new THREE.Vector3(), life: 0, from: 'player'
-                };
-            }
-            b.mesh.material.color.set(from === 'bot' ? 0xff4433 : 0xffe14d);
+            if (!b) b = { mesh: new THREE.Mesh(bulletGeo, bulletMats.player), vel: new THREE.Vector3(), life: 0, from: 'player' };
+            b.mesh.material = from === 'bot' ? bulletMats.bot : bulletMats.player;
             b.mesh.position.copy(pos);
             b.vel.copy(vel);
             b.life = 3;
@@ -6119,33 +6374,45 @@
         }
         // the ground shader skips drawing inside craters, and a dirt BOWL mesh fills the hole
         const TERRAIN_SEGS = IS_MOBILE ? 110 : 170;
-        const craterU = { list: { value: Array.from({ length: MAX_CRATERS }, () => new THREE.Vector4()) }, n: { value: 0 } };
+        const craterU = { list: { value: Array.from({ length: MAX_CRATERS }, () => new THREE.Vector4()) }, n: { value: 0 }, box: { value: new THREE.Vector4() } };
         function holeyGround(matl) {
             matl.onBeforeCompile = (sh) => {
                 sh.uniforms.craterList = craterU.list;
                 sh.uniforms.craterN = craterU.n;
+                sh.uniforms.craterBox = craterU.box;
                 sh.vertexShader = 'varying vec2 vCraterXZ;\n' + sh.vertexShader.replace('#include <project_vertex>',
                     '#include <project_vertex>\n\tvCraterXZ = (modelMatrix * vec4(transformed, 1.0)).xz;');
-                sh.fragmentShader = `uniform vec4 craterList[${MAX_CRATERS}];\nuniform int craterN;\nvarying vec2 vCraterXZ;\n`
+                // the per-crater loop is pricey for a full-screen ground, so only pixels inside the box
+                // around all the craters (craterBox = minX, minZ, maxX, maxZ) ever run it
+                sh.fragmentShader = `uniform vec4 craterList[${MAX_CRATERS}];\nuniform int craterN;\nuniform vec4 craterBox;\nvarying vec2 vCraterXZ;\n`
                     + sh.fragmentShader.replace('void main() {', `void main() {
-                        for (int i = 0; i < ${MAX_CRATERS}; i++) {
-                            if (i >= craterN) break;
-                            vec2 d = vCraterXZ - craterList[i].xy;
-                            if (dot(d, d) < craterList[i].z * craterList[i].z) discard;
+                        if (craterN > 0 && vCraterXZ.x >= craterBox.x && vCraterXZ.y >= craterBox.y && vCraterXZ.x <= craterBox.z && vCraterXZ.y <= craterBox.w) {
+                            for (int i = 0; i < ${MAX_CRATERS}; i++) {
+                                if (i >= craterN) break;
+                                vec2 d = vCraterXZ - craterList[i].xy;
+                                if (dot(d, d) < craterList[i].z * craterList[i].z) discard;
+                            }
                         }`);
             };
             return matl;
         }
         // the terrain MESH is triangles between grid points, so match it exactly (not the smooth hills)
+        const gridCornerY = new Map();   // terrain grid corner heights, computed once each (the mesh never changes)
+        function cornerY(ix, iz) {
+            const k = ix * 4096 + iz;
+            let h = gridCornerY.get(k);
+            if (h === undefined) { const cell = 16000 / TERRAIN_SEGS; h = baseTerrainY(-8000 + ix * cell, -8000 + iz * cell); gridCornerY.set(k, h); }
+            return h;
+        }
         function renderedGroundY(x, z) {
             if (Math.abs(x) >= 8000 || Math.abs(z) >= 8000) return 0;
             const cell = 16000 / TERRAIN_SEGS;
             const ix = Math.floor((x + 8000) / cell), iz = Math.floor((z + 8000) / cell);
             const x0 = -8000 + ix * cell, z0 = -8000 + iz * cell;
             const u = (x - x0) / cell, v = (z - z0) / cell;
-            const ha = baseTerrainY(x0, z0), hb = baseTerrainY(x0, z0 + cell), hd = baseTerrainY(x0 + cell, z0);
+            const ha = cornerY(ix, iz), hb = cornerY(ix, iz + 1), hd = cornerY(ix + 1, iz);
             if (u + v <= 1) return ha + u * (hd - ha) + v * (hb - ha);
-            const hc = baseTerrainY(x0 + cell, z0 + cell);
+            const hc = cornerY(ix + 1, iz + 1);
             return hc + (1 - u) * (hb - hc) + (1 - v) * (hd - hc);
         }
         const craterMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8 });
@@ -6162,7 +6429,7 @@
         function makeCrater(x, z) {
             if (craters.length >= MAX_CRATERS) { const old = craters.shift(); scene.remove(old.mesh); old.mesh.geometry.dispose(); }
             const c = { x, z, R: 7, D: 3 };
-            const geo = new THREE.RingGeometry(0.01, c.R * 1.3, 48, 18);
+            const geo = new THREE.RingGeometry(0.01, c.R * 1.3, 36, 12);   // (was 48×18: every bomb reshapes all the overlapping bowls)
             geo.rotateX(-Math.PI / 2);
             const pos = geo.attributes.position, cols = new Float32Array(pos.count * 3), tc = new THREE.Color();
             for (let i = 0; i < pos.count; i++) {
@@ -6185,6 +6452,9 @@
         function syncCraterHoles() {
             craterU.n.value = craters.length;
             craters.forEach((c, i) => craterU.list.value[i].set(c.x, c.z, c.R, 0));
+            let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+            for (const c of craters) { x0 = Math.min(x0, c.x - c.R); z0 = Math.min(z0, c.z - c.R); x1 = Math.max(x1, c.x + c.R); z1 = Math.max(z1, c.z + c.R); }
+            craterU.box.value.set(x0, z0, x1, z1);
         }
         function clearCraters() {
             for (const c of craters) { scene.remove(c.mesh); c.mesh.geometry.dispose(); }
@@ -6684,10 +6954,12 @@
                     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
                 };
                 try { flightEnv = buildFlightEnv(); } finally { Math.random = realRandom; }
+                optimizeEnv(flightEnv);
                 scene.add(flightEnv);
             }
             if (Room.peer) roomBroadcast({ t: 'design', id: Room.myId, name: Room.name, design });
             flightEnv.visible = true;
+            flightEnv.matrixWorldAutoUpdate = true;
             editorEnv.visible = false;
             scene.background = new THREE.Color(0x87c8f0);
             scene.fog = new THREE.Fog(0xcfe8f7, 550, 5200);
@@ -6829,7 +7101,7 @@
             powerState.held = false;
             activeKeys.clear();
             activeArrows.clear();
-            if (flightEnv) flightEnv.visible = false;
+            if (flightEnv) { flightEnv.visible = false; flightEnv.matrixWorldAutoUpdate = false; }   // the editor doesn't even look at it
             editorEnv.visible = true;
             scene.background = new THREE.Color(0xf7f5ee);
             scene.fog = null;
@@ -8242,13 +8514,115 @@
         $('flight-music').addEventListener('click', () => setMusicOn(!Music.on));
 
         // ================= MAIN LOOP =================
+        // frame-time bookkeeping: feeds the ?debug=true overlay and the auto-quality controller
+        const PERF = { t: {}, n: 0, frames: [], _p: 0,
+            lap(k) { const now = performance.now(); this.t[k] = (this.t[k] || 0) + now - this._p; this._p = now; },
+            report() {
+                const out = {}; for (const k in this.t) out[k] = +(this.t[k] / Math.max(1, this.n)).toFixed(2);
+                const f = this.frames.slice().sort((a, b) => a - b);
+                out.frames = this.n; out.msPerFrame = +(f.reduce((a, b) => a + b, 0) / Math.max(1, f.length)).toFixed(2);
+                out.p50 = +(f[f.length >> 1] || 0).toFixed(2); out.p95 = +(f[(f.length * 0.95) | 0] || 0).toFixed(2);
+                this.t = {}; this.n = 0; this.frames = [];
+                return out;
+            } };
+        // AUTO QUALITY: steadily slow frames while the CPU is mostly idle = the GPU can't keep up → render
+        // fewer pixels (2× → 1.5× → 1×). A window only counts if it was slow THROUGHOUT (one giant stall
+        // means something else hogged the frame). Really slow (< 20 fps) acts after one 2.5 s window;
+        // merely slow waits for two. After 20 s of comfortable 60 fps it probes one notch sharper, and if
+        // that hurts it steps straight back and stops probing. The choice is remembered for next time.
+        const LS_DPR = 'tf-dpr';
+        const Quality = { dpr: renderer.getPixelRatio(), dpr0: renderer.getPixelRatio(), n: 0, sumF: 0, sumC: 0, winT: 0, maxF: 0,
+            bad: 0, good: 0, cooldown: 0, pending: 0, drops: 0, ups: 0, probe: 0, noUp: false };
+        try {
+            const saved = parseFloat(localStorage.getItem(LS_DPR));
+            if (saved >= 1 && saved < Quality.dpr0) { Quality.dpr = saved; renderer.setPixelRatio(saved); }
+        } catch (e) { }
+        function updateQuality(frameMs, cpuMs) {
+            Quality.cooldown -= frameMs;
+            Quality.n++; Quality.sumF += frameMs; Quality.sumC += cpuMs; Quality.winT += frameMs; Quality.maxF = Math.max(Quality.maxF, frameMs);
+            if (Quality.winT < 2500) return;
+            const avgF = Quality.sumF / Quality.n, avgC = Quality.sumC / Quality.n, maxF = Quality.maxF;
+            Quality.n = Quality.sumF = Quality.sumC = Quality.winT = Quality.maxF = 0;
+            const steady = maxF < Math.max(120, avgF * 2.5);
+            const gpuBound = steady && avgF > 24 && avgC < avgF * 0.5;
+            Quality.bad = gpuBound ? Quality.bad + 1 : 0;
+            Quality.good = steady && avgF < 17.5 ? Quality.good + 1 : 0;
+            if (Quality.probe) {   // we just went a notch sharper: did it hurt?
+                if (avgF > 19) { Quality.pending = Quality.probe; Quality.noUp = true; }
+                Quality.probe = 0;
+                return;
+            }
+            if (Quality.cooldown > 0) return;
+            if (Quality.bad >= (avgF > 50 ? 1 : 2) && Quality.dpr > 1) {
+                Quality.pending = Math.max(1, +(Quality.dpr - (avgF > 60 ? 0.5 : 0.25)).toFixed(2));
+                Quality.bad = 0;
+                Quality.cooldown = 5000;
+            } else if (Quality.good >= 8 && Quality.dpr < Quality.dpr0 && !Quality.noUp) {
+                Quality.probe = Quality.dpr;   // remember where to fall back to
+                Quality.pending = Math.min(Quality.dpr0, +(Quality.dpr + 0.25).toFixed(2));
+                Quality.good = 0;
+                Quality.cooldown = 5000;
+            }
+        }
+        function resetQualityWindow() { Quality.n = Quality.sumF = Quality.sumC = Quality.winT = Quality.maxF = 0; }
+        function applyQuality() {   // resize right before drawing, so the freshly cleared canvas never shows a blank frame
+            if (!Quality.pending) return;
+            if (Quality.pending < Quality.dpr) Quality.drops++; else Quality.ups++;
+            Quality.dpr = Quality.pending;
+            Quality.pending = 0;
+            renderer.setPixelRatio(Quality.dpr);
+            try { localStorage.setItem(LS_DPR, String(Quality.dpr)); } catch (e) { }
+        }
+        // DEBUG OVERLAY: add ?debug=true to the URL (or call __tf.debug(true)) for fps + frame graph + counts
+        const debugQS = new URLSearchParams(location.search).get('debug');
+        const Debug = { on: debugQS !== null && !/^(0|false|off|no)$/i.test(debugQS), t: 0, hist: new Float32Array(120), hi: 0, objs: 0, objT: 0 };
+        const debugPanel = $('debug-panel'), debugText = $('debug-text'), debugGraph = $('debug-graph');
+        function setDebug(on) { Debug.on = !!on; debugPanel.classList.toggle('hidden', !Debug.on); PERF.report(); }
+        setDebug(Debug.on);
+        function updateDebug(frameMs, dt) {
+            Debug.hist[Debug.hi++ % Debug.hist.length] = frameMs;
+            const g = debugGraph.getContext('2d'), W = debugGraph.width, H = debugGraph.height, n = Debug.hist.length, bw = W / n;
+            g.clearRect(0, 0, W, H);
+            for (let i = 0; i < n; i++) {   // one bar per frame, 50 ms tall at most; green < 17 ms, amber < 33 ms, red beyond
+                const ms = Debug.hist[(Debug.hi + i) % n], h = Math.min(H, ms / 50 * H);
+                g.fillStyle = ms > 33.4 ? '#ff5544' : ms > 17.5 ? '#ffb347' : '#7ed957';
+                g.fillRect(i * bw, H - h, Math.max(1, bw - 0.5), h);
+            }
+            g.fillStyle = 'rgba(255,255,255,0.4)';
+            g.fillRect(0, Math.round(H - H * 16.7 / 50), W, 1);   // 60 fps line
+            g.fillRect(0, Math.round(H - H * 33.3 / 50), W, 1);   // 30 fps line
+            Debug.t -= dt;
+            if (Debug.t > 0) return;
+            Debug.t = 0.5;
+            const r = PERF.report(), inf = renderer.info;
+            let visCreatures = 0, inst = 0, puffs = 0;
+            for (const rec of creatureBatch.recs) if (rec.root.visible) visCreatures++;
+            for (const im of creatureBatch.ims.values()) inst += im.count;
+            for (const sp of smokePool) if (sp.visible) puffs++;
+            Debug.objT -= 0.5;
+            if (Debug.objT <= 0) { Debug.objT = 3; let c = 0; scene.traverse(() => c++); Debug.objs = c; }
+            const fps = r.msPerFrame ? 1000 / r.msPerFrame : 0;
+            const mem = performance.memory ? `  heap ${(performance.memory.usedJSHeapSize / 1048576).toFixed(0)} MB` : '';
+            debugText.textContent =
+                `${fps.toFixed(0)} fps   ${r.msPerFrame} ms/frame   p95 ${r.p95} ms\n`
+                + `cpu ms: physics ${r.physics || 0}  world ${r.world || 0}  critters ${((r.animals || 0) + (r.people || 0)).toFixed(2)}  misc ${r.misc || 0}  render ${r.render || 0}\n`
+                + `draw calls ${inf.render.calls}   tris ${(inf.render.triangles / 1000).toFixed(0)}k   geometries ${inf.memory.geometries}   textures ${inf.memory.textures}   shaders ${inf.programs.length}\n`
+                + `scene objects ${Debug.objs}   creatures visible ${visCreatures} (${inst} instances)   bullets ${bullets.length}   smoke ${puffs}\n`
+                + `craters ${craters.length}   debris ${flight.debris.length}   bots ${battle.bots.filter(b => !b.gone).length}   peers ${Room.remotes.size}   ${mode}\n`
+                + `pixel ratio ${Quality.dpr}${Quality.drops || Quality.ups ? ` (auto ↓${Quality.drops} ↑${Quality.ups}${Quality.noUp ? ' locked' : ''})` : ''}   canvas ${renderer.domElement.width}×${renderer.domElement.height}${mem}`;
+        }
+
         let last = performance.now();
         function animate(t) {
             requestAnimationFrame(animate);
             const dt = Math.min((t - last) / 1000, 1 / 24);
+            const frameMs = t - last, t0 = performance.now();
             last = t;
+            PERF._p = t0;
+            if (Debug.on) PERF.frames.push(frameMs); else if (PERF.n > 300) PERF.report();   // nobody's reading: don't pile up
             if (mode === 'flight') {
                 stepPhysics(dt);
+                PERF.lap('physics');
                 updateFlightCamera(dt);
                 setUnderwaterView(camera.position.y < 0 && !!waterAt(camera.position.x, camera.position.z));
                 updateHUD(dt);
@@ -8276,11 +8650,13 @@
                 }
                 for (const t of turbines) t.userData.rotor.rotation.z += dt * t.userData.spin;
                 updateVolcanoes(dt);
-                updateAnimals(dt);
-                updatePeople(dt);
                 for (const b of birds) {
                     const u = b.userData;
                     if (u.dead > 0) { u.dead -= dt; if (u.dead <= 0) b.visible = true; continue; }
+                    const bdx = u.cx - camera.position.x, bdz = u.cz - camera.position.z;
+                    const near = bdx * bdx + bdz * bdz < 900 * 900;   // a bird 900 m away is smaller than a pixel
+                    b.visible = b.matrixWorldAutoUpdate = near;
+                    if (!near) continue;
                     u.a += dt * u.speed;
                     u.flap += dt * 9;
                     b.position.set(u.cx + Math.cos(u.a) * u.r, u.alt + Math.sin(u.a * 3) * 3, u.cz + Math.sin(u.a) * u.r);
@@ -8291,12 +8667,28 @@
                 }
                 if (lakeTex) { lakeTex.offset.x += dt * 0.012; lakeTex.offset.y += dt * 0.007; }
                 if (oceanTex) { oceanTex.offset.x += dt * 0.02; oceanTex.offset.y += dt * 0.011; }
+                PERF.lap('world');
+                updateAnimals(dt);
+                PERF.lap('animals');
+                updatePeople(dt);
+                PERF.lap('people');
             }
             updateSmoke(dt);
             updateWeather(dt);
             sendRoomState(dt);
             updateRemotes(dt);
+            PERF.lap('misc');
+            // ONE matrix pass for the whole scene (the renderer's own pass is switched off), then the
+            // instanced creatures copy their skeletons' fresh matrices, then we draw
+            scene.updateMatrixWorld();
+            if (mode === 'flight' && flightEnv) creatureBatch.update();
+            applyQuality();
             renderer.render(scene, camera);
+            PERF.lap('render');
+            PERF.n++;
+            if (mode === 'flight' && document.visibilityState === 'visible') updateQuality(frameMs, performance.now() - t0);
+            else resetQualityWindow();
+            if (Debug.on) updateDebug(frameMs, dt);
         }
 
         // hidden debug handle (like the other games' secret dev affordances)
@@ -8306,8 +8698,12 @@
             get battle() { return battle; }, get bullets() { return bullets; }, get balloons() { return balloons; },
             get camera() { return camera; }, get turbines() { return turbines; }, get birds() { return birds; },
             get animals() { return animals; }, get people() { return people; }, get fishes() { return fishes; }, get weather() { return Weather; },
-            step(dt = 1 / 60, n = 1) { if (mode === 'flight') for (let i = 0; i < n; i++) { stepPhysics(dt); updateVolcanoes(dt); updatePeople(dt); sendRoomState(dt); updateRemotes(dt); } },
-            get room() { return Room; }, get pvp() { return pvp; }, pvpHit, onRoomMsg, craters, makeCrater, terrainY
+            step(dt = 1 / 60, n = 1) { if (mode === 'flight') for (let i = 0; i < n; i++) { stepPhysics(dt); updateVolcanoes(dt); updateAnimals(dt); updatePeople(dt); sendRoomState(dt); updateRemotes(dt); } },
+            get room() { return Room; }, get pvp() { return pvp; }, pvpHit, onRoomMsg, craters, makeCrater, terrainY,
+            get scene() { return scene; }, get renderer() { return renderer; }, get perf() { return PERF; }, get quality() { return Quality; },
+            get batch() { return creatureBatch; }, get rooms() { return rooms; }, get worldStats() { return optimizeEnv.stats; },
+            debug: setDebug, startFlight, endFlight, resetFlight, explode, hitPeopleAt, hitAnimalsAt, knockDown, get G() { return G; },
+            updateQuality, applyQuality, renderedGroundY
         };
 
         // ================= BOOT =================
