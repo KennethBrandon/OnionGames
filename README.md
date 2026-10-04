@@ -4,6 +4,10 @@ A collection of games written by my 11-year-old son.
 
 ## Games List
 
+### [Onion Coaster](OnionCoaster/)
+**Author:** Onion
+Build your own 3D theme park! Design roller coasters piece by piece and ride them in first person, add water slides and pools, spinning rides, snack stands and scenery, and keep your park full of happy little onions.
+
 ### [Pillow Smash](PillowSmash/)
 **Author:** EE
 Pick one of 16 fighters, grab your pillow, and whack your opponent off the island into the lava! Long pillows, exploding pillows, shooting pillows, and a giant pillow SLAM. Play vs a bot or a friend.

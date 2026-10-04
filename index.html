@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Onion Games - A collection of fun and free browser-based mini-games. Play Pillow Smash, The Grinch, Sleigh Drop, Onion Breaker, and more!">
+    <meta name="description" content="Onion Games - A collection of fun and free browser-based mini-games. Play Onion Coaster, Pillow Smash, The Grinch, Sleigh Drop, Onion Breaker, and more!">
     <meta name="keywords" content="Onion Games, free browser games, HTML5 games, mini-games, casual games">
     <meta name="robots" content="index, follow">
     <meta name="author" content="Onion Games">
@@ -248,6 +248,22 @@
     </header>
 
     <main>
+        <!-- Onion Coaster -->
+        <article class="game-card">
+            <img src="assets/images/OnionCoaster.jpg" alt="Onion Coaster" class="card-image"
+                onerror="this.style.display='none'"
+                onclick="gtag('event', 'game_start', {'game_name': 'Onion Coaster', 'game_file': 'OnionCoaster/'}); window.location.href='OnionCoaster/';">
+            <div class="card-content">
+                <h2>Onion Coaster</h2>
+                <div class="author">By: Onion</div>
+                <p>Build your own 3D theme park! Design roller coasters piece by piece and ride them, add water
+                    slides, spinning rides and snack stands, and keep your park full of happy little onions.</p>
+                <a href="OnionCoaster/" class="play-btn"
+                    onclick="gtag('event', 'game_start', {'game_name': 'Onion Coaster', 'game_file': 'OnionCoaster/'});">Play
+                    Now</a>
+            </div>
+        </article>
+
         <!-- Pillow Smash -->
         <article class="game-card">
             <img src="assets/images/PillowSmash.png" alt="Pillow Smash" class="card-image"
