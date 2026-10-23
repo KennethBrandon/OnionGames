@@ -5511,7 +5511,8 @@
                     const f = this.flagAt(veh.l - k * d.spacing);
                     if (f & 1) onChain = true; if (f & 4) onBoost = true; if (f & 2) onBrake = true;
                 }
-                if (onChain && veh.v <= d.chainSpeed + 0.01) {   // the chain carries the train up at a steady speed
+                // the chain carries the train up at a steady speed while it's climbing; once over the crest, gravity takes over
+                if (onChain && slope > 0 && veh.v <= d.chainSpeed + 0.01) {
                     veh.v = Math.min(d.chainSpeed, Math.max(veh.v, 0) + 5 * dt);
                     veh.l += veh.v * dt;
                     return 0;
@@ -5788,8 +5789,9 @@
             } else if (p > 0) {
                 add({ k: 'st', c: chain }, p === 3 ? 'Straight up' : 'Keep climbing', 'st' + p);
                 if (p < d.maxUp) add({ k: 'pu', c: chain }, p === 2 ? 'Go vertical!' : 'Steeper', 'pu' + p);
-                add({ k: 'pd', c: chain && p > 1 ? 1 : 0 }, p === 3 ? 'Lean back' : 'Level off', 'pd' + p);
-                if (p === 3) add({ k: 'crest' }, 'Over the top (top hat)', 'crest', true);
+                // still rising at p > 0, so the chain has to carry the train over the apex too
+                add({ k: 'pd', c: chain }, p === 3 ? 'Lean back' : 'Level off', 'pd' + p);
+                if (p === 3) add({ k: 'crest', c: chain }, 'Over the top (top hat)', 'crest', true);
             } else {
                 add({ k: 'st' }, p === -3 ? 'Straight down' : 'Keep dropping', 'st' + p);
                 if (-p < d.maxDown) add({ k: 'pd' }, p === -2 ? 'Go vertical!' : 'Steeper', 'pd' + p);
@@ -5805,7 +5807,7 @@
             const goal = ride.start;
             const startSt = ride.endState;
             const bankB = opts.bank && d.bank ? 1 : 0;
-            const moves = [{ k: 'st' }, { k: 'pu', c: 1 }, { k: 'pd' }];
+            const moves = [{ k: 'st' }, { k: 'pu', c: 1 }, { k: 'pd', c: 1 }];
             for (const r of d.radii.filter((r) => r >= 6).slice(0, 2)) moves.push({ k: 'tl', r, b: bankB }, { k: 'tr', r, b: bankB });
             if (d.radii.includes(2) && d.radii.length < 3) moves.push({ k: 'tl', r: 2 }, { k: 'tr', r: 2 });
             if (d.helix) moves.push({ k: 'tl', r: 6, b: bankB, h: -2 }, { k: 'tr', r: 6, b: bankB, h: -2 }, { k: 'tl', r: 6, b: bankB, h: 2, c: 1 }, { k: 'tr', r: 6, b: bankB, h: 2, c: 1 });
